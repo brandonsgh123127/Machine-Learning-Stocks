@@ -2,7 +2,6 @@ from intro._data_gather import Gather
 import re
 import pandas as pd
 import csv
-from numpy.typing.tests.data import pass
 
 class News_Scraper(Gather):
     def __init__(self):
