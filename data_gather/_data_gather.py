@@ -19,6 +19,7 @@ class Gather():
                           access_token_secret="by7SUTtNPOYgAws0yliwk9YdiWIloSdv8kYX0YKic28UE",
                           sleep_on_rate_limit="true")
         self.indicator = ""
+        self.data = []
         
     def set_indicator(self,indicator):
         self.indicator = indicator
@@ -28,9 +29,12 @@ class Gather():
     def _convert_mdY_Ymd(self,date):
         return datetime.datetime.strptime(date,"%m%d%Y").strftime("%Y-%m-%d")
     # retrieve pandas_datareader object of data mmddyyyy to yyyymmdd
-    def get_data_from_range(self,start_date,end_date):
+    def set_data_from_range(self,start_date,end_date):
         formatted_dates = (self._convert_mdY_Ymd(start_date),self._convert_mdY_Ymd(end_date))
-        return pdr.get_data_yahoo(self.indicator,start=formatted_dates[0],end=formatted_dates[1])
+        self.data = pdr.get_data_yahoo(self.indicator,start=formatted_dates[0],end=formatted_dates[1])
+        return self.data
+    def get_data(self):
+        return self.data
     # Twitter API Web Scraper for data on specific stocks
     def get_recent_news(self,term,date,amt=100):
         print(f'Retrieving news using Twitter API... {term} {date} {amt}') 
