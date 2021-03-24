@@ -4,10 +4,26 @@ import yfinance as yf
 import datetime
 from pandas_datareader import data as pdr
 import twitter
+import random
 
 '''Class Used for Gathering data through yfinance...
 '''
 class Gather():
+    MAX_DATE = datetime.datetime.now().date()
+    MIN_DATE = datetime.datetime(2013,1,1).date()
+    MIN_RANGE = 5 # at least 5 days generated
+    DAYS_IN_MONTH = {1:31,
+                     2:28,
+                     2:31,
+                     4:30,
+                     5:31,
+                     6:30,
+                     7:31,
+                     8:31,
+                     9:30,
+                     10:31,
+                     11:30,
+                     12:31}
     def __repr__(self):
         return 'stock_data.gather_data object <%s>' % ",".join(self.indicator)
     def __init__(self):
@@ -20,6 +36,7 @@ class Gather():
                           sleep_on_rate_limit="true")
         self.indicator = ""
         self.data = []
+        self.date_set = ()
         
     def set_indicator(self,indicator):
         self.indicator = indicator
@@ -33,6 +50,16 @@ class Gather():
         formatted_dates = (self._convert_mdY_Ymd(start_date),self._convert_mdY_Ymd(end_date))
         self.data = pdr.get_data_yahoo(self.indicator,start=formatted_dates[0],end=formatted_dates[1])
         return self.data
+    # Generate random date for data generation
+    def gen_random_dates(self):
+        calc_leap_day = lambda year_month: random.randint(1,29) if year_month[1]==2 and ((year_month[0]%4==0 and year_month[0]%100==0 and year_month[0]%400==0) or (year_month[0]%4==0 and year_month[0]%100!=0)) else random.randint(1,28) if year_month[1]==2 else random.randint(1,self.DAYS_IN_MONTH[year_month[1]])
+        set1 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year),random.randint(1,12))
+        set2 = (random.randint(self.MAX_DATE.year,self.MAX_DATE.year),random.randint(1,12))
+        self.date_set = (datetime.datetime(set1[0],set1[1],calc_leap_day(set1)).date(),datetime.datetime(set2[0],set2[1],calc_leap_day(set2)).date())
+        while abs(self.date_set[0].timetuple().tm_yday - self.date_set[1].timetuple().tm_yday) < self.MIN_RANGE: # abs value 
+            print("Calculating new day, less than range")
+            self.date_set[0].replace(day=calc_leap_day(set1))
+        return self.date_set
     def get_data(self):
         return self.data
     # Twitter API Web Scraper for data on specific stocks
