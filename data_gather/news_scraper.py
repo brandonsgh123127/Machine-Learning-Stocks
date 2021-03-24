@@ -40,11 +40,11 @@ class News_Scraper(Gather):
 news=News_Scraper()
 path = Path(os.getcwd()).parent.absolute()
 try:
-    os.mkdir("{0}/data".format(path))
+    os.mkdir("{0}/data/tweets".format(path))
 except:
     pass
-news.load_tweet_csv(f'{path}/data/{news.indicator.upper()}.csv')
+news.load_tweet_csv(f'{path}/data/tweets/{news.indicator.upper()}.csv')
 news.get_news("SPY","03212021")
 print(news.get_indicator())
-news.save_tweet_csv(f'{path}/data/{news.indicator.upper()}.csv')
+news.save_tweet_csv(f'{path}/data/tweets/{news.indicator.upper()}.csv')
 print('done')
