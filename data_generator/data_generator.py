@@ -7,12 +7,18 @@ import pytz
 import datetime
 from tzlocal import get_localzone
 
+'''
+    This class allows for unification of data, studies and news for future machine learning training.
+    data formatting 
+'''
 class Generator():
-    def __init__(self,ticker):
+    def __init__(self,ticker,path):
         print("Generator instance")
         self.studies = Studies(ticker)
         self.news=News_Scraper(ticker)
         self.ticker=ticker
+        self.path = path
+
         
     def generate_data(self,iters):
         for iter in range(iters):
@@ -20,25 +26,24 @@ class Generator():
             # Loop until valid data populates
             while self.studies.set_data_from_range(self.news.date_set[0],self.news.date_set[1]) != 0:
                 self.news.gen_random_dates()
-            path = Path(os.getcwd()).parent.absolute()
             try:
-                os.mkdir("{0}/data/tweets".format(path))
+                os.mkdir("{0}/data/tweets".format(self.path))
             except:
                 pass
             try:
-                os.mkdir("{0}/data/stock".format(path))
+                os.mkdir("{0}/data/stock".format(self.path))
             except:
                 pass
             try:
-                os.mkdir(f'{path}/data/tweets/{self.news.indicator.upper()}/')
+                os.mkdir(f'{self.path}/data/tweets/{self.news.indicator.upper()}/')
             except:
                 pass
             try:
-                os.mkdir(f'{path}/data/stock/{self.studies.get_indicator()}/')
+                os.mkdir(f'{self.path}/data/stock/{self.studies.get_indicator()}/')
             except:
                 pass
             try:
-                os.mkdir("{0}/data/stock".format(path))
+                os.mkdir("{0}/data/stock".format(self.path))
             except:
                 pass
             query_param1 = {"query": "{}".format(self.ticker)}
@@ -52,10 +57,10 @@ class Generator():
             if self.news.is_empty:
                 pass
             else:
-                self.news.save_tweet_csv(f'{path}/data/tweets/{self.news.indicator.upper()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
+                self.news.save_tweet_csv(f'{self.path}/data/tweets/{self.news.indicator.upper()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
                 self.studies.apply_ema("14")
                 self.studies.apply_ema("30") 
-                self.studies.save_data_csv(f'{path}/data/stock/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
+                self.studies.save_data_csv(f'{self.path}/data/stock/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
             self.news.reset_results()
     
 def choose_random_ticker(csv_file):
@@ -67,9 +72,10 @@ def choose_random_ticker(csv_file):
 def main():
     MAX_TICKERS=1
     MAX_ITERS=1
+    path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_ITERS):
-        ticker = choose_random_ticker("C:\\Users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\watchlist\\default.csv")
-        generator = Generator(ticker)
+        ticker = choose_random_ticker(f'{path}/watchlist/default.csv')
+        generator = Generator(ticker,path)
         generator.generate_data(MAX_ITERS)
         del generator
         
