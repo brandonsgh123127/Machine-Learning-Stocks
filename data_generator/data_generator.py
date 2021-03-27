@@ -46,6 +46,7 @@ class Generator():
                 os.mkdir("{0}/data/stock".format(self.path))
             except:
                 pass
+            # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
             query_param1 = {"query": "{}".format(self.ticker)}
             query_param2 = {"maxResults":"500"}
             query_param3 = {"fromDate":"{}".format(self.news.date_set[0].strftime("%Y%m%d%H%M"))}
@@ -53,7 +54,7 @@ class Generator():
             query_params = {}
             query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
 
-            print(self.news.get_news(query_params))
+            self.news.get_news(query_params)
             if self.news.is_empty:
                 pass
             else:
@@ -74,7 +75,7 @@ def main():
     MAX_ITERS=1
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_ITERS):
-        ticker = choose_random_ticker(f'{path}/watchlist/default.csv')
+        ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
         generator = Generator(ticker,path)
         generator.generate_data(MAX_ITERS)
         del generator
