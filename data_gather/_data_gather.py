@@ -77,13 +77,12 @@ class Gather():
         self.date_set = (datetime.datetime(set1[0],set1[1],calc_leap_day(set1),tzinfo=pytz.utc),datetime.datetime(set2[0],set2[1],calc_leap_day(set2),tzinfo=pytz.utc))
         # date difference has to be in between range 
         while abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) < (self.MIN_RANGE *86400) or abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) > (self.MAX_RANGE * 86400):
-            print(self.date_set[0], self.date_set[1])
             n_list= (set1[0],random.randint(set1[1],12))
             self.date_set = (datetime.datetime(set1[0],set1[1],calc_leap_day(set1),tzinfo=pytz.utc),datetime.datetime(n_list[0],n_list[1],calc_leap_day(n_list),tzinfo=pytz.utc))
-        if self.date_set[0] > datetime.datetime.now().replace(day=19,tzinfo=pytz.utc):
-            self.date_set = (datetime.datetime.now().replace(tzinfo=pytz.utc),self.date_set[1])
+        if self.date_set[0] > datetime.datetime.now().replace(tzinfo=pytz.utc):
+            self.date_set = (datetime.datetime.now().replace(day=1,tzinfo=pytz.utc),self.date_set[1])
         if self.date_set[1] > datetime.datetime.now().replace(tzinfo=pytz.utc):
-            self.date_set = (self.date_set[0],datetime.datetime.now().replace(day=20, tzinfo=pytz.utc))
+            self.date_set = (self.date_set[0],datetime.datetime.now().replace(day=int(datetime.datetime.today().strftime('%d')), tzinfo=pytz.utc))
         self.date_set=self._reorder_dates(self.date_set[0].date(),self.date_set[1].date())
         return self.date_set
     def get_data(self):
