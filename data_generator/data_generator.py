@@ -55,7 +55,8 @@ class Generator():
             query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
 
             self.news.get_news(query_params)
-            if self.news.is_empty:
+            if self.news.get_results().empty:
+                print("no twitter news for {0}...{1}".format(self.ticker,self.news.get_results()))
                 pass
             else:
                 self.news.save_tweet_csv(f'{self.path}/data/tweets/{self.news.indicator.upper()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
@@ -71,14 +72,15 @@ def choose_random_ticker(csv_file):
         print(ticker)
         return ticker
 def main():
-    MAX_TICKERS=1
+    MAX_TICKERS=3
     MAX_ITERS=1
     path = Path(os.getcwd()).parent.absolute()
-    for i in range(MAX_ITERS):
-        ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
-        generator = Generator(ticker,path)
-        generator.generate_data(MAX_ITERS)
-        del generator
+    for i in range(MAX_TICKERS):
+        for j in range(MAX_ITERS):
+            ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
+            generator = Generator(ticker,path)
+            generator.generate_data(MAX_ITERS)
+            del generator
         
     
 if __name__ == '__main__':
