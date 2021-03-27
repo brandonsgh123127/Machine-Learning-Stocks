@@ -41,7 +41,13 @@ class Generator():
                 os.mkdir("{0}/data/stock".format(path))
             except:
                 pass
-            query_params = {'q': f'${self.ticker}', 'result_type':'mixed', 'max_results':'500', 'fromDate':f'{self.news.date_set[0].strftime("%Y%m%d%H%M")}', 'toDate':f'{self.news.date_set[1].strftime("%Y%m%d%H%M")}', 'tweet.fields': 'public_metrics'}
+            query_param1 = {"query": "{}".format(self.ticker)}
+            query_param2 = {"maxResults":"500"}
+            query_param3 = {"fromDate":"{}".format(self.news.date_set[0].strftime("%Y%m%d%H%M"))}
+            query_param4 = {"toDate":"{}".format(self.news.date_set[1].strftime("%Y%m%d%H%M"))}
+            query_params = {}
+            query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
+
             print(self.news.get_news(query_params))
             if self.news.is_empty:
                 pass
