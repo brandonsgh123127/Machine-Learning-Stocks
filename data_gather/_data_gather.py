@@ -10,7 +10,13 @@ import pytz
 import requests
 import os
 import json
-'''Class Used for Gathering data through yfinance...
+'''CORE CLASS IMPLEMENTATION--
+
+    Gather class allows for basic functions within other modules, these functions are:
+    date retrieval
+    stock retrieval
+    news retrieval through twitter api
+    
 '''
 class Gather():
     MAX_DATE = datetime.datetime.now().date()

@@ -5,6 +5,12 @@ import matplotlib.pyplot as plt
 import os
 from pathlib import Path
 
+'''
+    This class manages stock-data implementations of studies. 
+    As of now, EMA is only implemented, as this is the core indicator for our
+    machine learning model.
+    save data option enabled
+'''
 class Studies(Gather):
     def __repr__(self):
         return 'stock_data.studies object <%s>' % ",".join(self.indicator)

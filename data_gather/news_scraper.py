@@ -6,7 +6,10 @@ from pathlib import Path
 import json
 from pandas.io.json import json_normalize
 
-''' Class used for news data utilization from twitter api'''
+''' Class used for news data utilization from twitter api.
+    This class is more in depth with filtering twitter results retrieved from core module
+    data save options
+'''
 class News_Scraper(Gather):
     def __repr__(self):
         return 'stock_data.news_scraper object <%s>' % ",".join(self.indicator)
