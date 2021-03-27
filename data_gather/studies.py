@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import glob
 from pathlib import Path
 
 '''
@@ -38,6 +39,9 @@ class Studies(Gather):
     def save_data_csv(self,path):
         stock_data = pd.concat([self.data],ignore_index=True)
         study_data = pd.concat([self.applied_studies],ignore_index=True)
+        files_present = glob.glob(f'{path}_data.csv')
+        if files_present:
+            os.remove(files_present[0])
         stock_data.to_csv("{0}_data.csv".format(path),index=False,sep=',',encoding='utf-8')
         study_data.to_csv("{0}_studies.csv".format(path),index=False,sep=',',encoding='utf-8')
         return 0
