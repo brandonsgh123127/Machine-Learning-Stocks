@@ -16,6 +16,7 @@ class Gather():
     MAX_DATE = datetime.datetime.now().date()
     MIN_DATE = datetime.datetime(2013,1,1).date()
     MIN_RANGE = 5 # at least 5 days generated
+    MAX_RANGE = 93 # at most 3 months to look at trend
     DAYS_IN_MONTH = {1:31,
                      2:28,
                      3:31,
@@ -67,7 +68,8 @@ class Gather():
         set1 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year),random.randint(1,12))
         set2 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year),random.randint(1,12))
         self.date_set = (datetime.datetime(set1[0],set1[1],calc_leap_day(set1),tzinfo=pytz.utc),datetime.datetime(set2[0],set2[1],calc_leap_day(set2),tzinfo=pytz.utc))
-        while abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) < self.MIN_RANGE: # abs value 
+        # date difference has to be in between range 
+        while abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) < self.MIN_RANGE or abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) > self.MAX_RANGE:
             print(self.date_set[0],self.date_set[1])
             print("Calculating new day, less than range")
             self.date_set[0].replace(day=calc_leap_day(set1))
