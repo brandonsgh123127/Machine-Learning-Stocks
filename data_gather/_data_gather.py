@@ -16,7 +16,7 @@ class Gather():
     MAX_DATE = datetime.datetime.now().date()
     MIN_DATE = datetime.datetime(2013,1,1).date()
     MIN_RANGE = 5 # at least 5 days generated
-    MAX_RANGE = 93 # at most 3 months to look at trend
+    MAX_RANGE = 31 # at most 1 month to look at trend
     DAYS_IN_MONTH = {1:31,
                      2:28,
                      3:31,
@@ -29,7 +29,7 @@ class Gather():
                      10:31,
                      11:30,
                      12:31}
-    search_url = "https://api.twitter.com/1.1/search/fullarchive/dev/counts.json"
+    search_url = "https://api.twitter.com/1.1/tweets/search/fullarchive/dev.json"
 
     def __repr__(self):
         return 'stock_data.gather_data object <%s>' % ",".join(self.indicator)
@@ -45,7 +45,8 @@ class Gather():
         self.data = []
         self.date_set = ()
         self.bearer="AAAAAAAAAAAAAAAAAAAAAJdONwEAAAAAzi2H1WrnhmAddAQKwveAfRN1DAY%3DdSFsj3bTRnDqqMxNmnxEKTG6O6UN3t3VMtnC0Y7xaGxqAF1QVq"
-        self.headers = {"Authorization": "Bearer {0}".format(self.bearer)}
+        self.headers = {"Authorization": "Bearer {0}".format(self.bearer), "content-type": "application/json",'Accept-encoding': 'gzip',
+               'User-Agent': 'twitterdev-search-tweets-python/'}
     def set_indicator(self,indicator):
         self.indicator = indicator
     def get_indicator(self):
@@ -65,21 +66,22 @@ class Gather():
     # Generate random date for data generation
     def gen_random_dates(self):
         calc_leap_day = lambda year_month: random.randint(1,29) if year_month[1]==2 and ((year_month[0]%4==0 and year_month[0]%100==0 and year_month[0]%400==0) or (year_month[0]%4==0 and year_month[0]%100!=0)) else random.randint(1,28) if year_month[1]==2 else random.randint(1,self.DAYS_IN_MONTH[year_month[1]])
-        set1 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year),random.randint(1,12))
-        set2 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year),random.randint(1,12))
+        set1 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year),random.randint(1,11))
+        set2 = (random.randint(set1[0],set1[0]+1),random.randint(1,12))
         self.date_set = (datetime.datetime(set1[0],set1[1],calc_leap_day(set1),tzinfo=pytz.utc),datetime.datetime(set2[0],set2[1],calc_leap_day(set2),tzinfo=pytz.utc))
         # date difference has to be in between range 
-        while abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) < self.MIN_RANGE or abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) > self.MAX_RANGE:
-            print(self.date_set[0],self.date_set[1])
-            print("Calculating new day, less than range")
-            self.date_set[0].replace(day=calc_leap_day(set1))
+        while abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) < (self.MIN_RANGE *86400) or abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) > (self.MAX_RANGE * 86400):
+            print(self.date_set[0].timestamp(), self.date_set[1].timestamp())
+            n_list= (set1[0],random.randint(set1[1],12))
+            self.date_set = (datetime.datetime(set1[0],set1[1],calc_leap_day(set1),tzinfo=pytz.utc),datetime.datetime(n_list[0],n_list[1],calc_leap_day(n_list),tzinfo=pytz.utc))
         self.date_set=self._reorder_dates(self.date_set[0].date(),self.date_set[1].date())
         return self.date_set
     def get_data(self):
         return self.data
     # Twitter API Web Scraper for data on specific stocks
     def get_recent_news(self,query):
-        response = requests.request("GET", self.search_url, headers=self.headers, params=query)
+        #query.update(self.headers)
+        response = requests.post(self.search_url,json=query, headers=self.headers)
         print(response.status_code)
         if response.status_code != 200:
             raise Exception(response.status_code, response.text)
