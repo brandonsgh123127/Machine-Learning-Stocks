@@ -59,8 +59,8 @@ def choose_random_ticker(csv_file):
         print(ticker)
         return ticker
 def main():
-    MAX_TICKERS=10
-    MAX_ITERS=20
+    MAX_TICKERS=600
+    MAX_ITERS=50
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')

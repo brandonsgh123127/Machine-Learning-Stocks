@@ -33,6 +33,8 @@ class Studies(Gather):
             #print(data.columns)
             self.applied_studies= pd.concat([self.applied_studies,data],axis=1)
         return 0
+    def reset_data(self):
+        self.applied_studies = pd.DataFrame()
     def save_data_csv(self,path):
         files_present = glob.glob(f'{path}_data.csv')
         if files_present:
