@@ -1,10 +1,7 @@
 from data_gather._data_gather import Gather
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import os
 import glob
-from pathlib import Path
 
 '''
     This class manages stock-data implementations of studies. 
@@ -28,21 +25,22 @@ class Studies(Gather):
     def get_timeframe(self):
         return self.timeframe
     # Save EMA to self defined applied_studies
-    def apply_ema(self, length, half=None):
+    def apply_ema(self, length,span,half=None):
         if half is not None:
-            self.applied_studies= self.applied_studies.append(pd.DataFrame({f'ema{length}':[self.data.ewm(span=int(length),adjust=False,halflife=half).mean()]}))
+            self.applied_studies= pd.concat([self.applied_studies,pd.DataFrame({f'ema{length}': [self.data.ewm(span=int(length)).mean()]},halflife=half)],axis=1)
         else:
-            data = self.data
-            for label,content in data.items():
-                self.applied_studies= self.applied_studies.append(pd.DataFrame({f'ema{length}_{label}': [content.ewm(span=int(length)).mean()]}))
+            data = self.data.drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Close':f'ema{length}'}).ewm(alpha=2/(int(length)+1),adjust=True).mean()
+            #print(data.columns)
+            self.applied_studies= pd.concat([self.applied_studies,data],axis=1)
         return 0
     def save_data_csv(self,path):
-        stock_data = pd.concat([self.data],ignore_index=True)
-        study_data = pd.concat([self.applied_studies],ignore_index=True)
         files_present = glob.glob(f'{path}_data.csv')
         if files_present:
             os.remove(files_present[0])
-        stock_data.to_csv("{0}_data.csv".format(path),index=False,sep=',',encoding='utf-8')
-        study_data.to_csv("{0}_studies.csv".format(path),index=False,sep=',',encoding='utf-8')
+        self.data.to_csv("{0}_data.csv".format(path),index=False,sep=',',encoding='utf-8')
+        self.applied_studies.to_csv("{0}_studies.csv".format(path),index=False,sep=',',encoding='utf-8')
         return 0
-
+    def load_data_csv(self,path):
+        self.data = pd.read_csv(f'{path}_data.csv')
+        self.applied_studies = pd.read_csv(f'{path}_studies.csv')
+        print("Data Loaded")
