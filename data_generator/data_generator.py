@@ -50,6 +50,7 @@ class Generator():
         self.studies.apply_ema("14",self.news.get_date_difference())
         self.studies.apply_ema("30",self.news.get_date_difference()) 
         self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
+        self.studies.reset_data()
     
 def choose_random_ticker(csv_file):
     with open(csv_file) as f:
@@ -58,8 +59,8 @@ def choose_random_ticker(csv_file):
         print(ticker)
         return ticker
 def main():
-    MAX_TICKERS=1
-    MAX_ITERS=1
+    MAX_TICKERS=10
+    MAX_ITERS=20
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
