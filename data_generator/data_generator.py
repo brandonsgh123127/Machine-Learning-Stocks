@@ -3,9 +3,6 @@ import os
 from data_gather.news_scraper import News_Scraper
 from data_gather.studies import Studies
 import random
-import pytz
-import datetime
-from tzlocal import get_localzone
 
 '''
     This class allows for unification of data, studies and news for future machine learning training.
@@ -49,9 +46,9 @@ class Generator():
         query_params = {}
         query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
 
-
-        self.studies.apply_ema("14")
-        self.studies.apply_ema("30") 
+        self.studies.data = self.studies.data.drop(['Volume'],axis=1)
+        self.studies.apply_ema("14",self.news.get_date_difference())
+        self.studies.apply_ema("30",self.news.get_date_difference()) 
         self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
     
 def choose_random_ticker(csv_file):
@@ -61,8 +58,8 @@ def choose_random_ticker(csv_file):
         print(ticker)
         return ticker
 def main():
-    MAX_TICKERS=300
-    MAX_ITERS=50
+    MAX_TICKERS=1
+    MAX_ITERS=1
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
