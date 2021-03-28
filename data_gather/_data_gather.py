@@ -1,5 +1,3 @@
-import numpy as np
-from matplotlib import pyplot as plt
 import yfinance as yf
 import datetime
 from pandas_datareader import data as pdr
@@ -8,8 +6,6 @@ import random
 import pytz
 
 import requests
-import os
-import json
 '''CORE CLASS IMPLEMENTATION--
 
     Gather class allows for basic functions within other modules, these functions are:
@@ -21,8 +17,8 @@ import json
 class Gather():
     MAX_DATE = datetime.datetime.now().date()
     MIN_DATE = datetime.datetime(2013,1,1).date()
-    MIN_RANGE = 5 # at least 5 days generated
-    MAX_RANGE = 31 # at most 1 month to look at trend
+    MIN_RANGE = 25 # at least 7 days generated
+    MAX_RANGE = 100 # at most 1 month to look at trend
     DAYS_IN_MONTH = {1:31,
                      2:28,
                      3:31,
@@ -61,6 +57,8 @@ class Gather():
     def set_data_from_range(self,start_date,end_date):
         try:
             self.data = pdr.get_data_yahoo(self.indicator,start=start_date.strftime("%Y-%m-%d"),end=end_date.strftime("%Y-%m-%d"))
+            if self.data.empty:
+                return 1
         except:
             return 1
         return 0
@@ -85,6 +83,8 @@ class Gather():
             self.date_set = (self.date_set[0],datetime.datetime.now().replace(day=int(datetime.datetime.today().strftime('%d')), tzinfo=pytz.utc))
         self.date_set=self._reorder_dates(self.date_set[0].date(),self.date_set[1].date())
         return self.date_set
+    def get_date_difference(self):
+        return (self.date_set[0] - self.date_set[1]).days
     def get_data(self):
         return self.data
     # Twitter API Web Scraper for data on specific stocks

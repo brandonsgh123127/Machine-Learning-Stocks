@@ -1,10 +1,6 @@
 from data_gather._data_gather import Gather
 import re
 import pandas as pd
-import os,sys
-from pathlib import Path
-import json
-from pandas.io.json import json_normalize
 
 ''' Class used for news data utilization from twitter api.
     This class is more in depth with filtering twitter results retrieved from core module
