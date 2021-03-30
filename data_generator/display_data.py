@@ -6,6 +6,10 @@ from data_gather.studies import Studies
 from pathlib import Path
 import os
 
+'''
+Easily display unfiltered data given the ticker and date range specified on the file
+Class implements matplotlib and pandas
+'''
 class Display():
     def __init__(self):
         print("Display instance initialized!")
@@ -22,10 +26,10 @@ class Display():
     def display_line(self):
         self.study_display['index'] = range(1, len(self.study_display) + 1)
         self.study_display.reset_index().plot(x='index')
-dis = Display()
-dis.read_studies("2018-01-13--2018-03-31","SHOP")
-dis.display_line()
-locs, labels = plt.xticks()
-dis.display_box()
-plt.xticks(locs)
-plt.show()
+# dis = Display()
+# dis.read_studies("2018-01-13--2018-03-31","SHOP")
+# dis.display_line()
+# locs, labels = plt.xticks()
+# dis.display_box()
+# plt.xticks(locs)
+# plt.show()

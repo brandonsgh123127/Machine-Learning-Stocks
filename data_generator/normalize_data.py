@@ -4,6 +4,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
+'''
+Class that takes in studies and stock data, then transforms the data into a new dataframe.
+
+This frame then gets normalized and outputted.
+'''
 
 class Normalizer():
     def __init__(self):
@@ -44,12 +49,13 @@ class Normalizer():
         scaler = MinMaxScaler() 
         self.normalized_data = pd.DataFrame(scaler.fit_transform(self.normalized_data),columns=['Derivative Diff','Derivative EMA14','Derivative EMA30','Close EMA14 Diff',
                                                                                                 'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED DATA STORED IN NP ARRAY
-
+        return 0
+   
     def display_line(self):
         #self.normalized_data['index'] = range(1, len(self.normalized_data) + 1)
         self.normalized_data.plot()
         plt.show()
-norm = Normalizer()
-norm.read_data("2018-01-13--2018-03-31","SHOP")
-norm.convert_derivatives()
-norm.display_line()
+# norm = Normalizer()
+# norm.read_data("2018-01-13--2018-03-31","SHOP")
+# norm.convert_derivatives()
+# norm.display_line()
