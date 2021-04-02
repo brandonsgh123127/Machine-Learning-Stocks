@@ -12,7 +12,6 @@ This frame then gets normalized and outputted.
 
 class Normalizer():
     def __init__(self):
-        print("Normalizer initialized!")
         self.data= pd.DataFrame()
         self.studies= pd.DataFrame()
         self.normalized_data = pd.DataFrame()
@@ -23,6 +22,8 @@ class Normalizer():
         self.studies.reset_index()
         pd.set_option("display.max.columns", None)
     def convert_derivatives(self):
+        self.normalized_data = pd.DataFrame()
+
         self.normalized_data["Derivative Diff"] = self.data["Open"]
         self.normalized_data["Derivative EMA14"] =self.studies["ema14"]
         self.normalized_data["Derivative EMA30"] =self.studies["ema30"]
@@ -56,6 +57,9 @@ class Normalizer():
         self.normalized_data.plot()
         plt.show()
 # norm = Normalizer()
-# norm.read_data("2018-01-13--2018-03-31","SHOP")
+# norm.read_data("2014-03-29--2014-05-02","MAA")
+# DAYS_SAMPLED=15
 # norm.convert_derivatives()
+# norm.normalized_data = norm.normalized_data.iloc[0:DAYS_SAMPLED]
+# print(norm.normalized_data.shape)
 # norm.display_line()
