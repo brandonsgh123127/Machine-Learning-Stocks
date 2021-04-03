@@ -61,5 +61,5 @@ class Normalizer():
 # DAYS_SAMPLED=15
 # norm.convert_derivatives()
 # norm.normalized_data = norm.normalized_data.iloc[0:DAYS_SAMPLED]
-# print(norm.normalized_data.shape)
+# print(norm.normalized_data)
 # norm.display_line()

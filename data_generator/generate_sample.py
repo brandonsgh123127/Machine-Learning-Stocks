@@ -34,7 +34,7 @@ class Sample(Normalizer):
                 # self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[0:self.DAYS_SAMPLED+1]
         return (rand[0:rand.index('/')],rand[rand.index('/')+1:rand.index('_')])
 # sampler = Sample()
-# for i in range(1,10000):
+# for i in range(1,100000):
     # indicator = sampler.generate_sample()
     # if len(sampler.normalizer.normalized_data) < 15:
         # print(indicator,len(sampler.normalizer.normalized_data))
