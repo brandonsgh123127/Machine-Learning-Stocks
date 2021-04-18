@@ -8,6 +8,7 @@ This class will retrieve any file given, and take a sample of data, and retrieve
 class Sample(Normalizer):
     def __init__(self):
         self.normalizer = Normalizer()
+        self.normalizer.__init__()
         self.file_list = list()
         self.DAYS_SAMPLED = 15
         dirs = os.listdir(f'{self.normalizer.path}/data/stock_no_tweets')
@@ -15,24 +16,37 @@ class Sample(Normalizer):
             full_path = os.path.join(f'{self.normalizer.path}/data/stock_no_tweets',dir)
             for file in os.listdir(full_path):
                 self.file_list.append(f'{str(dir)}/{file}')
-    def generate_sample(self):
-        rand = random.choice(self.file_list)
+    def generate_sample(self,ticker=None):
+        if ticker is None:
+            rand = random.choice(self.file_list)
+        else:
+            rand = ticker
         self.normalizer.read_data(rand[rand.index('/')+1:rand.index('_')],rand[0:rand.index('/')]) # Get ticker and date from path
-        self.normalizer.convert_derivatives()
         # Iterate through dataframe and retrieve random sample
-        self.normalizer.normalized_data = [self.normalizer.normalized_data.iloc[x:x+self.DAYS_SAMPLED] for x in np.random.randint(len(self.normalizer.normalized_data), size=self.DAYS_SAMPLED)]
-        if len(self.normalizer.normalized_data[0]) < self.DAYS_SAMPLED:
+        self.normalizer.convert_derivatives()
+        # print(len(self.normalizer.normalized_data))
+
+        # x = np.random.randint(len(self.normalizer.normalized_data)/3,size=self.DAYS_SAMPLED)
+        # np.array_spli
+        self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[:self.DAYS_SAMPLED]
+        # print(self.normalizer.normalized_data)
+        self.normalizer.normalize()
+        if len(self.normalizer.normalized_data) < self.DAYS_SAMPLED:
             self.normalizer.read_data(rand[rand.index('/')+1:rand.index('_')],rand[0:rand.index('/')]) # Get ticker and date from path
             self.normalizer.convert_derivatives()
             self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[0:self.DAYS_SAMPLED]
+            self.normalizer.unnormalized_data = self.normalizer.normalized_data.iloc[0:self.DAYS_SAMPLED]
         else:
-            self.normalizer.normalized_data = self.normalizer.normalized_data[0]
+            self.normalizer.normalized_data = self.normalizer.normalized_data
+
         # self.normalizer.normalized_data = pd.DataFrame(self.normalizer.normalized_data,columns=[''])
             # try:
         # self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[0:self.DAYS_SAMPLED+1]
             # except:
                 # self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[0:self.DAYS_SAMPLED+1]
         return (rand[0:rand.index('/')],rand[rand.index('/')+1:rand.index('_')])
+    def unnormalize(self, data):
+        self.normalizer.unnormalize(data)
 # sampler = Sample()
 # for i in range(1,100000):
     # indicator = sampler.generate_sample()
