@@ -20,7 +20,7 @@ class Generator():
     def generate_data(self):
         self.news.gen_random_dates()
         # Loop until valid data populates
-        while self.studies.set_data_from_range(self.news.date_set[0],self.news.date_set[1]) != 0:
+        while self.studies.set_data_from_range(self.news.date_set[0],self.news.date_set[1]) != 0 or self.studies.data.isnull().values.any() or len(self.studies.data) < 16:
             self.news.gen_random_dates()
         try:
             os.mkdir("{0}/data/tweets".format(self.path))
@@ -51,7 +51,44 @@ class Generator():
         self.studies.apply_ema("30",self.news.get_date_difference()) 
         self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
         self.studies.reset_data()
-    
+        
+    def generate_data(self,date1="",date2=""):
+        self.news.date_set = (date1,date2)
+        # Loop until valid data populates
+        self.studies.set_data_from_range(date1,date2)
+        try:
+            os.mkdir("{0}/data/tweets".format(self.path))
+        except:
+            pass
+        try:
+            os.mkdir("{0}/data/stock_no_tweets".format(self.path))
+        except:
+            pass
+        try:
+            os.mkdir(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/')
+        except:
+            pass
+        try:
+            os.mkdir("{0}/data/stock".format(self.path))
+        except:
+            pass
+        # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
+        query_param1 = {"query": "{}".format(self.ticker)}
+        query_param2 = {"maxResults":"500"}
+        query_param3 = {"fromDate":"{}".format(self.news.date_set[0].strftime("%Y%m%d%H%M"))}
+        query_param4 = {"toDate":"{}".format(self.news.date_set[1].strftime("%Y%m%d%H%M"))}
+        query_params = {}
+        query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
+
+        self.studies.data = self.studies.data.drop(['Volume'],axis=1)
+        self.studies.apply_ema("14",self.news.get_date_difference())
+        self.studies.apply_ema("30",self.news.get_date_difference()) 
+        self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{date1}--{date2}')
+        self.studies.reset_data()
+    def get_ticker(self):
+        return self.ticker
+    def set_ticker(self,ticker):
+        self.ticker = ticker
 def choose_random_ticker(csv_file):
     with open(csv_file) as f:
         ticker = random.choice(f.readlines())
