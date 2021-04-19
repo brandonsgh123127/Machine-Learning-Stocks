@@ -84,14 +84,17 @@ class Network():
                 f'{self.path}/data/model')
         except:
             print("No model exists, creating new model...")
-def load(ticker=None):        
+def load(ticker=None,has_actuals=True):        
     sampler = Sample()
     sampler.__init__()
     neural_net = Network(0,0)
     neural_net.load_model()
     train = []
     print(sampler.generate_sample(ticker))
-    train.append(np.reshape(sampler.normalizer.normalized_data.iloc[:-1].to_numpy(),(1,1,112)))
+    if has_actuals:
+        train.append(np.reshape(sampler.normalizer.normalized_data.iloc[:-1].to_numpy(),(1,1,112)))
+    else:
+        train.append(np.reshape(sampler.normalizer.normalized_data.to_numpy(),(1,1,112)))
     prediction = neural_net.nn.predict(np.stack(train))
     # print(prediction)
     predicted = pd.DataFrame((np.reshape((prediction),(1,8))),columns=['Open Diff','Close Diff','Derivative Diff','Derivative EMA14','Derivative EMA30','Close EMA14 Diff',
