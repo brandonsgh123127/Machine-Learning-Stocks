@@ -7,6 +7,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from data_generator.normalize_data import Normalizer
+from scipy.constants.constants import alpha
 
 class Network():
     def __init__(self,epochs,batch_size):
@@ -19,28 +20,30 @@ class Network():
         #sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
         print(tf.test.is_built_with_cuda())
 
-    def create_model(self):
+    def create_model(self,model_choice=1):
         self.nn_input = keras.Input(shape=(1,1,112)) # 14 * 8 cols
-        self.nn = keras.layers.Dense(112, activation='relu',kernel_initializer='he_uniform')(self.nn_input)
-        self.nn = keras.layers.Dropout(0.1)(self.nn)
-        keras.regularizers.l1(0.02)
-        keras.regularizers.l2(0.02)
-        self.nn = keras.layers.Dense(48,activation='relu',kernel_initializer=keras.initializers.RandomNormal(stddev=0.31))(self.nn)
-        self.nn = keras.layers.Dense(48,activation='relu')(self.nn)
-        self.nn = keras.layers.Dense(48,activation='relu')(self.nn)
-        self.nn = keras.layers.Dense(48,activation='relu')(self.nn)
-        self.nn = keras.layers.Dropout(0.2)(self.nn)
-        # self.nn = keras.layers.Dense(24,activation=keras.layers.ReLU())(self.nn)
-        self.nn2 = keras.layers.Dense(8,activation='linear')(self.nn)
-        # self.nn21 = keras.layers.Dense(1,activation='linear')(self.nn2)
-        # self.nn22 = keras.layers.Dense(1,activation='linear')(self.nn2)
-        # self.nn23 = keras.layers.Dense(1,activation='linear')(self.nn2)
-        # self.nn24 = keras.layers.Dense(1,activation='linear')(self.nn2)
-        # self.nn25 = keras.layers.Dense(1,activation='linear')(self.nn2)
-        # self.nn26 = keras.layers.Dense(1,activation='linear')(self.nn2)
-        # self.nn27 = keras.layers.Dense(1,activation='linear')(self.nn2)
-        # self.nn28 = keras.layers.Dense(1,activation='linear')(self.nn2)
-
+        if model_choice == 1:
+            self.nn = keras.layers.Dense(112, activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            # self.nn = keras.layers.Dropout(0.1)(self.nn)
+            keras.regularizers.l1(0.01)
+            keras.regularizers.l2(0.04)
+            self.nn = keras.layers.Dense(48,activation='sigmoid',kernel_initializer='he_uniform')(self.nn)
+            self.nn = keras.layers.Dense(48,activation='tanh')(self.nn)
+            self.nn = keras.layers.Dense(48,activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
+            self.nn = keras.layers.Dropout(0.1)(self.nn)
+            self.nn = keras.layers.Dense(24,activation='sigmoid')(self.nn)
+            self.nn2 = keras.layers.Dense(8,activation='linear')(self.nn)
+        elif model_choice == 2:
+            self.nn = keras.layers.Dense(112, activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dropout(0.1)(self.nn)
+            keras.regularizers.l1(0.01)
+            keras.regularizers.l2(0.04)
+            self.nn = keras.layers.Dense(48,activation='relu',kernel_initializer='he_uniform')(self.nn)
+            self.nn = keras.layers.Dense(48,activation='relu')(self.nn)
+            self.nn = keras.layers.Dense(48,activation=keras.layers.LeakyReLU(alpha=0.5),kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
+            self.nn = keras.layers.Dropout(0.1)(self.nn)
+            self.nn = keras.layers.Dense(24,activation='relu')(self.nn)
+            self.nn2 = keras.layers.Dense(8,activation='linear')(self.nn)
 
         self.nn = keras.Model(inputs=self.nn_input,outputs=[self.nn2])
         self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.005,beta_1=0.9,beta_2=0.999), loss='mae',metrics=['MeanAbsoluteError'])
@@ -57,9 +60,15 @@ class Network():
             for j in range(1,self.BATCHES):
                 train= []
                 train_targets=[]
-                sampler.generate_sample()
-                train.append(np.reshape(sampler.normalizer.normalized_data.iloc[:-1].to_numpy(),(1,1,112)))# Retrieve all except for last data to be analyzed/predicted
-                train_targets.append(np.reshape(sampler.normalizer.normalized_data.iloc[-1:].to_numpy(),(1,8)))
+                try:
+                    print(sampler.generate_sample())
+                except:
+                    continue
+                try:
+                    train.append(np.reshape(sampler.normalizer.normalized_data.iloc[:-1].to_numpy(),(1,1,112)))# Retrieve all except for last data to be analyzed/predicted
+                    train_targets.append(np.reshape(sampler.normalizer.normalized_data.iloc[-1:].to_numpy(),(1,8)))
+                except:
+                    continue
                 # sampler.generate_sample()
                 # validate.append(np.reshape(sampler.normalizer.normalized_data.iloc[:-2].to_numpy(),(1,1,78)))
                 # validate_outputs.append(np.reshape(sampler.normalizer.normalized_data.tail(1).to_numpy(),(1,6)))
@@ -78,19 +87,19 @@ class Network():
         return models
     def save_model(self):
         self.nn.save(f'{self.path}/data/model')
-    def load_model(self):
+    def load_model(self,name="model"):
         try:
             self.nn = keras.models.load_model(
-                f'{self.path}/data/model')
+                f'{self.path}/data/{name}')
         except:
             print("No model exists, creating new model...")
-def load(ticker=None,has_actuals=True):        
+def load(ticker=None,has_actuals=True,name="model",model_choice=1):        
     sampler = Sample()
     sampler.__init__()
     neural_net = Network(0,0)
-    neural_net.load_model()
+    neural_net.load_model(name)
     train = []
-    print(sampler.generate_sample(ticker))
+    print(sampler.generate_sample(ticker,is_predict=not has_actuals))
     if has_actuals:
         train.append(np.reshape(sampler.normalizer.normalized_data.iloc[:-1].to_numpy(),(1,1,112)))
     else:
@@ -104,10 +113,10 @@ def load(ticker=None,has_actuals=True):
     # print(sampler.normalizer.unnormalize(predicted),sampler.normalizer.unnormalized_data.tail(1))
     return (sampler.normalizer.unnormalize(predicted),sampler.normalizer.unnormalized_data.tail(1))
     # print(predicted)
-def run(epochs,batch_size):
+def run(epochs,batch_size,name="model"):
     neural_net = Network(epochs,batch_size)
-    neural_net.load_model()
-    neural_net.create_model()
+    neural_net.load_model(name)
+    neural_net.create_model(model_choice=1)
     model = neural_net.run_model()
     for i in range(1,neural_net.EPOCHS):
         train_history = model[i]
@@ -115,5 +124,5 @@ def run(epochs,batch_size):
     neural_net.save_model()
     #loss = train_history['loss']
     # val_loss = train_history['val_loss']
-# run(1000,100)
+# run(100,100,"model")
 # print(load())
