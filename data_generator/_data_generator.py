@@ -52,7 +52,7 @@ class Generator():
         self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
         self.studies.reset_data()
         
-    def generate_data(self,date1="",date2=""):
+    def generate_data_with_dates(self,date1=None,date2=None):
         self.news.date_set = (date1,date2)
         # Loop until valid data populates
         self.studies.set_data_from_range(date1,date2)
@@ -96,11 +96,12 @@ def choose_random_ticker(csv_file):
         print(ticker)
         return ticker
 def main():
-    MAX_TICKERS=600
+    MAX_TICKERS=800
     MAX_ITERS=50
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
+        ticker="NVDA"
         generator = Generator(ticker,path)
         for j in range(MAX_ITERS):
             generator.generate_data()

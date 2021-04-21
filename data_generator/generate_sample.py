@@ -16,11 +16,14 @@ class Sample(Normalizer):
             full_path = os.path.join(f'{self.normalizer.path}/data/stock_no_tweets',dir)
             for file in os.listdir(full_path):
                 self.file_list.append(f'{str(dir)}/{file}')
-    def generate_sample(self,ticker=None):
+    def generate_sample(self,ticker=None,is_predict=False):
         if ticker is None:
             rand = random.choice(self.file_list)
         else:
             rand = ticker
+        if is_predict:
+            print("Predict Mode")
+            self.DAYS_SAMPLED = 14
         self.normalizer.read_data(rand[rand.index('/')+1:rand.index('_')],rand[0:rand.index('/')]) # Get ticker and date from path
         # Iterate through dataframe and retrieve random sample
         self.normalizer.convert_derivatives()
@@ -30,20 +33,21 @@ class Sample(Normalizer):
         # np.array_spli
         self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[:self.DAYS_SAMPLED]
         # print(self.normalizer.normalized_data)
-        self.normalizer.normalize()
+        print(len(self.normalizer.normalized_data))
+        rc = self.normalizer.normalize()
+        if rc == 1:
+            raise Exception("Normalize did not return exit code 1")
         if len(self.normalizer.normalized_data) < self.DAYS_SAMPLED:
             self.normalizer.read_data(rand[rand.index('/')+1:rand.index('_')],rand[0:rand.index('/')]) # Get ticker and date from path
             self.normalizer.convert_derivatives()
-            self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[0:self.DAYS_SAMPLED]
-            self.normalizer.unnormalized_data = self.normalizer.normalized_data.iloc[0:self.DAYS_SAMPLED]
-        else:
-            self.normalizer.normalized_data = self.normalizer.normalized_data
-
-        # self.normalizer.normalized_data = pd.DataFrame(self.normalizer.normalized_data,columns=[''])
-            # try:
-        # self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[0:self.DAYS_SAMPLED+1]
-            # except:
-                # self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[0:self.DAYS_SAMPLED+1]
+            # if random.randint(0, 1) == 1:
+                # self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
+                # self.normalizer.unnormalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
+            # else:
+            # self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[:self.DAYS_SAMPLED]
+            # self.normalizer.unnormalized_data = self.normalizer.normalized_data.iloc[:self.DAYS_SAMPLED]
+            self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
+            self.normalizer.unnormalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
         return (rand[0:rand.index('/')],rand[rand.index('/')+1:rand.index('_')])
     def unnormalize(self, data):
         self.normalizer.unnormalize(data)
