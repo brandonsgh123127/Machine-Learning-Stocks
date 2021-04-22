@@ -96,12 +96,12 @@ def choose_random_ticker(csv_file):
         print(ticker)
         return ticker
 def main():
-    MAX_TICKERS=800
+    MAX_TICKERS=5
     MAX_ITERS=50
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
-        ticker="NVDA"
+        # ticker="TSLA"
         generator = Generator(ticker,path)
         for j in range(MAX_ITERS):
             generator.generate_data()

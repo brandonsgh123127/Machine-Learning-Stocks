@@ -31,7 +31,8 @@ class Sample(Normalizer):
 
         # x = np.random.randint(len(self.normalizer.normalized_data)/3,size=self.DAYS_SAMPLED)
         # np.array_spli
-        self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[:self.DAYS_SAMPLED]
+        self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
+            
         # print(self.normalizer.normalized_data)
         print(len(self.normalizer.normalized_data))
         rc = self.normalizer.normalize()
@@ -46,8 +47,8 @@ class Sample(Normalizer):
             # else:
             # self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[:self.DAYS_SAMPLED]
             # self.normalizer.unnormalized_data = self.normalizer.normalized_data.iloc[:self.DAYS_SAMPLED]
-            self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
-            self.normalizer.unnormalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
+        self.normalizer.normalized_data = self.normalizer.normalized_data.tail(self.DAYS_SAMPLED)
+        self.normalizer.unnormalized_data = self.normalizer.normalized_data.tail(self.DAYS_SAMPLED)
         return (rand[0:rand.index('/')],rand[rand.index('/')+1:rand.index('_')])
     def unnormalize(self, data):
         self.normalizer.unnormalize(data)
