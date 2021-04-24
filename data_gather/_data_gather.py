@@ -83,13 +83,15 @@ class Gather():
             self.date_set = (self.date_set[0],datetime.datetime.now().replace(month=3,day=int(datetime.datetime.today().strftime('%d')), tzinfo=pytz.utc))
         self.date_set=self._reorder_dates(self.date_set[0].date(),self.date_set[1].date())
         return self.date_set
-    def get_date_difference(self):
-        return (self.date_set[0] - self.date_set[1]).days
+    def get_date_difference(self,date1=None,date2=None):
+        if date1 is None:
+            return (self.date_set[0] - self.date_set[1]).days
+        else:
+            return (date2 - date1).days
     def get_data(self):
         return self.data
     # Twitter API Web Scraper for data on specific stocks
     def get_recent_news(self,query):
-        #query.update(self.headers)
         response = requests.post(self.search_url,json=query, headers=self.headers)
         print(response.status_code)
         if response.status_code != 200:

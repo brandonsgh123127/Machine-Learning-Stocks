@@ -3,6 +3,7 @@ import os
 from data_gather.news_scraper import News_Scraper
 from data_gather.studies import Studies
 import random
+import datetime
 
 '''
     This class allows for unification of data, studies and news for future machine learning training.
@@ -55,7 +56,13 @@ class Generator():
     def generate_data_with_dates(self,date1=None,date2=None):
         self.news.date_set = (date1,date2)
         # Loop until valid data populates
-        self.studies.set_data_from_range(date1,date2)
+        rc = self.studies.set_data_from_range(date1,date2)
+        if rc ==1:
+            raise Exception("FAILED TO RETRIEVE DATA FROM YAHOO FINANCE")
+        # self.studies.data = self.studies.data.drop(index=self.studies.data.index[0], 
+        # axis=0, 
+        # inplace=True)
+        # self.studies.data = self.studies.data.append({'Open': '145.06','High': '152.3','Low': '144.01','Close': '151.33','Adj Close': '151.33'}, ignore_index=True)
         try:
             os.mkdir("{0}/data/tweets".format(self.path))
         except:
@@ -83,7 +90,7 @@ class Generator():
         self.studies.data = self.studies.data.drop(['Volume'],axis=1)
         self.studies.apply_ema("14",self.news.get_date_difference())
         self.studies.apply_ema("30",self.news.get_date_difference()) 
-        self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{date1}--{date2}')
+        self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{date1.strftime("%Y-%m-%d")}--{date2.strftime("%Y-%m-%d")}')
         self.studies.reset_data()
     def get_ticker(self):
         return self.ticker
@@ -96,13 +103,14 @@ def choose_random_ticker(csv_file):
         print(ticker)
         return ticker
 def main():
-    MAX_TICKERS=800
+    MAX_TICKERS=5
     MAX_ITERS=50
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
-        ticker="NVDA"
+        # ticker="SPY"
         generator = Generator(ticker,path)
+        # generator.generate_data_with_dates(datetime.datetime(2021,3,3),datetime.datetime(2021,4,22))
         for j in range(MAX_ITERS):
             generator.generate_data()
         del generator
