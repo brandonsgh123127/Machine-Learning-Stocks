@@ -16,7 +16,7 @@ class GUI():
         self.output_image = None
         self.job_queue = queue.Queue()
     def get_current_price(self):
-        if self.boolean1.get():
+        if self.boolean1.get() == True:
             self.open = tk.Label(self.content,text="Open:")
             self.open.grid(column=1,row=3)
             self.open_input = tk.Entry(self.content)
@@ -44,7 +44,10 @@ class GUI():
             self.close_input.grid_forget()
     def load_model(self,ticker,has_actuals,is_not_closed):
         print(has_actuals)
-        self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False).decode("utf-8"))
+        if is_not_closed:
+            self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False).decode("utf-8"))
+        else:
+            self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False).decode("utf-8"))
         self.dates = self.output.split()
         self.img = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png')
         self.output_image.delete('all')
@@ -77,7 +80,7 @@ class GUI():
             self.boolean1.set(False)
             self.boolean2 = tk.BooleanVar()
             self.boolean2.set(True)
-            self.is_not_closed = ttk.Checkbutton(self.content, text="Predict ongoing day?", variable=self.boolean1,command=executor.submit(self.get_current_price))
+            self.is_not_closed = ttk.Checkbutton(self.content, text="Predict ongoing day?", variable=self.boolean1,command= lambda: self.job_queue.put(executor.submit(self.get_current_price)))
             self.is_not_closed.grid(column=2, row=1)
             self.has_actuals = ttk.Checkbutton(self.content, text="Compare Mode?", variable=self.boolean2)
             self.has_actuals.grid(column=4, row=1)
