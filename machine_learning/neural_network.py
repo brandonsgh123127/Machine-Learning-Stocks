@@ -8,14 +8,14 @@ import pandas as pd
 import threading
 class Network():
     def __init__(self,epochs,batch_size):
-        print("Neural Network Instantiated")
+        # print("Neural Network Instantiated")
         self.nn_input = None
         self.nn = None
         self.EPOCHS=epochs
         self.BATCHES=batch_size
         self.path = Path(os.getcwd()).parent.absolute() 
         self.model_map_names = {1:"model",2:"model_new_2",3:"model_new_3",4:"model_new_4"} # model is sigmoid tan function combo, model_new_2 is original relu leakyrelu combo, model_new_3 is tanh sigmoid combo
-        print(tf.test.is_built_with_cuda())
+        # print(tf.test.is_built_with_cuda())
 
     def create_model(self,model_choice=1):
         self.model_choice =model_choice
@@ -110,12 +110,13 @@ class Network():
             print("No model exists, creating new model...")
 listLock = threading.Lock()
 def load(ticker:str="spy",has_actuals:bool=True,name:str="model"):        
-    sampler = Sample()
-    sampler.__init__()
+    sampler = Sample(ticker)
+    # sampler.__init__(ticker)
     neural_net = Network(0,0)
     neural_net.load_model(name)
     train = []
-    print(sampler.generate_sample(ticker,is_predict=(not has_actuals)))
+    # print(sampler.generate_sample(ticker,is_predict=(not has_actuals)))
+    sampler.generate_sample(ticker,is_predict=(not has_actuals))
     with listLock:
         if has_actuals:
             train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,112)))
