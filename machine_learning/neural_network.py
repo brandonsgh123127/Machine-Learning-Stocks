@@ -5,20 +5,17 @@ from data_generator.generate_sample import Sample
 from pathlib import Path
 import os
 import pandas as pd
-import matplotlib.pyplot as plt
-from data_generator.normalize_data import Normalizer
-from scipy.constants.constants import alpha
-
+import threading
 class Network():
     def __init__(self,epochs,batch_size):
-        print("Neural Network Instantiated")
+        # print("Neural Network Instantiated")
         self.nn_input = None
         self.nn = None
         self.EPOCHS=epochs
         self.BATCHES=batch_size
         self.path = Path(os.getcwd()).parent.absolute() 
         self.model_map_names = {1:"model",2:"model_new_2",3:"model_new_3",4:"model_new_4"} # model is sigmoid tan function combo, model_new_2 is original relu leakyrelu combo, model_new_3 is tanh sigmoid combo
-        print(tf.test.is_built_with_cuda())
+        # print(tf.test.is_built_with_cuda())
 
     def create_model(self,model_choice=1):
         self.model_choice =model_choice
@@ -111,18 +108,21 @@ class Network():
                 f'{self.path}/data/{name}')
         except:
             print("No model exists, creating new model...")
-def load(ticker=None,has_actuals=True,name="model"):        
-    sampler = Sample()
-    sampler.__init__()
+listLock = threading.Lock()
+def load(ticker:str="spy",has_actuals:bool=True,name:str="model"):        
+    sampler = Sample(ticker)
+    # sampler.__init__(ticker)
     neural_net = Network(0,0)
     neural_net.load_model(name)
     train = []
-    print(sampler.generate_sample(ticker,is_predict=(not has_actuals)))
-    if has_actuals:
-        train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,112)))
-    else:
-        train.append(np.reshape(sampler.normalizer.normalized_data[-14:].to_numpy(),(1,1,112)))
-    prediction = neural_net.nn.predict(np.stack(train))
+    # print(sampler.generate_sample(ticker,is_predict=(not has_actuals)))
+    sampler.generate_sample(ticker,is_predict=(not has_actuals))
+    with listLock:
+        if has_actuals:
+            train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,112)))
+        else:
+            train.append(np.reshape(sampler.normalizer.normalized_data[-14:].to_numpy(),(1,1,112)))
+        prediction = neural_net.nn.predict(np.stack(train))
     # print(prediction)
     predicted = pd.DataFrame((np.reshape((prediction),(1,8))),columns=['Open Diff','Close Diff','Derivative Diff','Derivative EMA14','Derivative EMA30','Close EMA14 Diff',
                                                                                                 'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED
