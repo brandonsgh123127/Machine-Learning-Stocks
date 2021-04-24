@@ -17,7 +17,6 @@ class Network():
         self.EPOCHS=epochs
         self.BATCHES=batch_size
         self.path = Path(os.getcwd()).parent.absolute() 
-        #sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
         self.model_map_names = {1:"model",2:"model_new_2",3:"model_new_3",4:"model_new_4"} # model is sigmoid tan function combo, model_new_2 is original relu leakyrelu combo, model_new_3 is tanh sigmoid combo
         print(tf.test.is_built_with_cuda())
 
@@ -92,13 +91,9 @@ class Network():
                     train_targets.append(np.reshape(sampler.normalizer.normalized_data.iloc[-1:].to_numpy(),(1,8)))
                 except:
                     continue
-                # sampler.generate_sample()
-                # validate.append(np.reshape(sampler.normalizer.normalized_data.iloc[:-2].to_numpy(),(1,1,78)))
-                # validate_outputs.append(np.reshape(sampler.normalizer.normalized_data.tail(1).to_numpy(),(1,6)))
                 disp = self.nn.train_on_batch(np.stack(train), np.stack(train_targets))
                 model_info = {'model' : self.nn, 'history' : disp[1], 'loss' : disp[0]}
                 models[i] = (model_info['loss'] + models[i] )
-                # print(f'Loss: {models[i]["loss"]}')
                 try:
                     self.nn.evaluate(np.stack(train),np.stack(train_targets))
                 except:
@@ -131,11 +126,7 @@ def load(ticker=None,has_actuals=True,name="model"):
     # print(prediction)
     predicted = pd.DataFrame((np.reshape((prediction),(1,8))),columns=['Open Diff','Close Diff','Derivative Diff','Derivative EMA14','Derivative EMA30','Close EMA14 Diff',
                                                                                                 'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED
-    # print(f'difference: {np.subtract(np.reshape((prediction),(1,8)),np.reshape(sampler.normalizer.normalized_data.tail(1).to_numpy(),(1,8)))}')
-    # print(pd.concat([sampler.normalizer.unnormalized_data.iloc[:-1],sampler.normalizer.unnormalize(predicted)]),sampler.normalizer.unnormalized_data)
-    # print(sampler.normalizer.unnormalize(predicted),sampler.normalizer.unnormalized_data.tail(1))
     return (sampler.normalizer.unnormalize(predicted),sampler.normalizer.unnormalized_data.tail(1))
-    # print(predicted)
 def run(epochs,batch_size,name="model",model=1):
     neural_net = Network(epochs,batch_size)
     neural_net.load_model(name)
@@ -145,7 +136,5 @@ def run(epochs,batch_size,name="model",model=1):
         train_history = model[i]
         print(train_history)
     neural_net.save_model()
-    #loss = train_history['loss']
-    # val_loss = train_history['val_loss']
 # run(100,100,"model_new_4",4)
 # print(load())

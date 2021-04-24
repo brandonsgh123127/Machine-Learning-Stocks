@@ -15,16 +15,14 @@ import datetime
 
 
 sampler = Sample()
-# nn = Network(1,10)
-ticker = "TSLA"
+ticker = "dash"
 path = Path(os.getcwd()).parent.absolute()
 
 gen = Generator(ticker,path)
 gen.studies.set_indicator(f'{ticker}')
 dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 0)) #month worth of data
 gen.generate_data_with_dates(dates[0],dates[1])
-# nn.load_model()
-_has_actuals = True
+_has_actuals = False
 #OK MODEL
 data = load(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name="model_new_2")
 dis = Display()

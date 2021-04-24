@@ -1,7 +1,8 @@
-from ._data_gather import Gather
+from data_gather._data_gather import Gather
 import pandas as pd
 import os
 import glob
+import datetime
 
 '''
     This class manages stock-data implementations of studies. 
@@ -30,7 +31,6 @@ class Studies(Gather):
             self.applied_studies= pd.concat([self.applied_studies,pd.DataFrame({f'ema{length}': [self.data.ewm(span=int(length)).mean()]},halflife=half)],axis=1)
         else:
             data = self.data.drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Close':f'ema{length}'}).ewm(alpha=2/(int(length)+1),adjust=True).mean()
-            #print(data.columns)
             self.applied_studies= pd.concat([self.applied_studies,data],axis=1)
         return 0
     def reset_data(self):
@@ -46,3 +46,9 @@ class Studies(Gather):
         self.data = pd.read_csv(f'{path}_data.csv')
         self.applied_studies = pd.read_csv(f'{path}_studies.csv')
         print("Data Loaded")
+# s = Studies("SPY")
+# s.load_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\spy/2021-03-03--2021-04-22")
+# s.applied_studies = pd.DataFrame()
+# s.apply_ema("14",(datetime.datetime(2021,4,22)-datetime.datetime(2021,3,3)))
+# s.apply_ema("30",(datetime.datetime(2021,4,22)-datetime.datetime(2021,3,3))) 
+# s.save_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\spy/2021-03-03--2021-04-22")

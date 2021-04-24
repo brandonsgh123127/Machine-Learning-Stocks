@@ -61,7 +61,6 @@ class Normalizer():
         return 0
     def normalize(self):
         self.unnormalized_data = self.normalized_data
-        # print(self.normalized_data)
         try:
             self.normalized_data = pd.DataFrame(self.min_max.fit_transform(self.normalized_data),columns=['Open Diff','Close Diff','Derivative Diff','Derivative EMA14','Derivative EMA30','Close EMA14 Diff',
                                                                                                           'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED DATA STORED IN NP ARRAY
@@ -69,12 +68,9 @@ class Normalizer():
             return 1
         return 0
     def unnormalize(self,data):
-        # self.min_max = MinMaxScaler()
-        # self.convert_derivatives()
         return pd.DataFrame(self.min_max.inverse_transform((data.to_numpy())),columns=['Open Diff','Close Diff','Derivative Diff','Derivative EMA14','Derivative EMA30','Close EMA14 Diff',
                                                                                             'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED DATA STORED IN NP ARRAY
     def display_line(self):
-        #self.normalized_data['index'] = range(1, len(self.normalized_data) + 1)
         self.normalized_data.plot()
         plt.show()
 # norm = Normalizer()

@@ -43,7 +43,6 @@ class Display():
                                                     medianprops=dict(color=c)).set_alpha(0.3)
     def display_line(self,ticker=None,dates=None,color=None):
         indices_dict = {0:'Open Diff',1:'Close Diff',2:'Derivative Diff',3:'Derivative EMA14',4:'Derivative EMA30',5:'Close EMA14 Diff',6:'Close EMA30 Diff',7:'EMA14 EMA30 Diff'}
-        # print(self.data_display)
         data = pd.concat([self.data_display.reset_index(),self.data_predict_display.reset_index()],ignore_index=False).set_flags(allows_duplicate_labels=True)
         data_orig = data
         data['index'] = [0,0]
@@ -70,11 +69,9 @@ class Display():
         data['index'] = [7,7]
         data = data.set_index('index')
         ax = data['EMA14 EMA30 Diff'].plot(x='index',y='EMA14 EMA30 Diff',style='bs', ax=ax,title=f'{ticker} - {dates[1]}')
-        # ax2 = self.data_predict_display.plot.scatter(x=indices,y=self.data_predict_display.columns,ax=ax, c='red',label='predicted')
         data['index'] = [0,1]
         data = data.set_index('index')
 
-        # print(data)
         for i,row in enumerate(data_orig.index):
             for j,col in enumerate(data_orig.columns):
                 if j == 8:
@@ -112,11 +109,9 @@ class Display():
         data['index'] = [7]
         data = data.set_index('index')
         ax = data['EMA14 EMA30 Diff'].plot(x='index',y='EMA14 EMA30 Diff',style='bs', ax=ax,title=f'{ticker} - {dates[1]}')
-        # ax2 = self.data_predict_display.plot.scatter(x=indices,y=self.data_predict_display.columns,ax=ax, c='red',label='predicted')
         data['index'] = [0]
         data = data.set_index('index')
 
-        # print(data)
         for i,row in enumerate(self.data_predict_display.index):
             for j,col in enumerate(self.data_predict_display.columns):
                 if j == 8:
