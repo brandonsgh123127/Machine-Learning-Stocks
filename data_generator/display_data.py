@@ -12,7 +12,7 @@ Class implements matplotlib and pandas
 '''
 class Display():
     def __init__(self):
-        print("Display instance initialized!")
+        # print("Display instance initialized!")
         self.data_display = pd.DataFrame()
         self.study_display = pd.DataFrame()
         self.path = Path(os.getcwd()).parent.absolute() 
