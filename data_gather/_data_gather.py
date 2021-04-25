@@ -4,7 +4,7 @@ from pandas_datareader import data as pdr
 import twitter
 import random
 import pytz
-
+import os,sys
 import requests
 '''CORE CLASS IMPLEMENTATION--
 
@@ -56,7 +56,9 @@ class Gather():
     # retrieve pandas_datareader object of datetime
     def set_data_from_range(self,start_date,end_date):
         try:
+            sys.stdout = open(os.devnull, 'w')
             self.data = pdr.get_data_yahoo(self.indicator,start=start_date.strftime("%Y-%m-%d"),end=end_date.strftime("%Y-%m-%d"))
+            sys.stdout = sys.__stdout__
             if self.data.empty:
                 return 1
         except:

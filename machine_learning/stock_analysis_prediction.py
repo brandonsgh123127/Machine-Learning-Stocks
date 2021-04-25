@@ -26,7 +26,7 @@ def display_model(dis:Display,name:str= "model",_has_actuals:bool=False,ticker:s
     if not _has_actuals: #if prediction, proceed
         dis.display_predict_only(ticker=ticker,dates=dates,color=f'{color}')
     return dis
-def main(ticker = "spy",has_actuals = True, is_not_closed = False):
+def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,vals:str=None):
     if ticker is not None:
         ticker = ticker
     else:
@@ -35,7 +35,7 @@ def main(ticker = "spy",has_actuals = True, is_not_closed = False):
     
     gen = Generator(ticker,path)
     gen.studies.set_indicator(f'{ticker}')
-    # if current trading day, set prediction for tomorroww in date name
+    # if current trading day, set prediction for tomorrow in date name
     dates = []
     if is_not_closed: #same day prediction
         # print('same day')
@@ -44,7 +44,7 @@ def main(ticker = "spy",has_actuals = True, is_not_closed = False):
         dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 0)) #month worth of data
     
     _has_actuals = has_actuals
-    gen.generate_data_with_dates(dates[0],dates[1],is_not_closed=is_not_closed)
+    gen.generate_data_with_dates(dates[0],dates[1],is_not_closed=is_not_closed,vals=vals)
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
         threads = []
         #OK MODEL
@@ -74,4 +74,7 @@ def main(ticker = "spy",has_actuals = True, is_not_closed = False):
 if __name__ == "__main__":
     _has_actuals = sys.argv[2] == 'True'
     _is_not_closed =sys.argv[3] == 'True'
-    main(ticker=sys.argv[1],has_actuals=_has_actuals,is_not_closed=_is_not_closed)
+    vals = None
+    if _is_not_closed:
+        vals = (sys.argv[4],sys.argv[5],sys.argv[6],sys.argv[7])
+    main(ticker=sys.argv[1],has_actuals=_has_actuals,is_not_closed=_is_not_closed,vals=vals)
