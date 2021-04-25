@@ -11,7 +11,7 @@ import datetime
 '''
 class Generator():
     def __init__(self,ticker,path):
-        print(ticker)
+        # print(ticker)
         self.studies = Studies(ticker)
         self.news=News_Scraper(ticker)
         self.ticker=ticker
@@ -53,16 +53,14 @@ class Generator():
         self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
         self.studies.reset_data()
         
-    def generate_data_with_dates(self,date1=None,date2=None):
+    def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,vals:tuple=None):
         self.news.date_set = (date1,date2)
         # Loop until valid data populates
         rc = self.studies.set_data_from_range(date1,date2)
         if rc ==1:
             raise Exception("FAILED TO RETRIEVE DATA FROM YAHOO FINANCE")
-        # self.studies.data = self.studies.data.drop(index=self.studies.data.index[0], 
-        # axis=0, 
-        # inplace=True)
-        # self.studies.data = self.studies.data.append({'Open': '145.06','High': '152.3','Low': '144.01','Close': '151.33','Adj Close': '151.33'}, ignore_index=True)
+        if is_not_closed:
+            self.studies.data = self.studies.data.append({'Open': f'{vals[0]}','High': f'{vals[1]}','Low': f'{vals[2]}','Close': f'{vals[3]}','Adj Close': f'{vals[3]}'}, ignore_index=True)
         try:
             os.mkdir("{0}/data/tweets".format(self.path))
         except:
