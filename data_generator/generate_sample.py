@@ -38,8 +38,6 @@ class Sample(Normalizer):
         if len(self.normalizer.normalized_data) < self.DAYS_SAMPLED:
             self.normalizer.read_data(rand[rand.index('/')+1:rand.index('_')],rand[0:rand.index('/')]) # Get ticker and date from path
             self.normalizer.convert_derivatives()
-        self.normalizer.normalized_data = self.normalizer.normalized_data.tail(self.DAYS_SAMPLED)
-        self.normalizer.unnormalized_data = self.normalizer.normalized_data.tail(self.DAYS_SAMPLED)
         return (rand[0:rand.index('/')],rand[rand.index('/')+1:rand.index('_')])
     def unnormalize(self, data):
         self.normalizer.unnormalize(data)
