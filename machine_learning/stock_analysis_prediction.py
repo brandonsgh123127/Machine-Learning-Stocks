@@ -17,14 +17,17 @@ import threading
 import sys
 
 listLock = threading.Lock()
-def display_model(dis:Display,name:str= "model",_has_actuals:bool=False,ticker:str="spy",dates:list=[],color:str="blue"):
+def display_model(dis:Display,name:str= "model",_has_actuals:bool=False,ticker:str="spy",dates:list=[],color:str="blue",unnormalized_data = False):
     data = load(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}')
     with listLock:
         dis.read_studies_data(data[0],data[1])
     locs, labels = plt.xticks()
     plt.xticks(locs)
     if not _has_actuals: #if prediction, proceed
-        dis.display_predict_only(ticker=ticker,dates=dates,color=f'{color}')
+        if not unnormalized_data:
+            dis.display_predict_only(ticker=ticker,dates=dates,color=f'{color}')
+        else:
+            dis.display_box(data[2])
     return dis
 def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,vals:str=None):
     if ticker is not None:
@@ -56,20 +59,32 @@ def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,
         with listLock:
             threads.append(executor.submit(display_model,dis2,"model_new_3",_has_actuals,ticker,dates,'black'))
         #NEW relu-based model
+        dis4 = Display()
+        with listLock:
+            threads.append(executor.submit(display_model,dis4,"model_new_5",_has_actuals,ticker,dates,'blue'))
         dis3 = Display()
         with listLock:
             threads.append(executor.submit(display_model,dis3,"model_new_4",_has_actuals,ticker,dates,'magenta'))
+            
         # concurrent.futures.wait(threads)
         if _has_actuals:        
-            dis3 = threads[2].result()
+            dis3 = threads[3].result()
             dis3.display_line(ticker=ticker,dates=dates,color="magenta")
+            dis4 = threads[2].result()
+            dis4.display_line(ticker=ticker,dates=dates,color="blue")
             dis2 = threads[1].result()
             dis2.display_predict_only(ticker=ticker,dates=dates,color="black")
             dis1 = threads[0].result()
             dis1.display_predict_only(ticker=ticker,dates=dates,color="green")
             
+            
         # Finally save the model
     plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png')
+    
+    plt.cla()
+    dis5 = Display()
+    dis5 = display_model(dis5,"model_new_2",False,ticker,dates,'green',True)
+    plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u.png')
     print(str(dates[0]),str(dates[1]))
 if __name__ == "__main__":
     _has_actuals = sys.argv[2] == 'True'

@@ -19,7 +19,7 @@ class Normalizer():
         self.normalized_data = pd.DataFrame()
         self.unnormalized_data = pd.DataFrame()
         self.path = Path(os.getcwd()).parent.absolute() 
-        self.min_max = StandardScaler()
+        self.min_max = MinMaxScaler()
     def read_data(self,date,ticker):
         self.data = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_data.csv').drop(['Adj Close','High','Low'],axis=1)
         self.studies = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_studies.csv',index_col=False)
@@ -68,6 +68,7 @@ class Normalizer():
             return 1
         return 0
     def unnormalize(self,data):
+        # print(self.min_max.inverse_transform((data.to_numpy())))
         return pd.DataFrame(self.min_max.inverse_transform((data.to_numpy())),columns=['Open Diff','Close Diff','Derivative Diff','Derivative EMA14','Derivative EMA30','Close EMA14 Diff',
                                                                                             'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED DATA STORED IN NP ARRAY
     def display_line(self):

@@ -8,6 +8,7 @@ from tkinter import ttk
 import threading
 import concurrent.futures
 import queue
+from _operator import is_not
 
 class GUI():
     def __init__(self):
@@ -45,6 +46,7 @@ class GUI():
     def load_model(self,ticker,has_actuals,is_not_closed):
         print(has_actuals)
         self.generate_button.grid_forget()
+        print(is_not_closed)
         if is_not_closed:
             self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False).decode("utf-8"))
         else:
@@ -52,9 +54,12 @@ class GUI():
         self.dates = self.output.split()
         print(self.dates)
         self.img = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png')
+        self.img2 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u.png')
         self.output_image.delete('all')
-        self.output_image.create_image(640,480,anchor='s',image=self.img)
+        self.output_image.create_image(600,440,anchor='s',image=self.img)
         self.output_image.pack(side='top')
+        self.output_image.create_image(600,440,anchor='n',image=self.img2)
+        self.output_image.pack(side='right')
         self.generate_button.grid(column=3, row=2)
         return self.img
     

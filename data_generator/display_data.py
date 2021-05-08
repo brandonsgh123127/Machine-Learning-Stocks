@@ -33,12 +33,23 @@ class Display():
         self.data_display = actual
         self.data_predict_display = predicted
         pd.set_option("display.max.columns", None)
-    def display_box(self):
+    def display_box(self,data=None):
+        plt.cla()
+        plt.close()
         c = 'blue'
-        self.data_display.transpose().boxplot(patch_artist=True,
+        if data is None:
+            self.data_display.transpose().boxplot(patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
                                                     capprops=dict(color=c),
                                                     whiskerprops=dict(color=c),
+                                                    flierprops=dict(color=c, markeredgecolor=c),
+                                                    medianprops=dict(color=c)).set_alpha(0.3)
+        else:
+            data.transpose().boxplot(patch_artist=True,
+                                              boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
+                                                    capprops=dict(color=c),
+                                                    showfliers=False,
+                                                    showcaps=False,
                                                     flierprops=dict(color=c, markeredgecolor=c),
                                                     medianprops=dict(color=c)).set_alpha(0.3)
     def display_line(self,ticker=None,dates=None,color=None):
