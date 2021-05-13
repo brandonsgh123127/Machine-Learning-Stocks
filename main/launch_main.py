@@ -13,7 +13,7 @@ from _operator import is_not
 class GUI():
     def __init__(self):
         self.path = Path(os.getcwd()).parent.absolute()
-        self.window = tk.Tk()
+        self.window = tk.Tk(screenName='Stock Analysis')
         self.output_image = None
         self.job_queue = queue.Queue()
     def get_current_price(self):
@@ -55,17 +55,20 @@ class GUI():
         print(self.dates)
         self.img = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png')
         self.img2 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u.png')
+        self.img3 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence.png')
+
         self.output_image.delete('all')
-        self.output_image.create_image(600,440,anchor='s',image=self.img)
-        self.output_image.pack(side='top')
-        self.output_image.create_image(600,440,anchor='n',image=self.img2)
-        self.output_image.pack(side='right')
+        self.output_image.create_image(960,270,anchor='w',image=self.img)
+        # self.output_image.pack(side='top')
+        self.output_image.create_image(960,270,anchor='e',image=self.img2)
+
+        self.output_image.create_image(960,270,anchor='ne',image=self.img3)
+        # self.output_image.pack(side='bottom')
         self.generate_button.grid(column=3, row=2)
         return self.img
     
     def run(self):
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            threads = []
             title_frame = tk.LabelFrame(self.window,text="Welcome to Stock Predictor!",width=900,height=900)
             title_frame.pack(fill='both',expand='yes')
             title = tk.Label(title_frame,text="Machine learning based prediction model that utilizes regression prediction models.")
@@ -77,22 +80,23 @@ class GUI():
             title.pack()
             subtitle.pack()
             
-            self.content = ttk.Frame(self.window)
+            self.content = ttk.Frame(self.window,width=400,height=400)
             self.content.pack()
-            self.output_image = tk.Canvas(self.window,width=1920,height=1080)
+            self.output_image = tk.Canvas(self.window,width=1920,height=900)
             self.stock_label = tk.Label(self.content,text="Stock:")
             self.stock_label.grid(column=2,row=0)
             self.stock_input = tk.Entry(self.content)
+            self.stock_input.insert(0,'SPY')
             self.stock_input.grid(column=3,row=0)
             self.boolean1 = tk.BooleanVar()
             self.boolean1.set(False)
             self.boolean2 = tk.BooleanVar()
-            self.boolean2.set(True)
+            self.boolean2.set(False)
             self.is_not_closed = ttk.Checkbutton(self.content, text="Predict ongoing day?", variable=self.boolean1,command= lambda: self.job_queue.put(executor.submit(self.get_current_price)))
             self.is_not_closed.grid(column=2, row=1)
             self.has_actuals = ttk.Checkbutton(self.content, text="Compare Mode?", variable=self.boolean2)
             self.has_actuals.grid(column=4, row=1)
-            self.output_image.pack(expand='yes', fill='both')
+            self.output_image.pack(expand='yes', fill='both',side='right')
             self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(executor.submit(self.load_model,self.stock_input.get(),self.boolean2.get(),self.boolean1.get())))
             self.generate_button.grid(column=3, row=2)
             self.window.mainloop()

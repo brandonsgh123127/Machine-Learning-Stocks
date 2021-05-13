@@ -6,16 +6,12 @@ from pathlib import Path
 import os
 import pandas as pd
 import threading
-class Network():
+from machine_learning.neural_framework import Neural_Framework
+class Network(Neural_Framework):
     def __init__(self,epochs,batch_size):
         # print("Neural Network Instantiated")
-        self.nn_input = None
-        self.nn = None
-        self.EPOCHS=epochs
-        self.BATCHES=batch_size
-        self.path = Path(os.getcwd()).parent.absolute() 
+        super().__init__(epochs, batch_size)
         self.model_map_names = {1:"model",2:"model_new_2",3:"model_new_3",4:"model_new_4",5:"model_new_5"} # model is sigmoid tan function combo, model_new_2 is original relu leakyrelu combo, model_new_3 is tanh sigmoid combo
-        # print(tf.test.is_built_with_cuda())
 
     def create_model(self,model_choice=2):
         self.model_choice =model_choice
@@ -90,6 +86,7 @@ class Network():
                 train_targets=[]
                 try:
                     print(sampler.generate_sample())
+                    sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
                 except:
                     continue
                 try:
@@ -126,6 +123,8 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_new_2"):
     train = []
     # print(sampler.generate_sample(ticker,is_predict=(not has_actuals)))
     sampler.generate_sample(ticker,is_predict=(not has_actuals))
+    sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
+
     with listLock:
         if has_actuals:
             train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,112)))

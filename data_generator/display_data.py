@@ -29,7 +29,7 @@ class Display():
         self.study_display = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_studies.csv',index_col=0)
         self.ticker = ticker
         self.date = date
-    def read_studies_data(self,predicted="",actual=""):
+    def read_studies_data(self,predicted=None,actual=None):
         self.data_display = actual
         self.data_predict_display = predicted
         pd.set_option("display.max.columns", None)
@@ -52,6 +52,20 @@ class Display():
                                                     showcaps=False,
                                                     flierprops=dict(color=c, markeredgecolor=c),
                                                     medianprops=dict(color=c)).set_alpha(0.3)
+    def display_divergence(self,ticker=None,dates=None,color=None,has_actuals=False):
+        plt.cla()
+        plt.figure()
+        data = self.data_predict_display.reset_index()
+        # data.drop(columns='index')        
+        indices_dict = {0:'Divergence',1:'Gain/Loss'}
+        # data = data.transpose()
+        # index = [0,0]
+        # data.set_index(index)
+        # ax = data['Divergence'].transpose().plot(x='Divergence',y='index',style=f'{self.color_map.get(color)}x')
+        # index = [0,1]
+        # data.set_index(index)
+        # ax = data['Gain/Loss'].transpose().plot(x='Gain/Loss',y='index',style=f'{self.color_map.get(color)}o', ax=ax)
+        data.transpose().plot(kind='line',color=color)
     def display_line(self,ticker=None,dates=None,color=None):
         indices_dict = {0:'Open Diff',1:'Close Diff',2:'Derivative Diff',3:'Derivative EMA14',4:'Derivative EMA30',5:'Close EMA14 Diff',6:'Close EMA30 Diff',7:'EMA14 EMA30 Diff'}
         data = pd.concat([self.data_display.reset_index(),self.data_predict_display.reset_index()],ignore_index=False).set_flags(allows_duplicate_labels=True)
@@ -131,9 +145,9 @@ class Display():
                 ax.text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
 
 # dis = Display()
-# dis.read_studies("2018-01-13--2018-03-31","SHOP")
-# dis.display_line()
+# dis.read_studies("2021-03-23--2021-05-12","SPY")
+# dis.display_divergence(ticker='SPY', dates=None, color='green')
 # locs, labels = plt.xticks()
 # dis.display_box()
-# plt.xticks(locs)
+# # plt.xticks(locs)
 # plt.show()
