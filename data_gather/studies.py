@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import glob
 import datetime
+import threading
 
 '''
     This class manages stock-data implementations of studies. 
@@ -19,6 +20,7 @@ class Studies(Gather):
         Gather.set_indicator(self, indicator)
         self.applied_studies= pd.DataFrame()
         self.timeframe="1d"
+        self.listLock = threading.Lock()
         pd.set_option('display.max_rows',300)
         pd.set_option('display.max_columns',10)
     def set_timeframe(self,new_timeframe):
@@ -38,9 +40,11 @@ class Studies(Gather):
     def save_data_csv(self,path):
         files_present = glob.glob(f'{path}_data.csv')
         if files_present:
-            os.remove(files_present[0])
-        self.data.to_csv("{0}_data.csv".format(path),index=False,sep=',',encoding='utf-8')
-        self.applied_studies.to_csv("{0}_studies.csv".format(path),index=False,sep=',',encoding='utf-8')
+            return
+        with self.listLock:
+            self.data.to_csv("{0}_data.csv".format(path),index=False,sep=',',encoding='utf-8')
+        with self.listLock:
+            self.applied_studies.to_csv("{0}_studies.csv".format(path),index=False,sep=',',encoding='utf-8')
         return 0
     def load_data_csv(self,path):
         self.data = pd.read_csv(f'{path}_data.csv')
