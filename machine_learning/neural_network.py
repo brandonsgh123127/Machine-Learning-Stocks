@@ -152,4 +152,4 @@ def run(epochs,batch_size,name="model",model=1):
         print(train_history)
     neural_net.save_model()
 # run(100,100,"model",1)
-# print(load("nvda/2021-03-18--2021-05-07_data"))
+# print(load("spy/2021-03-23--2021-05-12_data"))
