@@ -16,6 +16,8 @@ class GUI():
         self.window = tk.Tk(screenName='Stock Analysis')
         self.output_image = None
         self.job_queue = queue.Queue()
+        self.cache_queue = queue.Queue()
+
     def get_current_price(self):
         if self.boolean1.get() == True:
             self.open = tk.Label(self.content,text="Open:")
@@ -43,8 +45,9 @@ class GUI():
             self.low_input.grid_forget()
             self.close.grid_forget()
             self.close_input.grid_forget()
-    def load_model(self,ticker,has_actuals,is_not_closed):
-        self.generate_button.grid_forget()
+    def load_model(self,ticker,has_actuals,is_not_closed,is_caching=False):
+        if not is_caching:
+            self.generate_button.grid_forget()
         threads = []
         skippable = False
         if is_not_closed:
@@ -73,22 +76,23 @@ class GUI():
                 print("Loaded from storage")
                 self.dates = dates
             print(self.dates)
-            if not has_actuals:
-                self.img = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png')
-                self.img2 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u.png')
-                self.img3 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence.png')
-            else:
-                self.img = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_a.png')
-                self.img2 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u_a.png')
-                self.img3 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence_a.png')
-                print('y')
-            self.output_image.delete('all')
-            self.output_image.create_image(960,270,anchor='w',image=self.img)
-            # self.output_image.pack(side='top')
-            self.output_image.create_image(960,270,anchor='e',image=self.img2)
-    
-            self.output_image.create_image(960,270,anchor='ne',image=self.img3)
-            # self.output_image.pack(side='bottom')
+            if not is_caching:
+                if not has_actuals:
+                    self.img = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png')
+                    self.img2 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u.png')
+                    self.img3 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence.png')
+                else:
+                    self.img = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_a.png')
+                    self.img2 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u_a.png')
+                    self.img3 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence_a.png')
+                    print('y')
+                self.output_image.delete('all')
+                self.output_image.create_image(960,270,anchor='w',image=self.img)
+                # self.output_image.pack(side='top')
+                self.output_image.create_image(960,270,anchor='e',image=self.img2)
+        
+                self.output_image.create_image(960,270,anchor='ne',image=self.img3)
+                # self.output_image.pack(side='bottom')
             self.generate_button.grid(column=3, row=2)
         return 0
     def on_closing(self):
@@ -133,13 +137,27 @@ class GUI():
             self.output_image.pack(expand='yes', fill='both',side='right')
             self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(executor.submit(self.load_model,self.stock_input.get(),self.boolean2.get(),self.boolean1.get())))
             self.generate_button.grid(column=3, row=2)
+            self.cache_queue.put(executor.submit(self.load_model,'SPY',False,False,True))
+            self.cache_queue.put(executor.submit(self.load_model,'NVDA',False,False,True))
+            self.cache_queue.put(executor.submit(self.load_model,'TSLA',False,False,True))
+            self.cache_queue.put(executor.submit(self.load_model,'KO',False,False,True))
+            self.cache_queue.put(executor.submit(self.load_model,'TSLA',False,False,True))
+            self.cache_queue.put(executor.submit(self.load_model,'RBLX',False,False,True))
+            self.cache_queue.put(executor.submit(self.load_model,'NOC',False,False,True))
+            self.cache_queue.put(executor.submit(self.load_model,'LMT',False,False,True))
+            self.cache_queue.put(executor.submit(self.load_model,'PEP',False,False,True))
+            self.cache_queue.put(executor.submit(self.load_model,'FB',False,False,True))
+            self.cache_queue.put(executor.submit(self.load_model,'GOOGL',False,False,True))
+            self.cache_queue.put(executor.submit(self.load_model,'TSLA',False,False,True))
+
             self.window.mainloop()
             self.window.protocol("WM_DELETE_WINDOW", self.on_closing())
 
             while True:
                 if not self.job_queue.empty():
-                    item = self.job_queue.get(0)
-                
+                    item = self.job_queue.get(0).done()
+                elif not self.cache_queue.empty():
+                    item = self.cache_queue.get(0).done()
                     
 
 if __name__ == '__main__':
