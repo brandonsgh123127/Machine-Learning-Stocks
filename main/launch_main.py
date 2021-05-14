@@ -8,8 +8,8 @@ from tkinter import ttk
 import threading
 import concurrent.futures
 import queue
-from _operator import is_not
-
+from tkinter import messagebox
+import datetime
 class GUI():
     def __init__(self):
         self.path = Path(os.getcwd()).parent.absolute()
@@ -44,29 +44,63 @@ class GUI():
             self.close.grid_forget()
             self.close_input.grid_forget()
     def load_model(self,ticker,has_actuals,is_not_closed):
-        print(has_actuals)
         self.generate_button.grid_forget()
-        print(is_not_closed)
+        threads = []
+        skippable = False
         if is_not_closed:
-            self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False).decode("utf-8"))
+            dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
         else:
-            self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False).decode("utf-8"))
-        self.dates = self.output.split()
-        print(self.dates)
-        self.img = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png')
-        self.img2 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u.png')
-        self.img3 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence.png')
-
-        self.output_image.delete('all')
-        self.output_image.create_image(960,270,anchor='w',image=self.img)
-        # self.output_image.pack(side='top')
-        self.output_image.create_image(960,270,anchor='e',image=self.img2)
-
-        self.output_image.create_image(960,270,anchor='ne',image=self.img3)
-        # self.output_image.pack(side='bottom')
-        self.generate_button.grid(column=3, row=2)
-        return self.img
+            dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 0)) #month worth of data
+        if Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png').exists()and not has_actuals:
+            skippable = True
+        elif Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence_a.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u_a.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_a.png').exists() and has_actuals:
+            skippable = True
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+            if not skippable:
+                if is_not_closed:
+                    threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'predict', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
+                    threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'u', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
+                    self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'divergence', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False).decode("utf-8"))
+                else:
+                    threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'predict', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False))
+                    threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'u', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False))
+                    self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'divergence', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False).decode("utf-8"))
+                for thread in threads:
+                    thread.wait()
+                print('done')
+                self.dates = self.output.split()
+            else:
+                print("Loaded from storage")
+                self.dates = dates
+            print(self.dates)
+            if not has_actuals:
+                self.img = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png')
+                self.img2 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u.png')
+                self.img3 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence.png')
+            else:
+                self.img = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_a.png')
+                self.img2 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u_a.png')
+                self.img3 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence_a.png')
+                print('y')
+            self.output_image.delete('all')
+            self.output_image.create_image(960,270,anchor='w',image=self.img)
+            # self.output_image.pack(side='top')
+            self.output_image.create_image(960,270,anchor='e',image=self.img2)
     
+            self.output_image.create_image(960,270,anchor='ne',image=self.img3)
+            # self.output_image.pack(side='bottom')
+            self.generate_button.grid(column=3, row=2)
+        return 0
+    def on_closing(self):
+        self.__init__()
+        self.window.iconify()
+
+        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            exit(0)
+        else:
+            self.__init__()
+            self.run()
+
     def run(self):
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             title_frame = tk.LabelFrame(self.window,text="Welcome to Stock Predictor!",width=900,height=900)
@@ -100,9 +134,12 @@ class GUI():
             self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(executor.submit(self.load_model,self.stock_input.get(),self.boolean2.get(),self.boolean1.get())))
             self.generate_button.grid(column=3, row=2)
             self.window.mainloop()
+            self.window.protocol("WM_DELETE_WINDOW", self.on_closing())
+
             while True:
                 if not self.job_queue.empty():
                     item = self.job_queue.get(0)
+                
                     
 
 if __name__ == '__main__':
