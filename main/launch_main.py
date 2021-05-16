@@ -17,6 +17,9 @@ class GUI():
         self.output_image = None
         self.job_queue = queue.Queue()
         self.cache_queue = queue.Queue()
+        self.content = ttk.Frame(self.window,width=400,height=400)
+        self.background_tasks_label = tk.Label(self.content,text="Currently Pre-loading some stocks, this may take a bit...")
+        self.exited = False
 
     def get_current_price(self):
         if self.boolean1.get() == True:
@@ -60,6 +63,7 @@ class GUI():
             skippable = True
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             if not skippable:
+                self.background_tasks_label.grid(column=5,row=0)
                 if is_not_closed:
                     threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'predict', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
                     threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'u', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
@@ -73,6 +77,7 @@ class GUI():
                 print('done')
                 self.dates = self.output.split()
             else:
+                self.background_tasks_label.grid_forget()
                 print("Loaded from storage")
                 self.dates = dates
             print(self.dates)
@@ -100,6 +105,7 @@ class GUI():
         self.window.iconify()
 
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            self.exited = True
             exit(0)
         else:
             self.__init__()
@@ -118,7 +124,6 @@ class GUI():
             title.pack()
             subtitle.pack()
             
-            self.content = ttk.Frame(self.window,width=400,height=400)
             self.content.pack()
             self.output_image = tk.Canvas(self.window,width=1920,height=900)
             self.stock_label = tk.Label(self.content,text="Stock:")
@@ -130,36 +135,45 @@ class GUI():
             self.boolean1.set(False)
             self.boolean2 = tk.BooleanVar()
             self.boolean2.set(False)
-            self.is_not_closed = ttk.Checkbutton(self.content, text="Predict ongoing day?", variable=self.boolean1,command= lambda: self.job_queue.put(executor.submit(self.get_current_price)))
+            self.is_not_closed = ttk.Checkbutton(self.content, text="Predict Tomorrow During Trade Day?", variable=self.boolean1,command= lambda: self.job_queue.put(executor.submit(self.get_current_price)))
             self.is_not_closed.grid(column=2, row=1)
-            self.has_actuals = ttk.Checkbutton(self.content, text="Compare Mode?", variable=self.boolean2)
+            self.has_actuals = ttk.Checkbutton(self.content, text="Don't predict Future(Compare Model with last close)", variable=self.boolean2)
             self.has_actuals.grid(column=4, row=1)
             self.output_image.pack(expand='yes', fill='both',side='right')
             self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(executor.submit(self.load_model,self.stock_input.get(),self.boolean2.get(),self.boolean1.get())))
             self.generate_button.grid(column=3, row=2)
-            self.cache_queue.put(executor.submit(self.load_model,'SPY',False,False,True))
-            self.cache_queue.put(executor.submit(self.load_model,'NVDA',False,False,True))
-            self.cache_queue.put(executor.submit(self.load_model,'TSLA',False,False,True))
-            self.cache_queue.put(executor.submit(self.load_model,'KO',False,False,True))
-            self.cache_queue.put(executor.submit(self.load_model,'TSLA',False,False,True))
-            self.cache_queue.put(executor.submit(self.load_model,'RBLX',False,False,True))
-            self.cache_queue.put(executor.submit(self.load_model,'NOC',False,False,True))
-            self.cache_queue.put(executor.submit(self.load_model,'LMT',False,False,True))
-            self.cache_queue.put(executor.submit(self.load_model,'PEP',False,False,True))
-            self.cache_queue.put(executor.submit(self.load_model,'FB',False,False,True))
-            self.cache_queue.put(executor.submit(self.load_model,'GOOGL',False,False,True))
-            self.cache_queue.put(executor.submit(self.load_model,'TSLA',False,False,True))
+            self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True)))
+            self.cache_queue.put(threading.Thread(target=self.load_model,args=('NVDA',False,False,True)))
+            self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True)))
+            self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True)))
+            self.cache_queue.put(threading.Thread(target=self.load_model,args=('COIN',False,False,True)))
+            self.cache_queue.put(threading.Thread(target=self.load_model,args=('RBLX',False,False,True)))
+            self.cache_queue.put(threading.Thread(target=self.load_model,args=('NOC',False,False,True)))
+            self.cache_queue.put(threading.Thread(target=self.load_model,args=('LMT',False,False,True)))
+            self.cache_queue.put(threading.Thread(target=self.load_model,args=('PEP',False,False,True)))
+            self.cache_queue.put(threading.Thread(target=self.load_model,args=('FB',False,False,True)))
+            self.cache_queue.put(threading.Thread(target=self.load_model,args=('GOOGL',False,False,True)))
+            self.cache_queue.put(threading.Thread(target=self.load_model,args=('DASH',False,False,True)))
 
             self.window.mainloop()
             self.window.protocol("WM_DELETE_WINDOW", self.on_closing())
-
-            while True:
-                if not self.job_queue.empty():
-                    item = self.job_queue.get(0).done()
-                elif not self.cache_queue.empty():
-                    item = self.cache_queue.get(0).done()
+    def task_loop(self):
+        while True:
+            item_queue = []
+            while self.job_queue.qsize() > 0:
+                item_queue.append(self.job_queue.get(0))
+                item_queue[-1].start()
+            while self.cache_queue.qsize() > 0:
+                item_queue.append(self.cache_queue.get(0))
+                item_queue[-1].start()
+            while len(item_queue) > 0:
+                item_queue[-1].join()
+                item_queue.pop()
+            if self.exited:
+                exit(0)
                     
-
 if __name__ == '__main__':
     ui = GUI()
+    threading.Thread(target=ui.task_loop).start()
     ui.run()
+    
