@@ -19,8 +19,8 @@ class GUI():
         self.path = Path(os.getcwd()).parent.absolute()
         self.window = tk.Tk(screenName='Stock Analysis')
         self.content = ttk.Frame(self.window,width=100,height=100)
-        self.output_image = tk.Canvas(self.window,width=1550,height=1000)
-        self.output_image.pack(expand='yes', fill='both',side='left')
+        self.output_image = tk.Canvas(self.window,width=1400,height=1000)
+        self.output_image.pack(expand='yes', fill='both',side='right')
         self.background_tasks_label = tk.Label(self.content,text="Currently Pre-loading some stocks, this may take a bit...")
         self.job_queue = queue.Queue()
         self.cache_queue = queue.Queue()
@@ -89,12 +89,12 @@ class GUI():
         print(self.dates)
         if not is_caching:
             if not has_actuals:
-                self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png').resize((480,360),Image.ANTIALIAS))
-                self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u.png').resize((480,360),Image.ANTIALIAS))
+                self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png'))
+                self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u.png'))
                 self.img3 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence.png').resize((480,360),Image.ANTIALIAS))
             else:
-                self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_a.png').resize((480,360),Image.ANTIALIAS))
-                self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u_a.png').resize((480,360),Image.ANTIALIAS))
+                self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_a.png'))
+                self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u_a.png'))
                 self.img3 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence_a.png').resize((480,360),Image.ANTIALIAS))
                 print('y')
             self.output_image.delete('all')
@@ -138,12 +138,12 @@ class GUI():
                     self.frames.append(ImageTk.PhotoImage(self.load_image.copy()))
         except:
             pass
-        while self.is_retrieving == True:
+        while self.is_retrieving is True:
             self.next_frame()
                     
 
     def run(self):
-        self.content.pack(side='top')
+        self.content.pack(side='left')
         self.stock_label = tk.Label(self.content,text="Stock:")
         self.stock_label.grid(column=2,row=0)
         self.stock_input = tk.Entry(self.content)
@@ -173,6 +173,9 @@ class GUI():
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('DASH',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('GOOG',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('AMC',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('AMD',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('C',False,False,True)))
+
         self.window.mainloop()
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing())
     def task_loop(self):
