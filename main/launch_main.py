@@ -18,9 +18,9 @@ class GUI():
     def __init__(self):
         self.path = Path(os.getcwd()).parent.absolute()
         self.window = tk.Tk(screenName='Stock Analysis')
-        self.content = ttk.Frame(self.window,width=400,height=400)
-        self.output_image = tk.Canvas(self.window,width=1920,height=600)
-        self.output_image.pack(expand='yes', fill='both',side='right')
+        self.content = ttk.Frame(self.window,width=100,height=100)
+        self.output_image = tk.Canvas(self.window,width=1550,height=1000)
+        self.output_image.pack(expand='yes', fill='both',side='left')
         self.background_tasks_label = tk.Label(self.content,text="Currently Pre-loading some stocks, this may take a bit...")
         self.job_queue = queue.Queue()
         self.cache_queue = queue.Queue()
@@ -89,20 +89,21 @@ class GUI():
         print(self.dates)
         if not is_caching:
             if not has_actuals:
-                self.img = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png')
-                self.img2 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u.png')
-                self.img3 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence.png')
+                self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png').resize((480,360),Image.ANTIALIAS))
+                self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u.png').resize((480,360),Image.ANTIALIAS))
+                self.img3 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence.png').resize((480,360),Image.ANTIALIAS))
             else:
-                self.img = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_a.png')
-                self.img2 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u_a.png')
-                self.img3 = tk.PhotoImage(file=f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence_a.png')
+                self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_a.png').resize((480,360),Image.ANTIALIAS))
+                self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u_a.png').resize((480,360),Image.ANTIALIAS))
+                self.img3 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence_a.png').resize((480,360),Image.ANTIALIAS))
                 print('y')
             self.output_image.delete('all')
-            self.output_image.create_image(960,270,anchor='w',image=self.img)
             # self.output_image.pack(side='top')
-            self.output_image.create_image(960,270,anchor='e',image=self.img2)
+            self.output_image.create_image(320,240,image=self.img2)
     
-            self.output_image.create_image(960,270,anchor='ne',image=self.img3)
+            self.output_image.create_image(960,720,image=self.img3)
+            
+            self.output_image.create_image(320,720,image=self.img)
             # self.output_image.pack(side='bottom')
         self.generate_button.grid(column=3, row=2)
 
@@ -129,89 +130,85 @@ class GUI():
 
     def start_loading(self):
         try:
+            self.frames = []
             for i in count(1):
+                self.frames = [] 
                 with self.lock:
                     self.load_image.seek(i)
                     self.frames.append(ImageTk.PhotoImage(self.load_image.copy()))
         except:
             pass
-        while self.is_retrieving:
+        while self.is_retrieving == True:
             self.next_frame()
                     
 
     def run(self):
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            title_frame = tk.LabelFrame(self.window,text="Welcome to Stock Predictor!",width=900,height=900)
-            title_frame.pack(fill='both',expand='yes')
-            title = tk.Label(title_frame,text="Machine learning based prediction model that utilizes regression prediction models.")
-            subtitle = tk.Label(title_frame,text="Model produces output that contains:\n\
-                                                     predicted Open differences from past day\n\
-                                                     predicted Close differences from past day\n\
-                                                     derivative difference between both days\n\
-                                                     and other useful EMA predictions by utilizing the 14 and 30 EMA.")
-            title.pack()
-            subtitle.pack()
-            
-            self.content.pack()
-            self.stock_label = tk.Label(self.content,text="Stock:")
-            self.stock_label.grid(column=2,row=0)
-            self.stock_input = tk.Entry(self.content)
-            self.stock_input.insert(0,'SPY')
-            self.stock_input.grid(column=3,row=0)
-            self.boolean1 = tk.BooleanVar()
-            self.boolean1.set(False)
-            self.boolean2 = tk.BooleanVar()
-            self.boolean2.set(False)
-            self.is_not_closed = ttk.Checkbutton(self.content, text="Predict Tomorrow During Trade Day?", variable=self.boolean1,command= lambda: self.job_queue.put(threading.Thread(target=self.get_current_price)))
-            self.is_not_closed.grid(column=2, row=1)
-            self.has_actuals = ttk.Checkbutton(self.content, text="Don't predict Future(Compare Model with last close)", variable=self.boolean2)
-            self.has_actuals.grid(column=4, row=1)
-            self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean2.get(),self.boolean1.get()))))
-            self.generate_button.grid(column=3, row=2)
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('NVDA',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('COIN',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('RBLX',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('NOC',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('LMT',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('PEP',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('FB',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('GOOGL',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('DASH',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('GOOG',False,False,True)))
-            self.cache_queue.put(threading.Thread(target=self.load_model,args=('AMC',False,False,True)))
-            self.window.mainloop()
-            self.window.protocol("WM_DELETE_WINDOW", self.on_closing())
+        self.content.pack(side='top')
+        self.stock_label = tk.Label(self.content,text="Stock:")
+        self.stock_label.grid(column=2,row=0)
+        self.stock_input = tk.Entry(self.content)
+        self.stock_input.insert(0,'SPY')
+        self.stock_input.grid(column=3,row=0)
+        self.boolean1 = tk.BooleanVar()
+        self.boolean1.set(False)
+        self.boolean2 = tk.BooleanVar()
+        self.boolean2.set(False)
+        self.is_not_closed = ttk.Checkbutton(self.content, text="Predict During Trade Day?", variable=self.boolean1,command= lambda: self.job_queue.put(threading.Thread(target=self.get_current_price)))
+        self.is_not_closed.grid(column=2, row=1)
+        self.has_actuals = ttk.Checkbutton(self.content, text="Don't predict Future", variable=self.boolean2)
+        self.has_actuals.grid(column=4, row=1)
+        self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean2.get(),self.boolean1.get()))))
+        self.generate_button.grid(column=3, row=2)
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('NVDA',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('COIN',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('RBLX',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('NOC',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('LMT',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('PEP',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('FB',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('GOOGL',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('DASH',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('GOOG',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('AMC',False,False,True)))
+        self.window.mainloop()
+        self.window.protocol("WM_DELETE_WINDOW", self.on_closing())
     def task_loop(self):
         while True:
             _kill_event = threading.Event()
             item_queue = []
             self.obj = None
-            self.load_thread:threading.Thread = threading.Thread()
+            self.load_thread:threading.Thread = None
+            
+            # Queue for when the generate button is submitted and any other button actions go here
             while self.job_queue.qsize() > 0:
                 self.is_retrieving = True
                 self.load_thread = threading.Thread(target=self.start_loading)
                 self.load_thread.start()
-
                 item_queue.append(self.job_queue.get(0))
                 item_queue[-1].start()
+            
+            # Queue for begin caching on stocks
             while self.cache_queue.qsize() > 0:
                 self.is_retrieving = True
                 self.load_thread = threading.Thread(target=self.start_loading)
                 self.load_thread.start()
-
                 self.background_tasks_label.grid(column=3,row=6)
                 self.generate_button.grid_forget()
                 item_queue.append(self.cache_queue.get(0))
                 item_queue[-1].start()
+                
+            # Eventually both cache and job queue items go into item queue, make sure all execute before proceeding
             while len(item_queue) > 0:
                 item_queue[-1].join()
                 item_queue.pop()
+            
+            
+            # Reset Screen to original state
             try:
                 self.is_retrieving=False
-
                 self.background_tasks_label.grid_forget()
                 self.generate_button.grid(column=3, row=2)
             except:
