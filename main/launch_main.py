@@ -19,7 +19,7 @@ class GUI():
         self.path = Path(os.getcwd()).parent.absolute()
         self.window = tk.Tk(screenName='Stock Analysis')
         self.content = ttk.Frame(self.window,width=100,height=100)
-        self.output_image = tk.Canvas(self.window,width=1400,height=1000)
+        self.output_image = tk.Canvas(self.window,width=1450,height=1000)
         self.output_image.pack(expand='yes', fill='both',side='right')
         self.background_tasks_label = tk.Label(self.content,text="Currently Pre-loading some stocks, this may take a bit...")
         self.job_queue = queue.Queue()
@@ -30,9 +30,11 @@ class GUI():
         self.loc = 0
         self.lock = threading.Lock()
         self.is_retrieving = True
+        self.boolean1 = False
+        self.boolean2 = False
 
     def get_current_price(self):
-        if self.boolean1.get() == True:
+        if self.boolean2.get() == True:
             self.open = tk.Label(self.content,text="Open:")
             self.open.grid(column=1,row=3)
             self.open_input = tk.Entry(self.content)
@@ -67,9 +69,9 @@ class GUI():
             dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
         else:
             dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 0)) #month worth of data
-        if Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png').exists()and not has_actuals:
+        if Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png').exists() and not has_actuals and not is_not_closed:
             skippable = True
-        elif Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence_a.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u_a.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_a.png').exists() and has_actuals:
+        elif Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence_a.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u_a.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_a.png').exists() and has_actuals and not is_not_closed:
             skippable = True
         if not skippable:
             if is_not_closed:
@@ -153,11 +155,11 @@ class GUI():
         self.boolean1.set(False)
         self.boolean2 = tk.BooleanVar()
         self.boolean2.set(False)
-        self.is_not_closed = ttk.Checkbutton(self.content, text="Predict During Trade Day?", variable=self.boolean1,command= lambda: self.job_queue.put(threading.Thread(target=self.get_current_price)))
+        self.is_not_closed = ttk.Checkbutton(self.content, text="Predict During Trade Day?", variable=self.boolean2,command= lambda: self.job_queue.put(threading.Thread(target=self.get_current_price)))
         self.is_not_closed.grid(column=2, row=1)
-        self.has_actuals = ttk.Checkbutton(self.content, text="Don't predict Future", variable=self.boolean2)
+        self.has_actuals = ttk.Checkbutton(self.content, text="Don't predict Future", variable=self.boolean1)
         self.has_actuals.grid(column=4, row=1)
-        self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean2.get(),self.boolean1.get()))))
+        self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get()))))
         self.generate_button.grid(column=3, row=2)
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('NVDA',False,False,True)))
