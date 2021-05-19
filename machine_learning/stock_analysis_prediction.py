@@ -90,7 +90,11 @@ def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,
                 dis1 = threads[0].result()
                 dis1.display_predict_only(ticker=ticker,dates=dates,color="green")
         if not has_actuals:
-            plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png')
+            if not is_not_closed:
+                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png')
+            else:
+                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict-i.png')
+
         else:
             plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_a.png')
 
@@ -116,7 +120,10 @@ def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,
                 dis8.display_divergence(ticker=ticker,dates=dates,color=f'm',has_actuals=_has_actuals)
         print(str(dates[0]),str(dates[1]))
         if not has_actuals:
-            plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence.png')
+            if not is_not_closed:
+                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence.png')
+            else:
+                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence-i.png')
         else:
             plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence_a.png')
         plt.cla()
@@ -125,7 +132,10 @@ def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,
         dis9 = Display()
         dis9 = display_model(dis9,"model_new_2",False,ticker,dates,'green',True)
         if not has_actuals:
-            plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u.png')
+            if not is_not_closed:
+                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u.png')
+            else:
+                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u-i.png')
         else:
             plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u_a.png')
         plt.cla()
