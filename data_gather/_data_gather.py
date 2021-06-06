@@ -7,7 +7,9 @@ import pytz
 import os,sys
 import requests
 import mysql.connector
-
+from pathlib import Path
+import xml.etree.ElementTree as ET
+from mysql.connector import errorcode
 
 '''CORE CLASS IMPLEMENTATION--
 
@@ -18,13 +20,7 @@ import mysql.connector
     
 '''
 class Gather():
-    
-    db_con = mysql.connector.connect(
-      host="127.0.0.1",
-      user="root",
-      password="Abcdefg123" #Change later
-    )
-    print(db_con.connect())
+    db_con:mysql.connector = None
     MAX_DATE = datetime.datetime.now().date()
     MIN_DATE = datetime.datetime(2013,1,1).date()
     MIN_RANGE = 50 # at least 7 days generated
@@ -46,6 +42,37 @@ class Gather():
     def __repr__(self):
         return 'stock_data.gather_data object <%s>' % ",".join(self.indicator)
     def __init__(self):
+        '''
+        Utilize a config file to establish a mysql connection to the database
+        '''
+        self.path = Path(os.getcwd()).parent.absolute()
+        tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(self.path))
+        root = tree.getroot()
+        # Connect
+        try:
+            self.db_con = mysql.connector.connect(
+              host="127.0.0.1",
+              user=root[0].text,
+              password=root[1].text,
+              raise_on_warnings = True,
+              database='stocks'
+            )
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                print("Something is wrong with your user name or password")
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                print("Database does not exist")
+            else:
+                print(err)
+                
+        
+        if (self.db_con):
+            print('yes')
+        else:
+            print('no')
+            
+        self.cnx = self.db_con.cursor()
+        print(self.cnx.execute('Show tables;'))
         yf.pdr_override()
         # Local API Key for twitter account
         self.api = twitter.Api(consumer_key="wQ6ZquVju93IHqNNW0I4xn4ii",
