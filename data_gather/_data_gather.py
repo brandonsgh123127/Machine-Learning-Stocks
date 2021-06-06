@@ -19,12 +19,6 @@ import mysql.connector
 '''
 class Gather():
     
-    db_con = mysql.connector.connect(
-      host="127.0.0.1",
-      user="root",
-      password="Abcdefg123" #Change later
-    )
-    print(db_con.connect())
     MAX_DATE = datetime.datetime.now().date()
     MIN_DATE = datetime.datetime(2013,1,1).date()
     MIN_RANGE = 50 # at least 7 days generated
