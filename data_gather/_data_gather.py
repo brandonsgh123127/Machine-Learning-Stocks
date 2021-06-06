@@ -6,6 +6,9 @@ import random
 import pytz
 import os,sys
 import requests
+import mysql.connector
+
+
 '''CORE CLASS IMPLEMENTATION--
 
     Gather class allows for basic functions within other modules, these functions are:
@@ -15,6 +18,13 @@ import requests
     
 '''
 class Gather():
+    
+    db_con = mysql.connector.connect(
+      host="127.0.0.1",
+      user="root",
+      password="Abcdefg123" #Change later
+    )
+    print(db_con.connect())
     MAX_DATE = datetime.datetime.now().date()
     MIN_DATE = datetime.datetime(2013,1,1).date()
     MIN_RANGE = 50 # at least 7 days generated
@@ -99,3 +109,4 @@ class Gather():
         if response.status_code != 200:
             raise Exception(response.status_code, response.text)
         return response.json()
+g = Gather()

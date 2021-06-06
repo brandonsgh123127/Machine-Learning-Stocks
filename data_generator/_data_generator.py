@@ -50,6 +50,10 @@ class Generator():
         self.studies.data = self.studies.data.drop(['Volume'],axis=1)
         self.studies.apply_ema("14",self.news.get_date_difference())
         self.studies.apply_ema("30",self.news.get_date_difference()) 
+        try:
+            os.remove(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
+        except:
+            pass
         self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
         self.studies.reset_data()
         
@@ -88,8 +92,12 @@ class Generator():
         self.studies.data = self.studies.data.drop(['Volume'],axis=1)
         self.studies.apply_ema("14",self.news.get_date_difference())
         self.studies.apply_ema("30",self.news.get_date_difference()) 
+        try:
+            os.remove(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{date1.strftime("%Y-%m-%d")}--{date2.strftime("%Y-%m-%d")}')
+        except:
+            pass
         self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{date1.strftime("%Y-%m-%d")}--{date2.strftime("%Y-%m-%d")}')
-        self.studies.reset_data()
+        self.studies = Studies(self.ticker)
     def get_ticker(self):
         return self.ticker
     def set_ticker(self,ticker):

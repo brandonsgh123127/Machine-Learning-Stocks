@@ -43,7 +43,8 @@ class Display():
                                                     capprops=dict(color=c),
                                                     whiskerprops=dict(color=c),
                                                     flierprops=dict(color=c, markeredgecolor=c),
-                                                    medianprops=dict(color=c)).set_alpha(0.3)
+                                                    medianprops=dict(color=c),
+                                                    autorange=True).set_alpha(0.3)
         else:
             data.transpose().boxplot(patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
@@ -51,7 +52,8 @@ class Display():
                                                     showfliers=False,
                                                     showcaps=False,
                                                     flierprops=dict(color=c, markeredgecolor=c),
-                                                    medianprops=dict(color=c)).set_alpha(0.3)
+                                                    medianprops=dict(color=c),
+                                                    autorange=True).set_alpha(0.3)
     def display_divergence(self,ticker=None,dates=None,color=None,has_actuals=False):
         plt.cla()
         plt.figure()

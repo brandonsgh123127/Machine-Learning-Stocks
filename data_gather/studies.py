@@ -40,10 +40,15 @@ class Studies(Gather):
     def save_data_csv(self,path):
         files_present = glob.glob(f'{path}_data.csv')
         if files_present:
-            return
+            with self.listLock:
+                os.remove("{0}_data.csv".format(path))
+        files_present = glob.glob(f'{path}_studies.csv')
+        if files_present:
+            with self.listLock:
+                os.remove("{0}_studies.csv".format(path))
+
         with self.listLock:
             self.data.to_csv("{0}_data.csv".format(path),index=False,sep=',',encoding='utf-8')
-        with self.listLock:
             self.applied_studies.to_csv("{0}_studies.csv".format(path),index=False,sep=',',encoding='utf-8')
         return 0
     def load_data_csv(self,path):

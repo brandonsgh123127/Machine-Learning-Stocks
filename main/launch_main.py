@@ -75,8 +75,8 @@ class GUI():
             skippable = True
         if not skippable:
             if is_not_closed:
-                threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'predict', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
-                threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'u', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
+                threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'predict', f'{ticker}', f'{has_actuals == True}', f'{True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
+                threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'u', f'{ticker}', f'{has_actuals == True}', f'{True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
                 self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'divergence', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False).decode("utf-8"))
             else:
                 threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'predict', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False))
@@ -84,7 +84,6 @@ class GUI():
                 self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'divergence', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False).decode("utf-8"))
             for thread in threads:
                 thread.wait()
-            print('done')
             self.dates = self.output.split()
         else:
             self.dates = dates
@@ -164,7 +163,7 @@ class GUI():
         self.is_not_closed.grid(column=2, row=1)
         self.has_actuals = ttk.Checkbutton(self.content, text="Don't predict Future", variable=self.boolean1)
         self.has_actuals.grid(column=4, row=1)
-        self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get()))))
+        self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False))))
         self.generate_button.grid(column=3, row=2)
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('NVDA',False,False,True)))
@@ -181,7 +180,7 @@ class GUI():
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('GOOG',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('AMC',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('AMD',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('C',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('ULTA',False,False,True)))
 
         self.window.mainloop()
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing())

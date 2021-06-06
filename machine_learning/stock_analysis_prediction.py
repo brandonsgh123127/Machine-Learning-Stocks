@@ -18,7 +18,7 @@ import threading
 import sys
 
 listLock = threading.Lock()
-type = None
+_type = None
 def display_model(dis:Display,name:str= "model",_has_actuals:bool=False,ticker:str="spy",dates:list=[],color:str="blue",unnormalized_data = False):
     if 'divergence' not in name:
         data = load(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}')
@@ -60,7 +60,7 @@ def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,
     
     _has_actuals = has_actuals
     gen.generate_data_with_dates(dates[0],dates[1],is_not_closed=is_not_closed,vals=vals)
-    if type == 'predict':
+    if _type == 'predict':
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             threads = []
             #OK MODEL
@@ -90,7 +90,7 @@ def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,
                 dis1 = threads[0].result()
                 dis1.display_predict_only(ticker=ticker,dates=dates,color="green")
         if not has_actuals:
-            if not is_not_closed:
+            if is_not_closed == False:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png')
             else:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict-i.png')
@@ -100,7 +100,7 @@ def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,
 
         plt.cla()
         exit(0)
-    elif type == 'divergence':
+    elif _type == 'divergence':
         threads = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             dis5 = Display()
@@ -128,11 +128,11 @@ def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,
             plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence_a.png')
         plt.cla()
         exit(0)
-    elif type == 'u':
+    elif _type == 'u':
         dis9 = Display()
         dis9 = display_model(dis9,"model_new_2",False,ticker,dates,'green',True)
         if not has_actuals:
-            if not is_not_closed:
+            if is_not_closed == False:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u.png')
             else:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u-i.png')
@@ -141,7 +141,7 @@ def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,
         plt.cla()
         exit(0)
 if __name__ == "__main__":
-    type = sys.argv[1]
+    _type = sys.argv[1]
     _has_actuals = sys.argv[3] == 'True'
     _is_not_closed =sys.argv[4] == 'True'
     vals = None
