@@ -103,4 +103,3 @@ class Gather():
         if response.status_code != 200:
             raise Exception(response.status_code, response.text)
         return response.json()
-g = Gather()
