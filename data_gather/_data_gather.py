@@ -10,6 +10,7 @@ import mysql.connector
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from mysql.connector import errorcode
+from calendar import month
 
 '''CORE CLASS IMPLEMENTATION--
 
@@ -21,6 +22,7 @@ from mysql.connector import errorcode
 '''
 class Gather():
     db_con:mysql.connector = None
+    cnx:mysql.connector.cursor = None
     MAX_DATE = datetime.datetime.now().date()
     MIN_DATE = datetime.datetime(2013,1,1).date()
     MIN_RANGE = 50 # at least 7 days generated
@@ -65,14 +67,8 @@ class Gather():
             else:
                 print(err)
                 
-        
-        if (self.db_con):
-            print('yes')
-        else:
-            print('no')
-            
         self.cnx = self.db_con.cursor()
-        print(self.cnx.execute('Show tables;'))
+        # self.cnx.execute('SHOW TABLES FROM stocks;')
         yf.pdr_override()
         # Local API Key for twitter account
         self.api = twitter.Api(consumer_key="wQ6ZquVju93IHqNNW0I4xn4ii",
@@ -98,6 +94,7 @@ class Gather():
             sys.stdout = sys.__stdout__
             if self.data.empty:
                 return 1
+            print(self.data)
         except:
             return 1
         return 0
@@ -137,3 +134,5 @@ class Gather():
             raise Exception(response.status_code, response.text)
         return response.json()
 g = Gather()
+g.set_indicator("SPY")
+g.set_data_from_range(datetime.datetime(year=2020,month=9,day=9), datetime.datetime(year=2020,month=10,day=9))
