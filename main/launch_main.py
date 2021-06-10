@@ -217,10 +217,8 @@ class GUI(Thread_Pool):
         self.window.mainloop()
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing())
     def task_loop(self):
-        workers = []
         while True:
             _kill_event = threading.Event()
-            item_queue = []
             self.obj = None
             self.load_thread:threading.Thread = None
             
@@ -236,8 +234,6 @@ class GUI(Thread_Pool):
                         break
                 else:
                     self.join_workers()
-                # item_queue.append(self.job_queue.get(0))
-                # item_queue[-1].start()
             
             # Queue for begin caching on stocks
             while self.cache_queue.qsize() > 0:
@@ -254,14 +250,7 @@ class GUI(Thread_Pool):
                 else:
                     self.join_workers()
 
-                # item_queue.append(self.cache_queue.get(0))
-                # item_queue[-1].start()
-                
-            # Eventually both cache and job queue items go into item queue, make sure all execute before proceeding
-            while len(item_queue) > 0:
-                item_queue[-1].join()
-                item_queue.pop()
-            
+                            
             
             # Reset Screen to original state
             try:
