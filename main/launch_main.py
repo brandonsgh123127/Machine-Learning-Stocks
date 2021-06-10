@@ -13,9 +13,44 @@ import datetime
 import time
 from PIL import Image, ImageTk
 from itertools import count
-
-class GUI():
+class Thread_Pool():
+    worker1=None;worker2=None;worker3=None;worker4=None
     def __init__(self):
+        print("Thread Pool initialized...")
+    def start_worker(self,action: threading.Thread):
+        if not self.worker1:
+            self.worker1 = action.start()
+        elif not self.worker2:
+            self.worker2 = action.start()
+        elif not self.worker3:
+            self.worker3 = action.start()
+        elif not self.worker4:
+            self.worker4 = action.start()
+        else:
+            return 1
+        return 0
+    def join_workers(self):
+        try:
+            self.worker1.join()
+        except:
+            pass
+        try:
+            self.worker2.join()
+        except:
+            pass
+        try:
+            self.worker3.join()
+        except:
+            pass
+        try:
+            self.worker4.join()
+        except:
+            pass
+        self.worker1=None;self.worker2=None;self.worker3=None;self.worker4 = None
+         
+class GUI(Thread_Pool):
+    def __init__(self):
+        super().__init__()
         self.path = Path(os.getcwd()).parent.absolute()
         self.window = tk.Tk(screenName='Stock Analysis')
         self.content = ttk.Frame(self.window,width=100,height=100)
@@ -166,7 +201,7 @@ class GUI():
         self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False))))
         self.generate_button.grid(column=3, row=2)
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('NVDA',False,False,True)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('ABNB',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('COIN',False,False,True)))
@@ -174,17 +209,15 @@ class GUI():
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('NOC',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('LMT',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('PEP',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('FB',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('GOOGL',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('DASH',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('GOOG',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('AMC',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('AMD',False,False,True)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('ULTA',False,False,True)))
 
         self.window.mainloop()
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing())
     def task_loop(self):
+        workers = []
         while True:
             _kill_event = threading.Event()
             item_queue = []
@@ -196,8 +229,15 @@ class GUI():
                 self.is_retrieving = True
                 self.load_thread = threading.Thread(target=self.start_loading)
                 self.load_thread.start()
-                item_queue.append(self.job_queue.get(0))
-                item_queue[-1].start()
+                if self.start_worker(self.job_queue.get(0)) != 1:
+                    if self.job_queue.qsize() > 0:
+                        pass
+                    else:
+                        break
+                else:
+                    self.join_workers()
+                # item_queue.append(self.job_queue.get(0))
+                # item_queue[-1].start()
             
             # Queue for begin caching on stocks
             while self.cache_queue.qsize() > 0:
@@ -206,8 +246,16 @@ class GUI():
                 self.load_thread.start()
                 self.background_tasks_label.grid(column=3,row=6)
                 self.generate_button.grid_forget()
-                item_queue.append(self.cache_queue.get(0))
-                item_queue[-1].start()
+                if self.start_worker(self.cache_queue.get(0)) != 1:
+                    if self.job_queue.qsize() > 0:
+                        pass
+                    else:
+                        break
+                else:
+                    self.join_workers()
+
+                # item_queue.append(self.cache_queue.get(0))
+                # item_queue[-1].start()
                 
             # Eventually both cache and job queue items go into item queue, make sure all execute before proceeding
             while len(item_queue) > 0:

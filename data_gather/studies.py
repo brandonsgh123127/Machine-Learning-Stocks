@@ -41,12 +41,17 @@ class Studies(Gather):
         files_present = glob.glob(f'{path}_data.csv')
         if files_present:
             with self.listLock:
-                os.remove("{0}_data.csv".format(path))
+                try:
+                    os.remove("{0}_data.csv".format(path))
+                except:
+                    pass
         files_present = glob.glob(f'{path}_studies.csv')
         if files_present:
             with self.listLock:
-                os.remove("{0}_studies.csv".format(path))
-
+                try:
+                    os.remove("{0}_studies.csv".format(path))
+                except:
+                    pass
         with self.listLock:
             self.data.to_csv("{0}_data.csv".format(path),index=False,sep=',',encoding='utf-8')
             self.applied_studies.to_csv("{0}_studies.csv".format(path),index=False,sep=',',encoding='utf-8')

@@ -49,7 +49,7 @@ def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,
     path = Path(os.getcwd()).parent.absolute()
     
     gen = Generator(ticker,path)
-    gen.studies.set_indicator(f'{ticker}')
+    gen.studies.set_indicator(f'{ticker.upper()}')
     # if current trading day, set prediction for tomorrow in date name
     dates = []
     if is_not_closed: #same day prediction
@@ -89,7 +89,7 @@ def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,
                 dis2.display_predict_only(ticker=ticker,dates=dates,color="black")
                 dis1 = threads[0].result()
                 dis1.display_predict_only(ticker=ticker,dates=dates,color="green")
-        if not has_actuals:
+        if not _has_actuals:
             if is_not_closed == False:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png')
             else:
