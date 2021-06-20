@@ -50,7 +50,7 @@ class Thread_Pool():
          
 class GUI(Thread_Pool):
     def __init__(self):
-        super().__init__()
+        # super().__init__()
         self.path = Path(os.getcwd()).parent.absolute()
         self.window = tk.Tk(screenName='Stock Analysis')
         self.content = ttk.Frame(self.window,width=100,height=100)
@@ -218,7 +218,7 @@ class GUI(Thread_Pool):
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing())
     def task_loop(self):
         while True:
-            _kill_event = threading.Event()
+            # _kill_event = threading.Event()
             self.obj = None
             self.load_thread:threading.Thread = None
             
@@ -227,6 +227,7 @@ class GUI(Thread_Pool):
                 self.is_retrieving = True
                 self.load_thread = threading.Thread(target=self.start_loading)
                 self.load_thread.start()
+                self.generate_button.grid_forget()
                 if self.start_worker(self.job_queue.get(0)) != 1:
                     if self.job_queue.qsize() > 0:
                         pass
@@ -243,7 +244,7 @@ class GUI(Thread_Pool):
                 self.background_tasks_label.grid(column=3,row=6)
                 self.generate_button.grid_forget()
                 if self.start_worker(self.cache_queue.get(0)) != 1:
-                    if self.job_queue.qsize() > 0:
+                    if self.cache_queue.qsize() > 0:
                         pass
                     else:
                         break
@@ -254,6 +255,7 @@ class GUI(Thread_Pool):
             
             # Reset Screen to original state
             try:
+                self.join_workers()
                 self.is_retrieving=False
                 self.background_tasks_label.grid_forget()
                 self.generate_button.grid(column=3, row=2)
