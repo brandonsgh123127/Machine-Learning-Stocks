@@ -4,7 +4,7 @@ import os
 import glob
 import datetime
 import threading
-
+import math
 '''
     This class manages stock-data implementations of studies. 
     As of now, EMA is only implemented, as this is the core indicator for our
@@ -74,6 +74,25 @@ val1    val3_________________________
         `3.83
         `3.43
         '''
+        # Find greatest/least 3 points for pattern
+        
+        '''
+        TO BE IMPLEMENTED
+        '''
+        min = (self.data['Low'].min(),self.data['Low'].idxmin())
+        max = (self.data['High'].max(),self.data['High'].idxmax())
+        val1=None;val2=None;val3=None
+        # iterate through data to find all possible points in order
+        local_max = self.data.High[(self.data.High.shift(1) < self.data.High) & (self.data.High.shift(-1) < self.data.High)]
+        local_min = self.data.Low[(self.data.Low.shift(1) > self.data.Low) & (self.data.Low.shift(-1) > self.data.Low)]
+        local_max = local_max.reset_index()
+        local_min = local_min.reset_index()
+        new_set = pd.concat([local_max,local_min]).set_index(['index']).sort_index()
+        print(new_set,min,max)
+        # after this, iterate new list and find which direction stock may go
+
+
+        # calculate values 
         self.fibonacci_extension= pd.DataFrame({'Values':[self.fib_help(val1,val2,val3,0.202),self.fib_help(val1,val2,val3,0.236),self.fib_help(val1,val2,val3,0.241),
                                                           self.fib_help(val1,val2,val3,0.273),self.fib_help(val1,val2,val3,0.283),self.fib_help(val1,val2,val3,0.316),
                                                           self.fib_help(val1,val2,val3,0.382),self.fib_help(val1,val2,val3,0.5),self.fib_help(val1,val2,val3,0.618),
@@ -147,7 +166,8 @@ val1    val3_________________________
 s = Studies("SPY")
 s.load_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\spy/2021-03-03--2021-04-22")
 s.applied_studies = pd.DataFrame()
-s.keltner_channels(20)
+# s.keltner_channels(20)
+s.apply_fibonacci(1,2, 3)
 # s.apply_ema("14",(datetime.datetime(2021,4,22)-datetime.datetime(2021,3,3)))
 # s.apply_ema("30",(datetime.datetime(2021,4,22)-datetime.datetime(2021,3,3))) 
 # s.save_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\spy/2021-03-03--2021-04-22")
