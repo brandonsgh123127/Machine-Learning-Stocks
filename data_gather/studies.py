@@ -1,10 +1,15 @@
-from data_gather._data_gather import Gather
+from data_gather.data_gatherer import Gather
 import pandas as pd
 import os
 import glob
 import datetime
 import threading
 import math
+import uuid
+import mysql.connector
+from mysql.connector import errorcode
+import sys,os
+
 '''
     This class manages stock-data implementations of studies. 
     As of now, EMA is only implemented, as this is the core indicator for our
@@ -16,8 +21,8 @@ class Studies(Gather):
         return 'stock_data.studies object <%s>' % ",".join(self.indicator)
     
     def __init__(self,indicator):
-        Gather.__init__(self)
-        Gather.set_indicator(self, indicator)
+        super().__init__()
+        self.set_indicator(indicator)
         self.applied_studies= pd.DataFrame()
         self.fibonacci_extension = pd.DataFrame()
         self.keltner = pd.DataFrame()
@@ -25,17 +30,68 @@ class Studies(Gather):
         self.listLock = threading.Lock()
         pd.set_option('display.max_rows',300)
         pd.set_option('display.max_columns',10)
+        self.Open = pd.DataFrame(columns=['Open'])
+        self.High = pd.DataFrame(columns=['High'])
+        self.Low = pd.DataFrame(columns=['Low'])
+        self.Close = pd.DataFrame(columns=['Close'])
+        self.AdjClose = pd.DataFrame(columns=['Adj Close'])
     def set_timeframe(self,new_timeframe):
         self.timeframe = new_timeframe
     def get_timeframe(self):
         return self.timeframe
     # Save EMA to self defined applied_studies
-    def apply_ema(self, length,span,half=None):
+    def apply_ema(self, length,span=None,half=None):
         if half is not None:
             self.applied_studies= pd.concat([self.applied_studies,pd.DataFrame({f'ema{length}': [self.data.ewm(span=int(length)).mean()]},halflife=half)],axis=1)
         else:
+            # Calculate locally, then push to database
             data = self.data.drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Close':f'ema{length}'}).ewm(alpha=2/(int(length)+1),adjust=True).mean()
             self.applied_studies= pd.concat([self.applied_studies,data],axis=1)
+            
+            uuid_gen = uuid.uuid4().bytes
+            
+            # Retrieve query from database, confirm that stock is in database, else make new query
+            select_stmt = "SELECT stock FROM stocks.stock WHERE stock like %(stock)s"
+            resultado = self.cnx.execute(select_stmt, { 'stock': Gather.indicator},multi=True)
+            for result in resultado:
+                # Query new stock, id
+                if len(result.fetchall()) == 0:
+                    print(f'[ERROR] Failed to query stock named {self.indicator} from database!\n')
+                    raise mysql.connector.Error
+                else:
+                    select_study_stmt = "SELECT `study-id` FROM stocks.study WHERE study like %(study)s"
+                    study_result = self.cnx.execute(select_study_stmt, { 'study': f'ema{length}'},multi=True)
+                    for s_res in study_result:
+                        # Non existent DB value
+                        if len(s_res.fetchall()) == 0:
+                            print(f'[INFO] Failed to query study named ema{length} from database! Creating new Study...\n')
+                            insert_study_stmt = """INSERT INTO stocks.study (study-id,study) 
+                                VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2('study-id',512))),%(ema)s)"""
+                            # Insert new study into DB
+                            try:
+                                insert_result = self.cnx.execute(insert_study_stmt,{'id':uuid_gen,
+                                                                                'ema':f'ema{length}'})
+                                self.cnx.commit()
+                            except Exception as e:
+                                print(f'[ERROR] Failed to Insert study into stocks.study named ema{length}!\nException:\n',str(e))
+                        for index,row in self.applied_studies.iterrows():
+                            # Retrieve the stock-id, study-id, and data-point id in a single select statement
+                            retrieve_data_stmt = """SELECT `stocks`.`data`.`id`, `stocks`.`data`.`stock-id`,`stocks`.`study`.`study-id` FROM `stocks`.`data` INNER JOIN `stocks`.`study` 
+                            INNER JOIN `stocks`.`stock` ON `stocks`.`study`.`study` = %(study)s AND `stocks`.`stock`.`stock` = %(stock)s;
+                            """
+                            retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'study':f'ema{length}',
+                                                                                        'stock':f'{self.indicator}'})
+                            # Execute insert for study-data
+                            insert_studies_db_stmt = """INSERT INTO `stocks`.`study-data` (id, `stock-id`, `data-id`,`study-id`,`val1`) 
+                                VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2('study-obj-id',512))),
+                                %(stock_id)s,DATE(%(Date)s),%(study-id)s,%(val)s)
+                                """
+                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':uuid_gen,
+                                                                                                'stock-id':,
+                                                                                                'data_id':,
+                                                                                                'study-id':,
+                                                                                                'val':row})
+                    
         return 0
     '''
         val1 first low/high
@@ -163,8 +219,69 @@ val1    val3_________________________
         self.data = pd.read_csv(f'{path}_data.csv')
         self.applied_studies = pd.read_csv(f'{path}_studies.csv')
         # print("Data Loaded")
-# s = Studies("SPY")
+    #append to specified struct
+    def append_data(self,struct:pd.DataFrame,label:str,val):
+        struct = struct.append({label:val},ignore_index=True)
+        return struct
+    
+    # Load data from mysql server
+    def load_data_mysql(self,start,end):
+        # print(self.cnx)
+        # print('LOAD\n\n')
+        '''
+        Fetch stock data per date range
+        '''
+        date_result = self.cnx.execute("""
+        select * from stocks.`data` where date >= %s and date <= %s and `stock-id` = (select `data_id` from stocks.`stock` where stock = %s)
+        """, (start, end, 'SPY'),multi=True)
+        for set in self.cnx.fetchall():
+            if len(set) == 0:
+                try:
+                    self.set_data_from_range(start,end)
+                    print('\n\n[INFO] Please rerun current function in order to store studies!\n\n')
+                    exit(1)
+                except Exception as e:
+                    print(f'[ERROR] Failed to retrieve data for {self.indicator} from range {start}--{end}\nException:\n',str(e))
+                    exit(1)
+            try:
+                # Iterate through each element to retrieve values
+                for index,row in enumerate(set):
+                    append_lambda = lambda i: '' if i>=0 and i <=2 else self.append_data(self.Open,'Open',row) if i==3 else self.append_data(self.High,'High',row) if i==4 else self.append_data(self.Low,'Low',row) if i==5 else self.append_data(self.Close,'Close',row) if i==6 else self.append_data(self.AdjClose,'Adj Close',row) if i==7 else print('[ERROR] Could not map lambda!')
+                    val = append_lambda(index)
+                    if index == 3:
+                        self.Open = val
+                    elif index == 4:
+                        self.High = val
+                    elif index == 5:
+                        self.Low = val
+                    elif index == 6:
+                        self.Close = val
+                    elif index == 7:
+                        self.AdjClose = val
+                # print(self.Open)
+                    # print(index, row,'\n')
+                # print('________________________________')
+            except Exception as e:
+                print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
+            
+        # After retrieving data, Store to self.data
+        # print(self.Open)
+        self.Open.reset_index(drop=True, inplace=True)
+        self.High.reset_index(drop=True, inplace=True)
+        self.Low.reset_index(drop=True, inplace=True)
+        self.Close.reset_index(drop=True, inplace=True)
+        self.AdjClose.reset_index(drop=True, inplace=True)
+        self.data = pd.concat([self.Open,self.High,self.Low,self.Close,self.AdjClose],names=['Open','High','Low','Close','Adj Close'],ignore_index=True,axis=1)
+        self.data = self.data.rename(columns={0: "Open", 1: "High",2: "Low",3: "Close",4: "Adj Close"})
+        # print(self.data['Open'])
+s = Studies("SPY")
+# s.__init__("SPY")
 # s.load_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\spy/2021-03-03--2021-04-22")
+s.load_data_mysql('2020-03-03','2021-04-22')
+
 # s.applied_studies = pd.DataFrame()
 # s.keltner_channels(20)
 # s.apply_fibonacci(1,2, 3)

@@ -49,6 +49,7 @@ class Gather():
         '''
         Utilize a config file to establish a mysql connection to the database
         '''
+        self.new_uuid_gen = None
         self.path = Path(os.getcwd()).parent.absolute()
         tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(self.path))
         root = tree.getroot()
@@ -92,65 +93,69 @@ class Gather():
     # retrieve pandas_datareader object of datetime
     def set_data_from_range(self,start_date,end_date):
         try:
+            self.cnx = self.db_con.cursor(buffered=True)
             sys.stdout = open(os.devnull, 'w')
             self.data = pdr.get_data_yahoo(self.indicator,start=start_date.strftime("%Y-%m-%d"),end=end_date.strftime("%Y-%m-%d"))
             sys.stdout = sys.__stdout__
             if self.data.empty:
                 return 1
-            uuid_gen = uuid.uuid4().bytes
+            uuid_gen = uuid.uuid4()
             # Retrieve query from database, confirm that stock is in database, else make new query
-            select_stmt = "SELECT stock FROM stocks.stock WHERE stock like %(stock)s"
+            select_stmt = "SELECT `id` FROM stocks.stock WHERE stock like %(stock)s"
             resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
             for result in resultado:
+                # print(len(result.fetchall()))
                 # Query new stock, id
-                if len(result.fetchall()) == 0:
-                    insert_stmt = """INSERT INTO stocks.stock (id, stock, data_id) 
-                                VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2('stock',512))),%(stock)s,%(uuid)s)"""
+                res = result.fetchall()
+                if len(res) == 0:
+                    insert_stmt = """INSERT INTO stocks.stock (id, stock) 
+                                VALUES (%(uuid)s,%(stock)s)"""
                     try:
                         # print('[INFO] inserting')
                         insert_resultado = self.cnx.execute(insert_stmt, { 'stock': self.indicator,
-                                                                          'uuid':uuid_gen},multi=True)
-                        # print(insert_resultado)
+                                                                          'uuid':uuid_gen.bytes},multi=True)
                         self.db_con.commit()
-                        # for insert_result in insert_resultado:
-                            # print(insert_result.statement)
                         # print('[INFO] Success')
                     except Exception as e:
                         print(f'[ERROR] Failed to insert stock named {self.indicator} into database!\nException:\n',str(e))
+                else:
+                    for r in res:
+                        # print(f'{r[0]}\n')
+                        # print(repr(binascii.b2a_hex(str.encode(r[0]))))
+                        self.new_uuid_gen = binascii.b2a_hex(str.encode(r[0]))
+
            
-            #Gather Data from current stock data, make sure data is in db before proceeding
-            # Retrieve stock id
-            select_stmt = "SELECT data_id FROM stocks.stock WHERE stock like %(stock)s"
-            resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
-            # stock_id:str = None
-            # for result in resultado:
-                # print(result.statement)
-                # try:
-                    # for row in result.fetchall():
-                        # print(row)
-                        # stock_id = binascii.b2a_hex(bytes(row[0],encoding='latin1'))
-                # except Exception as e:
-                    # print('[ERROR] Failed to find query result for stock_id!\nException:\n',str(e))
-            
             #Append dates to database
             for index, row in self.data.iterrows():
-                insert_date_stmt = """INSERT INTO `stocks`.`data` (id, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                insert_date_stmt = """INSERT INTO `stocks`.`data` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
                 VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2('stock-id',512))),
                 %(stock_id)s,DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
                 try:
-                    insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'stock': f'{self.indicator}{str(row.name)}',
-                                                                            'stock_id':uuid_gen,
-                                                                            'Date':str(row.name),
-                                                                            'Open':row['Open'],
-                                                                            'High':row['High'],
-                                                                            'Low':row['Low'],
-                                                                            'Close':row['Close'],
-                                                                            'Adj Close': row['Adj Close']},multi=True)
+                    if self.new_uuid_gen is None:
+                        insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'stock': f'{self.indicator}{str(row.name)}',
+                                                                                'stock_id':uuid_gen.bytes,
+                                                                                'Date':str(row.name),
+                                                                                'Open':row['Open'],
+                                                                                'High':row['High'],
+                                                                                'Low':row['Low'],
+                                                                                'Close':row['Close'],
+                                                                                'Adj Close': row['Adj Close']},multi=True)
+                    else:
+                        insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'stock': f'{self.indicator}{str(row.name)}',
+                                                                                'stock_id':self.new_uuid_gen,
+                                                                                'Date':str(row.name),
+                                                                                'Open':row['Open'],
+                                                                                'High':row['High'],
+                                                                                'Low':row['Low'],
+                                                                                'Close':row['Close'],
+                                                                                'Adj Close': row['Adj Close']},multi=True)
                     # for result in resultado:
                         # print(result.statement)
 
                     
                     # print('[INFO] Successfully added date')
+                except mysql.connector.errors.IntegrityError:
+                    pass
                 except Exception as e:
                     print(f'[ERROR] Failed to insert date for {self.indicator} into database!\nException:\n',str(e))
                     exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -159,7 +164,7 @@ class Gather():
             try:
                 self.db_con.commit()
             except Exception as e:
-                print('[Error] Could not commit changes!  Either there are no changes or other specified reason below:\n',str(e))
+                print('[Error] Could not commit changes!\nReason:\n',str(e))
                 
 
         except Exception as e:
@@ -167,8 +172,9 @@ class Gather():
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
-
+            self.cnx.close()
             return 1
+        self.cnx.close()
         return 0
     def _reorder_dates(self,date1,date2):
         if date1 < date2:
@@ -207,4 +213,4 @@ class Gather():
         return response.json()
 g = Gather()
 g.set_indicator("AMD")
-g.set_data_from_range(datetime.datetime(year=2020,month=9,day=9), datetime.datetime(year=2020,month=10,day=9))
+g.set_data_from_range(datetime.datetime(year=2020,month=9,day=9), datetime.datetime(year=2021,month=10,day=9))
