@@ -90,7 +90,7 @@ val1    val3_________________________
         new_set = pd.concat([local_max,local_min]).set_index(['index']).sort_index()
         print(new_set,min,max)
         # after this, iterate new list and find which direction stock may go
-
+          
 
         # calculate values 
         self.fibonacci_extension= pd.DataFrame({'Values':[self.fib_help(val1,val2,val3,0.202),self.fib_help(val1,val2,val3,0.236),self.fib_help(val1,val2,val3,0.241),
@@ -163,11 +163,11 @@ val1    val3_________________________
         self.data = pd.read_csv(f'{path}_data.csv')
         self.applied_studies = pd.read_csv(f'{path}_studies.csv')
         # print("Data Loaded")
-s = Studies("SPY")
-s.load_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\spy/2021-03-03--2021-04-22")
-s.applied_studies = pd.DataFrame()
+# s = Studies("SPY")
+# s.load_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\spy/2021-03-03--2021-04-22")
+# s.applied_studies = pd.DataFrame()
 # s.keltner_channels(20)
-s.apply_fibonacci(1,2, 3)
+# s.apply_fibonacci(1,2, 3)
 # s.apply_ema("14",(datetime.datetime(2021,4,22)-datetime.datetime(2021,3,3)))
 # s.apply_ema("30",(datetime.datetime(2021,4,22)-datetime.datetime(2021,3,3))) 
 # s.save_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\spy/2021-03-03--2021-04-22")
