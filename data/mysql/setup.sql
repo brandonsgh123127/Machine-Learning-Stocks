@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Stock` (
   `stock` VARCHAR(5) NULL,
   `data_id` VARBINARY(128) NULL,
   PRIMARY KEY (`id`))
-ENGINE = InnoDB;
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE TABLE IF NOT EXISTS `Stocks`.`Data` (
   `id` VARBINARY(128) NOT NULL,
   `stock-id` VARBINARY(128) NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Data` (
   `close` VARCHAR(45) NULL,
   `adj-close` VARCHAR(45) NULL,
   PRIMARY KEY (`id`))
-ENGINE = InnoDB;
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 -- GRANT ALL ON `Stocks`.* TO 'admin-stock';
 -- GRANT SELECT ON TABLE `Stocks`.* TO 'admin-stock';
 -- GRANT SELECT, INSERT, TRIGGER ON TABLE `Stocks`.* TO 'admin-stock';
@@ -33,7 +33,7 @@ ENGINE = InnoDB;
 -- GRANT SELECT ON TABLE `Stocks`.* TO 'customer';
 #use stocks;
 # drop table stocks;
--- drop table stock;
+#drop table stock;
 #drop table data;
 SHOW TABLES FROM stocks;
 #INSERT INTO stocks.stock (id, stock, data_id) VALUES (AES_ENCRYPT('AMC', UNHEX(SHA2('stock',512))),'AMC',AES_ENCRYPT('AMC', UNHEX(SHA2('stock-id',512))));
@@ -43,4 +43,8 @@ SHOW TABLES FROM stocks;
 # SET `id` = AES_ENCRYPT('amc', UNHEX(SHA2('stock',512))),
 #`stock_id` = AES_ENCRYPT('amc', UNHEX(SHA2('stock-id',512)));
 #delete from stocks.data where open like 0;
-select * from stocks.data;
+#select * from stocks.data;
+#select data_id from stocks.stock where `stock` = 'SPY' LIMIT 1;
+#select * from stocks.`data`;
+#select * from stocks.stock;
+select * from stocks.`data` where `stock-id` = (select data_id from stocks.stock where `stock` = 'AMD' LIMIT 1);

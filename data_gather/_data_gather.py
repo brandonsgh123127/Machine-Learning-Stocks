@@ -70,7 +70,7 @@ class Gather():
             else:
                 print(err)
                 
-        self.cnx = self.db_con.cursor()
+        self.cnx = self.db_con.cursor(buffered=True)
         # self.cnx.execute('SHOW TABLES FROM stocks;')
         yf.pdr_override()
         # Local API Key for twitter account
@@ -97,6 +97,7 @@ class Gather():
             sys.stdout = sys.__stdout__
             if self.data.empty:
                 return 1
+            uuid_gen = uuid.uuid4().bytes
             # Retrieve query from database, confirm that stock is in database, else make new query
             select_stmt = "SELECT stock FROM stocks.stock WHERE stock like %(stock)s"
             resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
@@ -104,10 +105,11 @@ class Gather():
                 # Query new stock, id
                 if len(result.fetchall()) == 0:
                     insert_stmt = """INSERT INTO stocks.stock (id, stock, data_id) 
-                                VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2('stock',512))),%(stock)s,AES_ENCRYPT(%(stock)s, UNHEX(SHA2('stock-id',512))))"""
+                                VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2('stock',512))),%(stock)s,%(uuid)s)"""
                     try:
                         # print('[INFO] inserting')
-                        insert_resultado = self.cnx.execute(insert_stmt, { 'stock': self.indicator},multi=True)
+                        insert_resultado = self.cnx.execute(insert_stmt, { 'stock': self.indicator,
+                                                                          'uuid':uuid_gen},multi=True)
                         # print(insert_resultado)
                         self.db_con.commit()
                         # for insert_result in insert_resultado:
@@ -120,15 +122,15 @@ class Gather():
             # Retrieve stock id
             select_stmt = "SELECT data_id FROM stocks.stock WHERE stock like %(stock)s"
             resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
-            stock_id:str = None
-            for result in resultado:
-                print(result.statement)
-                try:
-                    for row in result.fetchall():
-                        print(row)
-                        stock_id = binascii.b2a_hex(bytes(row[0],encoding='latin1'))
-                except Exception as e:
-                    print('[ERROR] Failed to find query result for stock_id!\nException:\n',str(e))
+            # stock_id:str = None
+            # for result in resultado:
+                # print(result.statement)
+                # try:
+                    # for row in result.fetchall():
+                        # print(row)
+                        # stock_id = binascii.b2a_hex(bytes(row[0],encoding='latin1'))
+                # except Exception as e:
+                    # print('[ERROR] Failed to find query result for stock_id!\nException:\n',str(e))
             
             #Append dates to database
             for index, row in self.data.iterrows():
@@ -137,21 +139,28 @@ class Gather():
                 %(stock_id)s,DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
                 try:
                     insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'stock': f'{self.indicator}{str(row.name)}',
-                                                                            'stock_id':stock_id,
+                                                                            'stock_id':uuid_gen,
                                                                             'Date':str(row.name),
                                                                             'Open':row['Open'],
                                                                             'High':row['High'],
                                                                             'Low':row['Low'],
                                                                             'Close':row['Close'],
                                                                             'Adj Close': row['Adj Close']},multi=True)
-                    for result in resultado:
-                        print(result.statement)
+                    # for result in resultado:
+                        # print(result.statement)
 
                     
-                    print('[INFO] Successfully added date')
+                    # print('[INFO] Successfully added date')
                 except Exception as e:
                     print(f'[ERROR] Failed to insert date for {self.indicator} into database!\nException:\n',str(e))
-            self.db_con.commit()
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(exc_type, fname, exc_tb.tb_lineno)
+            try:
+                self.db_con.commit()
+            except Exception as e:
+                print('[Error] Could not commit changes!  Either there are no changes or other specified reason below:\n',str(e))
+                
 
         except Exception as e:
             print('[ERROR] Unknown Exception (Oh No)!\nException:\n',str(e))
