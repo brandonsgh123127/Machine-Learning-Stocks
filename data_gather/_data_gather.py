@@ -10,7 +10,9 @@ import mysql.connector
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from mysql.connector import errorcode
-from calendar import month
+import binascii
+import uuid
+
 
 '''CORE CLASS IMPLEMENTATION--
 
@@ -57,7 +59,8 @@ class Gather():
               user=root[0].text,
               password=root[1].text,
               raise_on_warnings = True,
-              database='stocks'
+              database='stocks',
+              charset = 'latin1'
             )
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -94,8 +97,68 @@ class Gather():
             sys.stdout = sys.__stdout__
             if self.data.empty:
                 return 1
-            print(self.data)
-        except:
+            # Retrieve query from database, confirm that stock is in database, else make new query
+            select_stmt = "SELECT stock FROM stocks.stock WHERE stock like %(stock)s"
+            resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
+            for result in resultado:
+                # Query new stock, id
+                if len(result.fetchall()) == 0:
+                    insert_stmt = """INSERT INTO stocks.stock (id, stock, data_id) 
+                                VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2('stock',512))),%(stock)s,AES_ENCRYPT(%(stock)s, UNHEX(SHA2('stock-id',512))))"""
+                    try:
+                        # print('[INFO] inserting')
+                        insert_resultado = self.cnx.execute(insert_stmt, { 'stock': self.indicator},multi=True)
+                        # print(insert_resultado)
+                        self.db_con.commit()
+                        # for insert_result in insert_resultado:
+                            # print(insert_result.statement)
+                        # print('[INFO] Success')
+                    except Exception as e:
+                        print(f'[ERROR] Failed to insert stock named {self.indicator} into database!\nException:\n',str(e))
+           
+            #Gather Data from current stock data, make sure data is in db before proceeding
+            # Retrieve stock id
+            select_stmt = "SELECT data_id FROM stocks.stock WHERE stock like %(stock)s"
+            resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
+            stock_id:str = None
+            for result in resultado:
+                print(result.statement)
+                try:
+                    for row in result.fetchall():
+                        print(row)
+                        stock_id = binascii.b2a_hex(bytes(row[0],encoding='latin1'))
+                except Exception as e:
+                    print('[ERROR] Failed to find query result for stock_id!\nException:\n',str(e))
+            
+            #Append dates to database
+            for index, row in self.data.iterrows():
+                insert_date_stmt = """INSERT INTO `stocks`.`data` (id, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2('stock-id',512))),
+                %(stock_id)s,DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                try:
+                    insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'stock': f'{self.indicator}{str(row.name)}',
+                                                                            'stock_id':stock_id,
+                                                                            'Date':str(row.name),
+                                                                            'Open':row['Open'],
+                                                                            'High':row['High'],
+                                                                            'Low':row['Low'],
+                                                                            'Close':row['Close'],
+                                                                            'Adj Close': row['Adj Close']},multi=True)
+                    for result in resultado:
+                        print(result.statement)
+
+                    
+                    print('[INFO] Successfully added date')
+                except Exception as e:
+                    print(f'[ERROR] Failed to insert date for {self.indicator} into database!\nException:\n',str(e))
+            self.db_con.commit()
+
+        except Exception as e:
+            print('[ERROR] Unknown Exception (Oh No)!\nException:\n',str(e))
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+
             return 1
         return 0
     def _reorder_dates(self,date1,date2):
@@ -133,6 +196,6 @@ class Gather():
         if response.status_code != 200:
             raise Exception(response.status_code, response.text)
         return response.json()
-# g = Gather()
-# g.set_indicator("SPY")
-# g.set_data_from_range(datetime.datetime(year=2020,month=9,day=9), datetime.datetime(year=2020,month=10,day=9))
+g = Gather()
+g.set_indicator("AMD")
+g.set_data_from_range(datetime.datetime(year=2020,month=9,day=9), datetime.datetime(year=2020,month=10,day=9))
