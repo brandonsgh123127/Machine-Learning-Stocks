@@ -201,7 +201,15 @@ class Gather():
         if date1 is None:
             return (self.date_set[0] - self.date_set[1]).days
         else:
-            return (date2 - date1).days
+            try:
+                return (date2 - date1).days
+            except TypeError:
+                date2 = date2.replace('-','')
+                date1 = date1.replace('-','')
+                return (datetime.datetime.strptime(date2,'%Y%m%d'))
+            except Exception as e:
+                print(f'[ERROR] Could not parse strings:\n\t{date2}\n\t{date1}\nException:\n',str(e))
+    
     def get_data(self):
         return self.data
     # Twitter API Web Scraper for data on specific stocks

@@ -79,7 +79,9 @@ class Studies(Gather):
                                 insert_result = self.cnx.execute(insert_study_stmt,{'id':uuid_gen.bytes,
                                                                                 'ema':f'ema{length}'},multi=True)
                                 self.study_id = uuid_gen.bytes
-                                self.db_con.commit()                                
+                                self.db_con.commit()
+                            except mysql.connector.errors.IntegrityError:
+                                pass
                             except Exception as e:
                                 print(f'[ERROR] Failed to Insert study into stocks.study named ema{length}!\nException:\n',str(e))
                                 raise mysql.connector.Error
@@ -115,6 +117,8 @@ class Studies(Gather):
                                                                                                 'study-id':self.study_id,
                                                                                                 'val':row[f'ema{length}']})
                                 self.db_con.commit()
+                            except mysql.connector.errors.IntegrityError:
+                                pass
                             except Exception as e:
                                 print('[ERROR] Failed to insert study-date element!\nException:\n',str(e))
         return 0
@@ -253,13 +257,17 @@ val1    val3_________________________
     def load_data_mysql(self,start,end):
         # print(self.cnx)
         # print('LOAD\n\n')
+        self.set_data_from_range(start, end) # Make sure data is generated in database
         '''
         Fetch stock data per date range
         '''
+        self.cnx=self.db_con.cursor()
         date_result = self.cnx.execute("""
         select * from stocks.`data` where date >= %s and date <= %s and `stock-id` = (select `id` from stocks.`stock` where stock = %s) ORDER BY stocks.`data`.`date` ASC
         """, (start, end, 'SPY'),multi=True)
-        for set in self.cnx.fetchall():
+        date_res = self.cnx.fetchall()
+        # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
+        for set in date_res:
             if len(set) == 0:
                 try:
                     self.set_data_from_range(start,end)
@@ -308,7 +316,9 @@ s = Studies("SPY")
 # s.__init__("SPY")
 # s.load_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\spy/2021-03-03--2021-04-22")
 s.load_data_mysql('2020-03-03','2021-04-22')
-s.apply_ema("14", "14", None)
+s.apply_ema("14",(datetime.datetime(2021,4,22)-datetime.datetime(2021,3,3)))
+s.apply_ema("30",(datetime.datetime(2021,4,22)-datetime.datetime(2021,3,3))) 
+
 
 # s.applied_studies = pd.DataFrame()
 # s.keltner_channels(20)
