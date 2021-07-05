@@ -30,11 +30,13 @@ class Studies(Gather):
         self.listLock = threading.Lock()
         pd.set_option('display.max_rows',300)
         pd.set_option('display.max_columns',10)
-        self.Open = pd.DataFrame(columns=['Open'])
-        self.High = pd.DataFrame(columns=['High'])
-        self.Low = pd.DataFrame(columns=['Low'])
-        self.Close = pd.DataFrame(columns=['Close'])
-        self.AdjClose = pd.DataFrame(columns=['Adj Close'])
+        self.Date = pd.DataFrame(columns=['Date'])
+        self.Open = pd.DataFrame(columns=['Open'],dtype='float')
+        self.High = pd.DataFrame(columns=['High'],dtype='float')
+        self.Low = pd.DataFrame(columns=['Low'],dtype='float')
+        self.Close = pd.DataFrame(columns=['Close'],dtype='float')
+        self.AdjClose = pd.DataFrame(columns=['Adj Close'],dtype='float')
+        self.study_id = None
     def set_timeframe(self,new_timeframe):
         self.timeframe = new_timeframe
     def get_timeframe(self):
@@ -45,14 +47,17 @@ class Studies(Gather):
             self.applied_studies= pd.concat([self.applied_studies,pd.DataFrame({f'ema{length}': [self.data.ewm(span=int(length)).mean()]},halflife=half)],axis=1)
         else:
             # Calculate locally, then push to database
-            data = self.data.drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Close':f'ema{length}'}).ewm(alpha=2/(int(length)+1),adjust=True).mean()
+            data = self.data.drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Date':'Date','Close':f'ema{length}'})
+            data = data.drop(['Date'],axis=1)
+            data.astype('float')
+            data = data.ewm(alpha=2/(int(length)+1),adjust=True).mean()
             self.applied_studies= pd.concat([self.applied_studies,data],axis=1)
             
             uuid_gen = uuid.uuid4().bytes
             
             # Retrieve query from database, confirm that stock is in database, else make new query
             select_stmt = "SELECT stock FROM stocks.stock WHERE stock like %(stock)s"
-            resultado = self.cnx.execute(select_stmt, { 'stock': Gather.indicator},multi=True)
+            resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
             for result in resultado:
                 # Query new stock, id
                 if len(result.fetchall()) == 0:
@@ -63,35 +68,55 @@ class Studies(Gather):
                     study_result = self.cnx.execute(select_study_stmt, { 'study': f'ema{length}'},multi=True)
                     for s_res in study_result:
                         # Non existent DB value
-                        if len(s_res.fetchall()) == 0:
+                        study_id_res = s_res.fetchall()
+                        if len(study_id_res) == 0:
+                            uuid_gen = uuid.uuid4() # generate new unique uuid
                             print(f'[INFO] Failed to query study named ema{length} from database! Creating new Study...\n')
-                            insert_study_stmt = """INSERT INTO stocks.study (study-id,study) 
-                                VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2('study-id',512))),%(ema)s)"""
+                            insert_study_stmt = """INSERT INTO stocks.study (`study-id`,study) 
+                                VALUES (%(id)s,%(ema)s)"""
                             # Insert new study into DB
                             try:
-                                insert_result = self.cnx.execute(insert_study_stmt,{'id':uuid_gen,
-                                                                                'ema':f'ema{length}'})
-                                self.cnx.commit()
+                                insert_result = self.cnx.execute(insert_study_stmt,{'id':uuid_gen.bytes,
+                                                                                'ema':f'ema{length}'},multi=True)
+                                self.study_id = uuid_gen.bytes
+                                self.db_con.commit()                                
                             except Exception as e:
                                 print(f'[ERROR] Failed to Insert study into stocks.study named ema{length}!\nException:\n',str(e))
+                                raise mysql.connector.Error
+                        else:
+                            # Get study_id
+                            self.study_id = study_id_res[0][0]
+                            
                         for index,row in self.applied_studies.iterrows():
-                            # Retrieve the stock-id, study-id, and data-point id in a single select statement
-                            retrieve_data_stmt = """SELECT `stocks`.`data`.`id`, `stocks`.`data`.`stock-id`,`stocks`.`study`.`study-id` FROM `stocks`.`data` INNER JOIN `stocks`.`study` 
-                            INNER JOIN `stocks`.`stock` ON `stocks`.`study`.`study` = %(study)s AND `stocks`.`stock`.`stock` = %(stock)s;
+                            # Retrieve the stock-id, and data-point id in a single select statement
+                            retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` 
+                            INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`=DATE(%(date)s) 
                             """
-                            retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'study':f'ema{length}',
-                                                                                        'stock':f'{self.indicator}'})
+                            retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator}',
+                                                                                        'date':self.data.loc[index,:]['Date']},multi=True)
+                            for retrieve_result in retrieve_data_result:
+                                id_res = retrieve_result.fetchall()
+                                if len(id_res) == 0:
+                                    print(f'[ERROR] Failed to locate a data id for current index {index}')
+                                    raise mysql.connector.Error
+                                else:
+                                    self.stock_id = id_res[0][1] 
+                                    self.data_id = id_res[0][0]
                             # Execute insert for study-data
+                            uuid_gen = uuid.uuid4() # generate new unique uuid
                             insert_studies_db_stmt = """INSERT INTO `stocks`.`study-data` (id, `stock-id`, `data-id`,`study-id`,`val1`) 
-                                VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2('study-obj-id',512))),
-                                %(stock_id)s,DATE(%(Date)s),%(study-id)s,%(val)s)
+                                VALUES (%(id)s,
+                                %(stock-id)s,%(data-id)s,%(study-id)s,%(val)s)
                                 """
-                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':uuid_gen,
-                                                                                                'stock-id':,
-                                                                                                'data_id':,
-                                                                                                'study-id':,
-                                                                                                'val':row})
-                    
+                            try:
+                                insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':uuid_gen.bytes,
+                                                                                                'stock-id':self.stock_id,
+                                                                                                'data-id':self.data_id,
+                                                                                                'study-id':self.study_id,
+                                                                                                'val':row[f'ema{length}']})
+                                self.db_con.commit()
+                            except Exception as e:
+                                print('[ERROR] Failed to insert study-date element!\nException:\n',str(e))
         return 0
     '''
         val1 first low/high
@@ -232,7 +257,7 @@ val1    val3_________________________
         Fetch stock data per date range
         '''
         date_result = self.cnx.execute("""
-        select * from stocks.`data` where date >= %s and date <= %s and `stock-id` = (select `data_id` from stocks.`stock` where stock = %s)
+        select * from stocks.`data` where date >= %s and date <= %s and `stock-id` = (select `id` from stocks.`stock` where stock = %s) ORDER BY stocks.`data`.`date` ASC
         """, (start, end, 'SPY'),multi=True)
         for set in self.cnx.fetchall():
             if len(set) == 0:
@@ -246,9 +271,11 @@ val1    val3_________________________
             try:
                 # Iterate through each element to retrieve values
                 for index,row in enumerate(set):
-                    append_lambda = lambda i: '' if i>=0 and i <=2 else self.append_data(self.Open,'Open',row) if i==3 else self.append_data(self.High,'High',row) if i==4 else self.append_data(self.Low,'Low',row) if i==5 else self.append_data(self.Close,'Close',row) if i==6 else self.append_data(self.AdjClose,'Adj Close',row) if i==7 else print('[ERROR] Could not map lambda!')
+                    append_lambda = lambda i: '' if i>=0 and i <=1 else self.append_data(self.Date, 'Date', row) if i==2 else self.append_data(self.Open,'Open',row) if i==3 else self.append_data(self.High,'High',row) if i==4 else self.append_data(self.Low,'Low',row) if i==5 else self.append_data(self.Close,'Close',row) if i==6 else self.append_data(self.AdjClose,'Adj Close',row) if i==7 else print('[ERROR] Could not map lambda!')
                     val = append_lambda(index)
-                    if index == 3:
+                    if index == 2:
+                        self.Date = val
+                    elif index == 3:
                         self.Open = val
                     elif index == 4:
                         self.High = val
@@ -270,17 +297,18 @@ val1    val3_________________________
         # After retrieving data, Store to self.data
         # print(self.Open)
         self.Open.reset_index(drop=True, inplace=True)
+        self.Date.reset_index(drop=True, inplace=True)
         self.High.reset_index(drop=True, inplace=True)
         self.Low.reset_index(drop=True, inplace=True)
         self.Close.reset_index(drop=True, inplace=True)
         self.AdjClose.reset_index(drop=True, inplace=True)
-        self.data = pd.concat([self.Open,self.High,self.Low,self.Close,self.AdjClose],names=['Open','High','Low','Close','Adj Close'],ignore_index=True,axis=1)
-        self.data = self.data.rename(columns={0: "Open", 1: "High",2: "Low",3: "Close",4: "Adj Close"})
-        # print(self.data['Open'])
+        self.data = pd.concat([self.Date,self.Open,self.High,self.Low,self.Close,self.AdjClose],names=['Date','Open','High','Low','Close','Adj Close'],ignore_index=True,axis=1)
+        self.data = self.data.rename(columns={0: "Date", 1: "Open", 2: "High",3: "Low",4: "Close",5: "Adj Close"})
 s = Studies("SPY")
 # s.__init__("SPY")
 # s.load_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\spy/2021-03-03--2021-04-22")
 s.load_data_mysql('2020-03-03','2021-04-22')
+s.apply_ema("14", "14", None)
 
 # s.applied_studies = pd.DataFrame()
 # s.keltner_channels(20)

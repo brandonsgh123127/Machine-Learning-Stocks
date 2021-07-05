@@ -211,6 +211,6 @@ class Gather():
         if response.status_code != 200:
             raise Exception(response.status_code, response.text)
         return response.json()
-g = Gather()
-g.set_indicator("AMD")
-g.set_data_from_range(datetime.datetime(year=2020,month=9,day=9), datetime.datetime(year=2021,month=10,day=9))
+# g = Gather()
+# g.set_indicator("AMD")
+# g.set_data_from_range(datetime.datetime(year=2020,month=9,day=9), datetime.datetime(year=2021,month=10,day=9))

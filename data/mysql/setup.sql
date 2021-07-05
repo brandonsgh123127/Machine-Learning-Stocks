@@ -48,23 +48,21 @@ ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 -- CREATE USER 'customer' IDENTIFIED BY 'password';
 -- GRANT SELECT ON TABLE `Stocks`.* TO 'customer';
 use stocks;
+
 # drop table stocks;
 #drop table stock;
 #drop table data;
 #drop table `study-data`;
-SHOW TABLES FROM stocks;
-#INSERT INTO stocks.stock (id, stock, data_id) VALUES (AES_ENCRYPT('AMC', UNHEX(SHA2('stock',512))),'AMC',AES_ENCRYPT('AMC', UNHEX(SHA2('stock-id',512))));
-#INSERT INTO stocks.`data` (id, `date`,`open`,high,low,`close`,`adj-close`) VALUES (AES_ENCRYPT('AMC', UNHEX(SHA2('stock-id',512))),DATE('2020-08-08'),0,0,0,0,0);
 
-#SELECT * FROM stocks.stock WHERE stock = 'AMD';
-# SET `id` = AES_ENCRYPT('amc', UNHEX(SHA2('stock',512))),
-#`stock_id` = AES_ENCRYPT('amc', UNHEX(SHA2('stock-id',512)));
-#delete from stocks.data where open like 0;
-#select * from stocks.data;
-#select data_id from stocks.stock where `stock` = 'SPY' LIMIT 1;
+SHOW TABLES FROM stocks;
+
 #select * from stocks.`data`;
-select * from stocks.stock;
+#select * from stocks.stock;
+select * from stocks.study;
+select * from stocks.`study-data`;
+
+
 #select * from stocks.`data` where `stock-id` = (select data_id from stocks.stock where `stock` = 'AMD' LIMIT 1);
 #select * from stocks.`data` where date >= '2020-03-03' and date <= '2021-04-22' and `stock-id` = (select `data_id` from stocks.stock where stock = 'SPY');
 select * from stocks.stock INNER JOIN stocks.data ON `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.stock.stock = 'SPY';
-SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` ;
+SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`;
