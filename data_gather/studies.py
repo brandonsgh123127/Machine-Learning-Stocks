@@ -114,7 +114,7 @@ class Studies(Gather):
                             %(stock-id)s,%(data-id)s,%(study-id)s,%(val)s)
                             """
                         try:
-                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{uuid_gen.bytes}{self.data.loc[index,:]["Date"]}{self.indicator}',
+                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"]}{self.indicator}',
                                                                                             'stock-id':self.stock_id,
                                                                                             'data-id':self.data_id,
                                                                                             'study-id':self.study_id,
@@ -266,14 +266,13 @@ class Studies(Gather):
             self.set_data_from_range(datetime.datetime.strptime(start,'%Y-%m-%d'), datetime.datetime.strptime(end,'%Y-%m-%d')) # Make sure data is generated in database
         except:
             self.set_data_from_range(start, end)
-            print('f')
         '''
         Fetch stock data per date range
         '''
         self.cnx=self.db_con.cursor(buffered=True)
         date_result = self.cnx.execute("""
         select * from stocks.`data` where date >= %s and date <= %s and `stock-id` = (select `id` from stocks.`stock` where stock = %s) ORDER BY stocks.`data`.`date` ASC
-        """, (start, end, 'SPY'),multi=True)
+        """, (start, end, self.indicator),multi=True)
         date_res = self.cnx.fetchall()
         # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
         for set in date_res:
@@ -322,10 +321,10 @@ class Studies(Gather):
         self.data = self.data.rename(columns={0: "Date", 1: "Open", 2: "High",3: "Low",4: "Close",5: "Adj Close"})
 
 
-s = Studies("RBLX")
-s.load_data_mysql('2019-03-03','2021-04-22')
-s.apply_ema("14",'14')
-s.apply_ema("30",'14') 
+# s = Studies("RBLX")
+# s.load_data_mysql('2019-03-03','2021-04-22')
+# s.apply_ema("14",'14')
+# s.apply_ema("30",'14') 
 
 
 # s.applied_studies = pd.DataFrame()

@@ -53,7 +53,7 @@ use stocks;
 #drop table stock;
 #drop table study;
 #drop table data;
-#drop table `study-data`;
+drop table `study-data`;
 
 SHOW TABLES FROM stocks;
 select * from stocks.`data`;
