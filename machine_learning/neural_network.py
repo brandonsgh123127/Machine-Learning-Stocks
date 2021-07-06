@@ -228,7 +228,7 @@ def run(epochs,batch_size,name="model",model=1):
 # run(100,100,"model_out_new_3",8)
 # run(100,100,"model_out_new_4",9)
 # run(100,100,"model_out_new_5",10)
-# run(100,100,"model",1)
+run(100,100,"model",1)
 # run(100,100,"model_new_2",2)
 # run(100,100,"model_new_3",3)
 # run(100,100,"model_new_4",4)

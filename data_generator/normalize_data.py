@@ -12,6 +12,7 @@ import uuid
 import xml.etree.ElementTree as ET
 import datetime
 import sys
+from _ast import Return
 
 '''
 Class that takes in studies and stock data, then transforms the data into a new dataframe.
@@ -64,6 +65,7 @@ class Normalizer():
         return struct
     def mysql_read_data(self,initial_date:datetime.datetime,ticker):
         try:
+            self.cnx = self.db_con.cursor(buffered=True)
             date_result = self.cnx.execute("""
         select * from stocks.`data` where stocks.`data`.date >= DATE(%s) and stocks.`data`.date <= DATE(%s) and `stock-id` = (select `id` from stocks.`stock` where stock = %s) ORDER BY stocks.`data`.`date` ASC
         """, (initial_date, initial_date + datetime.timedelta(days=45), ticker),multi=True)
@@ -102,6 +104,7 @@ class Normalizer():
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                     print(exc_type, fname, exc_tb.tb_lineno)
+                    return
         # After retrieving data, Store to self.data
         self.Open.reset_index(drop=True, inplace=True)
         self.Date.reset_index(drop=True, inplace=True)
@@ -111,8 +114,10 @@ class Normalizer():
         self.AdjClose.reset_index(drop=True, inplace=True)
         self.data = pd.concat([self.Date,self.Open,self.High,self.Low,self.Close,self.AdjClose],names=['Date','Open','High','Low','Close','Adj Close'],ignore_index=True,axis=1)
         self.data = self.data.rename(columns={0: "Date", 1: "Open", 2: "High",3: "Low",4: "Close",5: "Adj Close"})
+        self.cnx.close()
         return self.data
     def mysql_read_studies(self,initial_date:datetime.datetime,ticker):
+        self.cnx = self.db_con.cursor(buffered=True)
         date_result = self.cnx.execute("""
         select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
         ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id` INNER JOIN stocks.`data` ON
@@ -143,9 +148,12 @@ class Normalizer():
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
+                self.cnx.close()
+                return
         # After retrieving data, Store to self.data
         self.studies = pd.concat([tmp_14,tmp_30],ignore_index=True,axis=1)
         self.studies = self.studies.rename(columns={0: "ema14", 1: "ema30"})
+        self.cnx.close()
         return self.studies
     def read_data(self,date,ticker):
         self.data = self.mysql_read_data(date, ticker)
