@@ -26,6 +26,7 @@ class Generator():
                 dates = self.studies.gen_random_dates()
         except RuntimeError:
             pass
+        print(self.studies.date_set[0],self.studies.date_set[1])
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
         query_param1 = {"query": "{}".format(self.ticker)}
         query_param2 = {"maxResults":"500"}
@@ -37,6 +38,8 @@ class Generator():
         self.studies.reset_data()
         self.studies.load_data_mysql(dates[0],dates[1])
         self.studies.apply_ema("14",self.studies.get_date_difference())
+        self.studies.reset_data()
+        self.studies.load_data_mysql(dates[0],dates[1])
         self.studies.apply_ema("30",self.studies.get_date_difference()) 
         try:
             os.remove(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')

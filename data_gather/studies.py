@@ -74,12 +74,12 @@ class Studies(Gather):
                             VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(ema)s)"""
                         # Insert new study into DB
                         try:
-                            insert_result = self.cnx.execute(insert_study_stmt,{'id':f'{uuid_gen.bytes}{self.indicator}',
+                            insert_result = self.cnx.execute(insert_study_stmt,{'id':f'{length}',
                                                                             'ema':f'ema{length}'},multi=True)
                             self.db_con.commit()
                             
                             # Now get the id from the db
-                            retrieve_study_id_stmt = """ SELECT `study-id` FROM stocks.study WHERE `study` = %(study)s"""
+                            retrieve_study_id_stmt = """ SELECT `study-id` FROM stocks.study WHERE `study` like %(study)s"""
                             retrieve_study_id_result = self.cnx.execute(retrieve_study_id_stmt,{'study':f'ema{length}'},multi=True)
                             for r in retrieve_study_id_result:
                                 id_result = r.fetchall()
@@ -94,6 +94,8 @@ class Studies(Gather):
                         self.study_id = study_id_res[0][0]
                         
                     for index,row in self.applied_studies.iterrows():
+                        self.cnx = self.db_con.cursor()
+
                         # Retrieve the stock-id, and data-point id in a single select statement
                         retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` 
                         INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`=%(date)s 
@@ -114,17 +116,20 @@ class Studies(Gather):
                             %(stock-id)s,%(data-id)s,%(study-id)s,%(val)s)
                             """
                         try:
-                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"]}{self.indicator}',
+                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"]}{self.indicator}{length}',
                                                                                             'stock-id':self.stock_id,
                                                                                             'data-id':self.data_id,
                                                                                             'study-id':self.study_id,
                                                                                             'val':row[f'ema{length}']})
                             self.db_con.commit()
                         except mysql.connector.errors.IntegrityError:
+                            self.cnx.close()
                             pass
                         except Exception as e:
                             # print('[ERROR] Failed to insert study-date element!\nException:\n',str(e))
+                            self.cnx.close()
                             pass
+        self.cnx.close()
         return 0
     '''
         val1 first low/high

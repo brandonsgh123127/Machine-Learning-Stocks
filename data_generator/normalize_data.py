@@ -22,7 +22,7 @@ This frame then gets normalized and outputted.
 class Normalizer():
     def __init__(self):
         self.data= pd.DataFrame()
-        self.studies= pd.DataFrame()
+        self.studies= pd.DataFrame(columns=['ema14','ema30'])
         self.normalized_data = pd.DataFrame()
         self.unnormalized_data = pd.DataFrame()
         self.path = Path(os.getcwd()).parent.absolute() 
@@ -115,12 +115,14 @@ class Normalizer():
     def mysql_read_studies(self,initial_date:datetime.datetime,ticker):
         date_result = self.cnx.execute("""
         select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
-        ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id` INNER JOIN stocks.`data` WHERE
+        ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id` INNER JOIN stocks.`data` ON
          stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id` AND stocks.`data`.date >= %s and stocks.`data`.date <= %s 
-         INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` ORDER BY stocks.`data`.`date` ASC
-        """, (initial_date, initial_date + datetime.timedelta(days=45)),multi=True)
+         INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
+        """, (initial_date, initial_date + datetime.timedelta(days=45),ticker),multi=True)
         date_res = self.cnx.fetchall()
         # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
+        tmp_14 = pd.DataFrame(columns=['ema14'])
+        tmp_30 = pd.DataFrame(columns=['ema30'])
         for set in date_res:
             if len(set) == 0:
                 print(f'[ERROR] Failed to retrieve study data for {self.indicator} from range {initial_date}--{initial_date + datetime.timedelta(days=45)}\nException:\n')
@@ -128,20 +130,22 @@ class Normalizer():
             try:
                 # Iterate through each element to retrieve values
                 cur_val = None
-                self.study_tmp = pd.DataFrame()
                 for index,row in enumerate(set):
                     if index == 0:
                         cur_val = row
                     elif index == 1:
-                        self.study_tmp = self.study_tmp.append({row:cur_val},ignore_index=True)
+                        if row == 'ema14':
+                            tmp_14 = tmp_14.append({row:cur_val},ignore_index=True)
+                        elif row == 'ema30':
+                            tmp_30 = tmp_30.append({row:cur_val},ignore_index=True)
             except Exception as e:
                 print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
         # After retrieving data, Store to self.data
-            self.studies = pd.concat([self.studies,self.study_tmp.append({row:cur_val},ignore_index=True)],axis=0,ignore_index=True)
-            self.studies = self.studies.rename(columns={0: "ema14", 1: "ema30"})
+        self.studies = pd.concat([tmp_14,tmp_30],ignore_index=True,axis=1)
+        self.studies = self.studies.rename(columns={0: "ema14", 1: "ema30"})
         return self.studies
     def read_data(self,date,ticker):
         self.data = self.mysql_read_data(date, ticker)
@@ -149,7 +153,7 @@ class Normalizer():
         self.studies = self.mysql_read_studies(date,ticker)
         pd.set_option("display.max.columns", None)
     def convert_derivatives(self):
-        print(len(self.studies),len(self.data))
+        # print(len(self.studies),len(self.data))
         self.normalized_data = pd.DataFrame((),columns=['Open Diff','Close Diff','Derivative Diff','Derivative EMA14','Derivative EMA30','Close EMA14 Diff',
                                                                                                 'Close EMA30 Diff','EMA14 EMA30 Diff'])
         self.normalized_data["Open Diff"] = self.data["Open"]

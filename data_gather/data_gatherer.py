@@ -26,7 +26,7 @@ class Gather():
     db_con:mysql.connector = None
     cnx:mysql.connector.cursor = None
     MAX_DATE = datetime.datetime.now().date()
-    MIN_DATE = datetime.datetime(2013,1,1).date()
+    MIN_DATE = datetime.datetime(2017,1,1).date()
     MIN_RANGE = 30
     MAX_RANGE = 730
     DAYS_IN_MONTH = {1:31,
@@ -186,12 +186,12 @@ class Gather():
     def gen_random_dates(self):
         calc_leap_day = lambda year_month: random.randint(1,29) if year_month[1]==2 and ((year_month[0]%4==0 and year_month[0]%100==0 and year_month[0]%400==0) or (year_month[0]%4==0 and year_month[0]%100!=0)) else random.randint(1,28) if year_month[1]==2 else random.randint(1,self.DAYS_IN_MONTH[year_month[1]])
         set1 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year - 1),random.randint(1,12))
-        set2 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year),(set1[1]+4)%12 + 1)
+        set2 = (self.MAX_DATE.year,(set1[1]+4)%12 + 1)
         self.date_set = (datetime.datetime(set1[0],set1[1],calc_leap_day(set1),tzinfo=pytz.utc),datetime.datetime(set2[0],set2[1],calc_leap_day(set2),tzinfo=pytz.utc))
         if self.date_set[0] > datetime.datetime.now().replace(tzinfo=pytz.utc):
             self.date_set = (datetime.datetime.now().replace(month = datetime.datetime.today().month, day=datetime.datetime.today().day,tzinfo=pytz.utc),self.date_set[1])
         if self.date_set[1] > datetime.datetime.now().replace(tzinfo=pytz.utc):
-            self.date_set = (self.date_set[0],datetime.datetime.now().replace(month=3,day=int(datetime.datetime.today().strftime('%d')), tzinfo=pytz.utc))
+            self.date_set = (self.date_set[0],datetime.datetime.now().replace(month=7,day=int(datetime.datetime.today().strftime('%d')), tzinfo=pytz.utc))
         self.date_set=self._reorder_dates(self.date_set[0].date(),self.date_set[1].date())
         return self.date_set
     def get_date_difference(self,date1=None,date2=None):

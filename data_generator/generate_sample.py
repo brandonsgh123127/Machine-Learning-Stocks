@@ -55,6 +55,7 @@ class Sample(Normalizer):
             # Iterate through dataframe and retrieve random sample
             self.normalizer.convert_derivatives()
             self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
+            # print(self.normalizer.normalized_data)
         except RuntimeWarning:
             return
             
