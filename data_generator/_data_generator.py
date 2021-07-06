@@ -19,42 +19,30 @@ class Generator():
 
         
     def generate_data(self):
-        self.news.gen_random_dates()
+        dates = self.studies.gen_random_dates()
         # Loop until valid data populates
-        while self.studies.set_data_from_range(self.news.date_set[0],self.news.date_set[1]) != 0 or self.studies.data.isnull().values.any() or len(self.studies.data) < 16:
-            self.news.gen_random_dates()
         try:
-            os.mkdir("{0}/data/tweets".format(self.path))
-        except:
-            pass
-        try:
-            os.mkdir("{0}/data/stock_no_tweets".format(self.path))
-        except:
-            pass
-        try:
-            os.mkdir(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/')
-        except:
-            pass
-        try:
-            os.mkdir("{0}/data/stock".format(self.path))
-        except:
+            while self.studies.set_data_from_range(self.studies.date_set[0],self.studies.date_set[1]) != 0 or self.studies.data.isnull().values.any() or len(self.studies.data) < 30:
+                dates = self.studies.gen_random_dates()
+        except RuntimeError:
             pass
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
         query_param1 = {"query": "{}".format(self.ticker)}
         query_param2 = {"maxResults":"500"}
-        query_param3 = {"fromDate":"{}".format(self.news.date_set[0].strftime("%Y%m%d%H%M"))}
-        query_param4 = {"toDate":"{}".format(self.news.date_set[1].strftime("%Y%m%d%H%M"))}
+        query_param3 = {"fromDate":"{}".format(self.studies.date_set[0].strftime("%Y%m%d%H%M"))}
+        query_param4 = {"toDate":"{}".format(self.studies.date_set[1].strftime("%Y%m%d%H%M"))}
         query_params = {}
         query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
-
-        self.studies.data = self.studies.data.drop(['Volume'],axis=1)
-        self.studies.apply_ema("14",self.news.get_date_difference())
-        self.studies.apply_ema("30",self.news.get_date_difference()) 
+        
+        self.studies.reset_data()
+        self.studies.load_data_mysql(dates[0],dates[1])
+        self.studies.apply_ema("14",self.studies.get_date_difference())
+        self.studies.apply_ema("30",self.studies.get_date_difference()) 
         try:
             os.remove(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
         except:
             pass
-        self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
+        # self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.news.date_set[0]}--{self.news.date_set[1]}')
         self.studies.reset_data()
         
     def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,vals:tuple=None):
@@ -65,22 +53,6 @@ class Generator():
             raise Exception("FAILED TO RETRIEVE DATA FROM YAHOO FINANCE")
         if is_not_closed:
             self.studies.data = self.studies.data.append({'Open': f'{vals[0]}','High': f'{vals[1]}','Low': f'{vals[2]}','Close': f'{vals[3]}','Adj Close': f'{vals[3]}'}, ignore_index=True)
-        try:
-            os.mkdir("{0}/data/tweets".format(self.path))
-        except:
-            pass
-        try:
-            os.mkdir("{0}/data/stock_no_tweets".format(self.path))
-        except:
-            pass
-        try:
-            os.mkdir(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/')
-        except:
-            pass
-        try:
-            os.mkdir("{0}/data/stock".format(self.path))
-        except:
-            pass
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
         query_param1 = {"query": "{}".format(self.ticker)}
         query_param2 = {"maxResults":"500"}
@@ -109,8 +81,8 @@ def choose_random_ticker(csv_file):
         print(ticker)
         return ticker
 def main():
-    MAX_TICKERS=5
-    MAX_ITERS=50
+    MAX_TICKERS=500
+    MAX_ITERS=1
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
@@ -119,7 +91,7 @@ def main():
         # generator.generate_data_with_dates(datetime.datetime(2021,3,3),datetime.datetime(2021,4,22))
         for j in range(MAX_ITERS):
             generator.generate_data()
-        del generator
+        # del generator
         
     
 if __name__ == '__main__':

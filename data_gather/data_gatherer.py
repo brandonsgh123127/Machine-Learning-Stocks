@@ -27,8 +27,8 @@ class Gather():
     cnx:mysql.connector.cursor = None
     MAX_DATE = datetime.datetime.now().date()
     MIN_DATE = datetime.datetime(2013,1,1).date()
-    MIN_RANGE = 50 # at least 7 days generated
-    MAX_RANGE = 200 # at most 1 month to look at trend
+    MIN_RANGE = 30
+    MAX_RANGE = 730
     DAYS_IN_MONTH = {1:31,
                      2:28,
                      3:31,
@@ -92,15 +92,19 @@ class Gather():
         return self.indicator    
     # retrieve pandas_datareader object of datetime
     def set_data_from_range(self,start_date,end_date):
+        # if (datetime.datetime.combine(start_date,datetime.datetime.min.time())- datetime.datetime.combine(end_date,datetime.datetime.min.time())).days < (self.MIN_RANGE):
+            # raise RuntimeError
         try:
             self.cnx = self.db_con.cursor(buffered=True)
+
             sys.stdout = open(os.devnull, 'w')
-            self.data = pdr.get_data_yahoo(self.indicator,start=start_date.strftime("%Y-%m-%d"),end=end_date.strftime("%Y-%m-%d"))
+            self.data = pdr.get_data_yahoo(self.indicator,start=start_date.strftime("%Y-%m-%d"),end=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
             sys.stdout = sys.__stdout__
             if self.data.empty:
                 return 1
             uuid_gen = uuid.uuid4()
             # Retrieve query from database, confirm that stock is in database, else make new query
+
             select_stmt = "SELECT `id` FROM stocks.stock WHERE stock like %(stock)s"
             resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
             for result in resultado:
@@ -109,15 +113,20 @@ class Gather():
                 res = result.fetchall()
                 if len(res) == 0:
                     insert_stmt = """INSERT INTO stocks.stock (id, stock) 
-                                VALUES (%(uuid)s,%(stock)s)"""
+                                VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2(%(stock)s,512))),%(stock)s)"""
                     try:
                         # print('[INFO] inserting')
-                        insert_resultado = self.cnx.execute(insert_stmt, { 'stock': self.indicator,
-                                                                          'uuid':uuid_gen.bytes},multi=True)
+                        insert_resultado = self.cnx.execute(insert_stmt, { 'stock': f'{self.indicator}'},multi=True)
                         self.db_con.commit()
                         # print('[INFO] Success')
+                    except mysql.connector.errors.IntegrityError as e:
+                        pass
                     except Exception as e:
                         print(f'[ERROR] Failed to insert stock named {self.indicator} into database!\nException:\n',str(e))
+                        exc_type, exc_obj, exc_tb = sys.exc_info()
+                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                        print(exc_type, fname, exc_tb.tb_lineno)
+
                 else:
                     for r in res:
                         # print(f'{r[0]}\n')
@@ -128,34 +137,24 @@ class Gather():
             #Append dates to database
             for index, row in self.data.iterrows():
                 insert_date_stmt = """INSERT INTO `stocks`.`data` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
-                VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2('stock-id',512))),
-                %(stock_id)s,DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
-                try:
-                    if self.new_uuid_gen is None:
-                        insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'stock': f'{self.indicator}{str(row.name)}',
-                                                                                'stock_id':uuid_gen.bytes,
-                                                                                'Date':str(row.name),
-                                                                                'Open':row['Open'],
-                                                                                'High':row['High'],
-                                                                                'Low':row['Low'],
-                                                                                'Close':row['Close'],
-                                                                                'Adj Close': row['Adj Close']},multi=True)
-                    else:
-                        insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'stock': f'{self.indicator}{str(row.name)}',
-                                                                                'stock_id':self.new_uuid_gen,
-                                                                                'Date':str(row.name),
-                                                                                'Open':row['Open'],
-                                                                                'High':row['High'],
-                                                                                'Low':row['Low'],
-                                                                                'Close':row['Close'],
-                                                                                'Adj Close': row['Adj Close']},multi=True)
+                VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2(%(stock)s,512))),
+                AES_ENCRYPT(%(indicator)s, UNHEX(SHA2(%(indicator)s,512))),DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                try: 
+                    insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'stock': f'{self.indicator}{str(row.name)[0:str(row.name).index(" ")]}',
+                                                                            'indicator':f'{self.indicator}',
+                                                                            'Date':str(row.name),
+                                                                            'Open':row['Open'],
+                                                                            'High':row['High'],
+                                                                            'Low':row['Low'],
+                                                                            'Close':row['Close'],
+                                                                            'Adj Close': row['Adj Close']},multi=True)
                     # for result in resultado:
                         # print(result.statement)
 
                     
                     # print('[INFO] Successfully added date')
-                except mysql.connector.errors.IntegrityError:
-                    pass
+                except mysql.connector.errors.IntegrityError as e:
+                        pass
                 except Exception as e:
                     print(f'[ERROR] Failed to insert date for {self.indicator} into database!\nException:\n',str(e))
                     exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -168,6 +167,7 @@ class Gather():
                 
 
         except Exception as e:
+            sys.stdout = sys.__stdout__
             print('[ERROR] Unknown Exception (Oh No)!\nException:\n',str(e))
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -175,6 +175,7 @@ class Gather():
             self.cnx.close()
             return 1
         self.cnx.close()
+        # print('done gathering')
         return 0
     def _reorder_dates(self,date1,date2):
         if date1 < date2:
@@ -185,14 +186,10 @@ class Gather():
     def gen_random_dates(self):
         calc_leap_day = lambda year_month: random.randint(1,29) if year_month[1]==2 and ((year_month[0]%4==0 and year_month[0]%100==0 and year_month[0]%400==0) or (year_month[0]%4==0 and year_month[0]%100!=0)) else random.randint(1,28) if year_month[1]==2 else random.randint(1,self.DAYS_IN_MONTH[year_month[1]])
         set1 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year - 1),random.randint(1,12))
-        set2 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year - 1),(set1[1]+2)%12 + 1)
+        set2 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year),(set1[1]+4)%12 + 1)
         self.date_set = (datetime.datetime(set1[0],set1[1],calc_leap_day(set1),tzinfo=pytz.utc),datetime.datetime(set2[0],set2[1],calc_leap_day(set2),tzinfo=pytz.utc))
-        # date difference has to be in between range 
-        while abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) < (self.MIN_RANGE *86400) or abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) > (self.MAX_RANGE * 86400):
-            n_list= (set1[0],random.randint(1,12))
-            self.date_set = (datetime.datetime(set1[0],set1[1],calc_leap_day(set1),tzinfo=pytz.utc),datetime.datetime(n_list[0],n_list[1],calc_leap_day(n_list),tzinfo=pytz.utc))
         if self.date_set[0] > datetime.datetime.now().replace(tzinfo=pytz.utc):
-            self.date_set = (datetime.datetime.now().replace(month = 1, day=1,tzinfo=pytz.utc),self.date_set[1])
+            self.date_set = (datetime.datetime.now().replace(month = datetime.datetime.today().month, day=datetime.datetime.today().day,tzinfo=pytz.utc),self.date_set[1])
         if self.date_set[1] > datetime.datetime.now().replace(tzinfo=pytz.utc):
             self.date_set = (self.date_set[0],datetime.datetime.now().replace(month=3,day=int(datetime.datetime.today().strftime('%d')), tzinfo=pytz.utc))
         self.date_set=self._reorder_dates(self.date_set[0].date(),self.date_set[1].date())
