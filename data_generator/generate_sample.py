@@ -17,7 +17,7 @@ class Sample(Normalizer):
                 full_path = os.path.join(f'{self.normalizer.path}/data/stock_no_tweets',dir)
                 for file in os.listdir(full_path):
                     self.file_list.append(f'{str(dir)}/{file}')
-    def generate_sample(self,ticker=None,is_predict=False):
+    def generate_sample(self,ticker=None,is_predict=False,out=8):
         if ticker is None:
             rand = random.choice(self.file_list)
         else:
@@ -32,7 +32,10 @@ class Sample(Normalizer):
             
         # print(self.normalizer.normalized_data)
         # print(len(self.normalizer.normalized_data))
-        rc = self.normalizer.normalize()
+        if out == 8:
+            rc = self.normalizer.normalize()
+        if out == 2:
+            rc = self.normalizer.normalize(out=2)
         if rc == 1:
             raise Exception("Normalize did not return exit code 1")
         if len(self.normalizer.normalized_data) < self.DAYS_SAMPLED:

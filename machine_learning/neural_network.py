@@ -140,7 +140,7 @@ class Network(Neural_Framework):
                 train= []
                 train_targets=[]
                 try:
-                    print(sampler.generate_sample())
+                    print(sampler.generate_sample(out=2))
                     sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
                 except:
                     continue
@@ -172,15 +172,12 @@ class Network(Neural_Framework):
     def save_model(self):
         self.nn.save(f'{self.path}/data/{self.model_map_names.get(self.model_choice)}')
     def load_model(self,name="model_new_2"):
-        try:
-            self.nn = keras.models.load_model(
-                f'{self.path}/data/{name}')
-            for model_choice, name_loc in self.model_map_names.items():        
-                if(name == name_loc):
-                    self.model_choice = model_choice
-        except:
-            print("No model exists, creating new model...")
+        super().load_model(name)
 listLock = threading.Lock()
+
+
+
+"""Load Specified Model"""
 def load(ticker:str=None,has_actuals:bool=False,name:str="model_new_2"):        
     sampler = Sample(ticker)
     # sampler.__init__(ticker)
@@ -203,8 +200,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_new_2"):
         predicted = pd.DataFrame((np.reshape((prediction),(1,8))),columns=['Open Diff','Close Diff','Derivative Diff','Derivative EMA14','Derivative EMA30','Close EMA14 Diff',
                                                                                                 'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED
     else:
-        predicted = pd.DataFrame((np.reshape((prediction),(1,2))),columns=['Open Diff','Close Diff','Derivative Diff','Derivative EMA14','Derivative EMA30','Close EMA14 Diff',
-                                                                                                'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED
+        predicted = pd.DataFrame((np.reshape((prediction),(1,2))),columns=['Open Diff','Close Diff']) #NORMALIZED
 
     unnormalized_prediction = sampler.normalizer.unnormalize(predicted).to_numpy()
     space = pd.DataFrame([[0,0]],columns=['Open','Close'])
@@ -213,6 +209,9 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_new_2"):
 
     predicted_unnormalized = pd.concat([sampler.normalizer.data,space,unnormalized_predict_values])
     return (sampler.normalizer.unnormalize(predicted),sampler.normalizer.unnormalized_data.tail(1),predicted_unnormalized)
+
+
+"""Run Specified Model"""
 def run(epochs,batch_size,name="model",model=1):
     neural_net = Network(epochs,batch_size)
     neural_net.load_model(name)
@@ -222,7 +221,6 @@ def run(epochs,batch_size,name="model",model=1):
         train_history = model[i]
         print(train_history)
     neural_net.save_model()
-# run(100,100,"model_out_new_2",6)
 # run(100,100,"model_out_new",6)
 # run(100,100,"model_out_new_2",7)
 # run(100,100,"model_out_new_3",8)
@@ -234,4 +232,4 @@ def run(epochs,batch_size,name="model",model=1):
 # run(100,100,"model_new_4",4)
 # run(100,100,"model_new_5",5)
 
-# print(load("spy/2021-03-23--2021-05-12_data"))
+print(load("spy/2021-03-23--2021-05-12_data",name="model_out_new_2"))
