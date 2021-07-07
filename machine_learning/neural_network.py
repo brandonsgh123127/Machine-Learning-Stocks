@@ -140,9 +140,12 @@ class Network(Neural_Framework):
                 train= []
                 train_targets=[]
                 try:
-                    print(sampler.generate_sample())
+                    sampler.generate_sample()
                     sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
-                except:
+                except RuntimeError:
+                    continue
+                except Exception as e:
+                    print(str(e))
                     continue
                 try:
                     train.append(np.reshape(sampler.normalizer.normalized_data.iloc[:-1].to_numpy(),(1,1,112)))# Retrieve all except for last data to be analyzed/predicted

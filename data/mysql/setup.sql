@@ -59,8 +59,10 @@ SHOW TABLES FROM stocks;
 select * from stocks.`data`;
 select * from stocks.stock;
 select * from stocks.study;
-select * from stocks.`study-data`;
-
+SELECT `id` FROM stocks.stock;
+ALTER TABLE stocks.stock ADD UNIQUE `stock-id` (id);
+select * from stocks.`stock`;
+SHOW INDEX FROM stocks.stock;
 
 #select * from stocks.`data` where `stock-id` = (select data_id from stocks.stock where `stock` = 'AMD' LIMIT 1);
 #select * from stocks.`data` where date >= '2020-03-03' and date <= '2021-04-22' and `stock-id` = (select `data_id` from stocks.stock where stock = 'SPY');

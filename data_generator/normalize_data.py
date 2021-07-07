@@ -12,7 +12,6 @@ import uuid
 import xml.etree.ElementTree as ET
 import datetime
 import sys
-from _ast import Return
 
 '''
 Class that takes in studies and stock data, then transforms the data into a new dataframe.
@@ -55,10 +54,13 @@ class Normalizer():
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
                 print("Something is wrong with your user name or password")
+                raise mysql.connector.custom_error_exception
             elif err.errno == errorcode.ER_BAD_DB_ERROR:
                 print("Database does not exist")
+                raise mysql.connector.custom_error_exception
             else:
                 print(err) 
+                raise Exception
         self.cnx = self.db_con.cursor(buffered=True)
     def append_data(self,struct:pd.DataFrame,label:str,val):
         struct = struct.append({label:val},ignore_index=True)
@@ -71,15 +73,15 @@ class Normalizer():
         """, (initial_date, initial_date + datetime.timedelta(days=45), ticker),multi=True)
         except Exception as e:
             print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date} to {initial_date + datetime.timedelta(days=45)}!\nException:\n',str(e))
+            raise RuntimeError
         # date_res = self.cnx.fetchall()
         for res in date_result:
             r_set = res.fetchall()
             if len(r_set) == 0:
-                print(f'[INFO] NO Data from {initial_date} to {initial_date + datetime.timedelta(days=45)} for {ticker}!\nSkipping...')
-                raise RuntimeWarning
+                raise RuntimeError
             for set in r_set:
                 if len(set) == 0:
-                    print(f'[ERROR] Failed to retrieve data for {self.indicator} from range {initial_date}--{initial_date + datetime.timedelta(days=45)}\n')
+                    print(f'[ERROR] Failed to retrieve data for {ticker} from range {initial_date}--{initial_date + datetime.timedelta(days=45)}\n')
                     exit(1)
                 try:
                     # Iterate through each element to retrieve values
@@ -124,25 +126,25 @@ class Normalizer():
          stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id` AND stocks.`data`.date >= %s and stocks.`data`.date <= %s 
          INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
         """, (initial_date, initial_date + datetime.timedelta(days=45),ticker),multi=True)
-        date_res = self.cnx.fetchall()
         # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
         tmp_14 = pd.DataFrame(columns=['ema14'])
         tmp_30 = pd.DataFrame(columns=['ema30'])
-        for set in date_res:
-            if len(set) == 0:
-                print(f'[ERROR] Failed to retrieve study data for {self.indicator} from range {initial_date}--{initial_date + datetime.timedelta(days=45)}\nException:\n')
+        # print(self.cnx.fetchall())
+        for set in date_result:
+            s = set.fetchall()
+            if len(s) == 0:
+                print(f'[ERROR] Failed to retrieve study data for {ticker} from range {initial_date}--{initial_date + datetime.timedelta(days=45)}\nException:\n')
                 break
             try:
                 # Iterate through each element to retrieve values
                 cur_val = None
-                for index,row in enumerate(set):
-                    if index == 0:
-                        cur_val = row
-                    elif index == 1:
-                        if row == 'ema14':
-                            tmp_14 = tmp_14.append({row:cur_val},ignore_index=True)
-                        elif row == 'ema30':
-                            tmp_30 = tmp_30.append({row:cur_val},ignore_index=True)
+                for index,row in enumerate(s):
+                    cur_val = row[0]
+                    # print(row)
+                    if row[1] == 'ema14':
+                        tmp_14 = tmp_14.append({row[1]:cur_val},ignore_index=True)
+                    elif row[1] == 'ema30':
+                        tmp_30 = tmp_30.append({row[1]:cur_val},ignore_index=True)
             except Exception as e:
                 print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
                 exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -155,15 +157,26 @@ class Normalizer():
         self.studies = self.studies.rename(columns={0: "ema14", 1: "ema30"})
         self.cnx.close()
         return self.studies
+    
+    
     def read_data(self,date,ticker):
-        self.data = self.mysql_read_data(date, ticker)
-        self.data = self.data.drop(['Adj Close','Date'],axis=1)
-        self.studies = self.mysql_read_studies(date,ticker)
+        try:
+            self.data = self.mysql_read_data(date, ticker)
+            self.data = self.data.drop(['Adj Close','Date'],axis=1)
+        except:
+            print('[ERROR] Failed to read data!\n')
+            raise RuntimeError
+        try:
+            self.studies = self.mysql_read_studies(date,ticker)
+        except Exception as e:
+            print('[ERROR] Failed to read studies!\nException:\n',str(e))
+            raise RuntimeError
         pd.set_option("display.max.columns", None)
     def convert_derivatives(self):
         # print(len(self.studies),len(self.data))
         self.normalized_data = pd.DataFrame((),columns=['Open Diff','Close Diff','Derivative Diff','Derivative EMA14','Derivative EMA30','Close EMA14 Diff',
                                                                                                 'Close EMA30 Diff','EMA14 EMA30 Diff'])
+        # print(len(self.data),len(self.studies))
         self.normalized_data["Open Diff"] = self.data["Open"]
         self.normalized_data["Close Diff"] = self.data["Close"]
         self.normalized_data["Derivative Diff"] = self.data["Open"]
