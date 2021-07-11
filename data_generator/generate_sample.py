@@ -27,20 +27,26 @@ class Sample(Normalizer):
             self.DAYS_SAMPLED = 14
         self.normalizer.read_data(rand[rand.index('/')+1:rand.index('_')],rand[0:rand.index('/')]) # Get ticker and date from path
         # Iterate through dataframe and retrieve random sample
-        self.normalizer.convert_derivatives()
+        self.normalizer.convert_derivatives(out=out)
         self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
             
         # print(self.normalizer.normalized_data)
         # print(len(self.normalizer.normalized_data))
-        if out == 8:
+        try:
+            # if out == 8:
             rc = self.normalizer.normalize()
-        if out == 2:
-            rc = self.normalizer.normalize(out=2)
-        if rc == 1:
-            raise Exception("Normalize did not return exit code 1")
-        if len(self.normalizer.normalized_data) < self.DAYS_SAMPLED:
-            self.normalizer.read_data(rand[rand.index('/')+1:rand.index('_')],rand[0:rand.index('/')]) # Get ticker and date from path
-            self.normalizer.convert_derivatives()
+            # if out == 2:
+                # rc = self.normalizer.normalize(out=2)
+            if rc == 1:
+                raise Exception("[Error] Normalize did not return exit code 1")
+        except Exception as e:
+            print('[ERROR] Failed to Normalize data!\nException:\n',str(e))
+        try:
+            if len(self.normalizer.normalized_data) < self.DAYS_SAMPLED:
+                self.normalizer.read_data(rand[rand.index('/')+1:rand.index('_')],rand[0:rand.index('/')]) # Get ticker and date from path
+                self.normalizer.convert_derivatives()
+        except Exception as e:
+            print("FAILED to GENERATE SAMPLE\n",str(e))
         return (rand[0:rand.index('/')],rand[rand.index('/')+1:rand.index('_')])
     def generate_divergence_sample(self,ticker=None,is_predict=False):
         if ticker is None:

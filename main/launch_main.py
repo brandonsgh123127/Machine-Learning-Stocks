@@ -112,10 +112,12 @@ class GUI(Thread_Pool):
             if is_not_closed:
                 threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'predict', f'{ticker}', f'{has_actuals == True}', f'{True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
                 threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'u', f'{ticker}', f'{has_actuals == True}', f'{True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
+                threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'new', f'{ticker}', f'{has_actuals == True}', f'{True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
                 self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'divergence', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False).decode("utf-8"))
             else:
                 threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'predict', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False))
                 threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'u', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False))
+                threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'new', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False))
                 self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'divergence', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False).decode("utf-8"))
             for thread in threads:
                 thread.wait()
@@ -128,19 +130,24 @@ class GUI(Thread_Pool):
                 if not is_not_closed:
                     self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png'))
                     self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u.png'))
+                    self.img4 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_new.png'))
                     self.img3 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence.png').resize((480,360),Image.ANTIALIAS))
                 else:
                     self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict-i.png'))
                     self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u-i.png'))
+                    self.img4 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_new-i.png'))
                     self.img3 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence-i.png').resize((480,360),Image.ANTIALIAS))
             else:
                 self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_a.png'))
                 self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u_a.png'))
+                self.img4 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_new_a.png'))
                 self.img3 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence_a.png').resize((480,360),Image.ANTIALIAS))
                 print('y')
             self.output_image.delete('all')
             # self.output_image.pack(side='top')
             self.output_image.create_image(320,240,image=self.img2)
+            
+            self.output_image.create_image(960,240,image=self.img4)
     
             self.output_image.create_image(960,720,image=self.img3)
             

@@ -69,35 +69,35 @@ class Display():
         # ax = data['Gain/Loss'].transpose().plot(x='Gain/Loss',y='index',style=f'{self.color_map.get(color)}o', ax=ax)
         data.transpose().plot(kind='line',color=color)
     def display_line(self,ticker=None,dates=None,color=None):
-        indices_dict = {0:'Open Diff',1:'Close Diff',2:'Derivative Diff',3:'Derivative EMA14',4:'Derivative EMA30',5:'Close EMA14 Diff',6:'Close EMA30 Diff',7:'EMA14 EMA30 Diff'}
+        indices_dict = {0:'Open',1:'Close',2:'Range',3:'Euclidean Open',4:'Euclidean Close',5:'Open EMA14 Diff',6:'Open EMA30 Diff',7:'Close EMA14 Diff',8:'Close EMA30 Diff',9:'EMA14 EMA30 Diff'}
         data = pd.concat([self.data_display.reset_index(),self.data_predict_display.reset_index()],ignore_index=False).set_flags(allows_duplicate_labels=True)
         data_orig = data
         data['index'] = [0,0]
         data = data.set_index('index')
-        ax = data['Open Diff'].plot(x='index',y='Open Diff',style=f'{self.color_map.get(color)}x')
+        ax = data['Open'].plot(x='index',y='Open',style=f'{self.color_map.get(color)}x')
         data['index'] = [1,1]
         data = data.set_index('index')
-        ax = data['Close Diff'].plot(x='index',y='Close Diff',style=f'{self.color_map.get(color)}o', ax=ax)
+        ax = data['Close'].plot(x='index',y='Close',style=f'{self.color_map.get(color)}o', ax=ax)
         data['index'] = [2,2]
         data = data.set_index('index')
-        ax = data['Derivative Diff'].plot(x='index',y='Derivative Diff',style='mo', ax=ax)
+        ax = data['Range'].plot(x='index',y='Range',style='mo', ax=ax)
         data['index'] = [3,3]
-        data = data.set_index('index')
-        ax = data['Derivative EMA14'].plot(x='index',y='Derivative EMA14',style='co', ax=ax)
-        data['index'] = [4,4]
-        data = data.set_index('index')
-        ax = data['Derivative EMA30'].plot(x='index',y='Derivative EMA30',style='ro', ax=ax)
-        data['index'] = [5,5]
-        data = data.set_index('index')
-        ax = data['Close EMA14 Diff'].plot(x='index',y='Close EMA14 Diff',style='go', ax=ax)
-        data['index'] = [6,6]
-        data = data.set_index('index')
-        ax = data['Close EMA30 Diff'].plot(x='index',y='Close EMA30 Diff',style='yo', ax=ax)
-        data['index'] = [7,7]
-        data = data.set_index('index')
-        ax = data['EMA14 EMA30 Diff'].plot(x='index',y='EMA14 EMA30 Diff',style='bs', ax=ax,title=f'{ticker} - {dates[1]}')
-        data['index'] = [0,1]
-        data = data.set_index('index')
+        # data = data.set_index('index')
+        # ax = data['Derivative EMA14'].plot(x='index',y='Derivative EMA14',style='co', ax=ax)
+        # data['index'] = [4,4]
+        # data = data.set_index('index')
+        # ax = data['Derivative EMA30'].plot(x='index',y='Derivative EMA30',style='ro', ax=ax)
+        # data['index'] = [5,5]
+        # data = data.set_index('index')
+        # ax = data['Close EMA14 Diff'].plot(x='index',y='Close EMA14 Diff',style='go', ax=ax)
+        # data['index'] = [6,6]
+        # data = data.set_index('index')
+        # ax = data['Close EMA30 Diff'].plot(x='index',y='Close EMA30 Diff',style='yo', ax=ax)
+        # data['index'] = [7,7]
+        # data = data.set_index('index')
+        # ax = data['EMA14 EMA30 Diff'].plot(x='index',y='EMA14 EMA30 Diff',style='bs', ax=ax,title=f'{ticker} - {dates[1]}')
+        # data['index'] = [0,1]
+        # data = data.set_index('index')
 
         for i,row in enumerate(data_orig.index):
             for j,col in enumerate(data_orig.columns):
@@ -110,34 +110,34 @@ class Display():
                     y = round(data.iloc[i][j],2)
                     ax.text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
     def display_predict_only(self,ticker=None,dates=None,color=None):
-        indices_dict = {0:'Open Diff',1:'Close Diff',2:'Derivative Diff',3:'Derivative EMA14',4:'Derivative EMA30',5:'Close EMA14 Diff',6:'Close EMA30 Diff',7:'EMA14 EMA30 Diff'}
+        indices_dict = {0:'Open',1:'Close',2:'Range',3:'Euclidean Open',4:'Euclidean Close',5:'Open EMA14 Diff',6:'Open EMA30 Diff',7:'Close EMA14 Diff',8:'Close EMA30 Diff',9:'EMA14 EMA30 Diff'}
         data = self.data_predict_display
         data['index'] = [0]
         data = data.set_index('index')
-        ax = data['Open Diff'].plot(x='index',y='Open Diff',style=f'{self.color_map.get(color)}x')
+        ax = data['Open'].plot(x='index',y='Open',style=f'{self.color_map.get(color)}x')
         data['index'] = [1]
         data = data.set_index('index')
-        ax = data['Close Diff'].plot(x='index',y='Close Diff',style=f'{self.color_map.get(color)}o', ax=ax)
+        ax = data['Close'].plot(x='index',y='Close',style=f'{self.color_map.get(color)}o', ax=ax)
         data['index'] = [2]
         data = data.set_index('index')
-        ax = data['Derivative Diff'].plot(x='index',y='Derivative Diff',style='mo', ax=ax)
+        ax = data['Range'].plot(x='index',y='Range',style='mo', ax=ax)
         data['index'] = [3]
-        data = data.set_index('index')
-        ax = data['Derivative EMA14'].plot(x='index',y='Derivative EMA14',style='co', ax=ax)
-        data['index'] = [4]
-        data = data.set_index('index')
-        ax = data['Derivative EMA30'].plot(x='index',y='Derivative EMA30',style='ro', ax=ax)
-        data['index'] = [5]
-        data = data.set_index('index')
-        ax = data['Close EMA14 Diff'].plot(x='index',y='Close EMA14 Diff',style='go', ax=ax)
-        data['index'] = [6]
-        data = data.set_index('index')
-        ax = data['Close EMA30 Diff'].plot(x='index',y='Close EMA30 Diff',style='yo', ax=ax)
-        data['index'] = [7]
-        data = data.set_index('index')
-        ax = data['EMA14 EMA30 Diff'].plot(x='index',y='EMA14 EMA30 Diff',style='bs', ax=ax,title=f'{ticker} - {dates[1]}')
-        data['index'] = [0]
-        data = data.set_index('index')
+        # data = data.set_index('index')
+        # ax = data['Derivative EMA14'].plot(x='index',y='Derivative EMA14',style='co', ax=ax)
+        # data['index'] = [4]
+        # data = data.set_index('index')
+        # ax = data['Derivative EMA30'].plot(x='index',y='Derivative EMA30',style='ro', ax=ax)
+        # data['index'] = [5]
+        # data = data.set_index('index')
+        # ax = data['Close EMA14 Diff'].plot(x='index',y='Close EMA14 Diff',style='go', ax=ax)
+        # data['index'] = [6]
+        # data = data.set_index('index')
+        # ax = data['Close EMA30 Diff'].plot(x='index',y='Close EMA30 Diff',style='yo', ax=ax)
+        # data['index'] = [7]
+        # data = data.set_index('index')
+        # ax = data['EMA14 EMA30 Diff'].plot(x='index',y='EMA14 EMA30 Diff',style='bs', ax=ax,title=f'{ticker} - {dates[1]}')
+        # data['index'] = [0]
+        # data = data.set_index('index')
 
         for i,row in enumerate(self.data_predict_display.index):
             for j,col in enumerate(self.data_predict_display.columns):

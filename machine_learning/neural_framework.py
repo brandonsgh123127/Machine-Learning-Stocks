@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 import keras
 import tensorflow as tf
+from tensorflow.python.client import device_lib 
 
 
 class Neural_Framework():
@@ -11,6 +12,9 @@ class Neural_Framework():
         self.EPOCHS=epochs
         self.BATCHES=batch_size
         self.path = Path(os.getcwd()).parent.absolute() 
+        # tf.debugging.set_log_device_placement(True)
+        print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+        print(device_lib.list_local_devices())
     def create_model(self,model_choice=None):
         pass
     def run_model(self):
