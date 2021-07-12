@@ -22,10 +22,10 @@ class Thread_Pool():
             self.worker1 = action.start()
         elif not self.worker2:
             self.worker2 = action.start()
-        elif not self.worker3:
-            self.worker3 = action.start()
-        elif not self.worker4:
-            self.worker4 = action.start()
+        # elif not self.worker3:
+            # self.worker3 = action.start()
+        # elif not self.worker4:
+            # self.worker4 = action.start()
         else:
             return 1
         return 0
@@ -38,14 +38,14 @@ class Thread_Pool():
             self.worker2.join()
         except:
             pass
-        try:
-            self.worker3.join()
-        except:
-            pass
-        try:
-            self.worker4.join()
-        except:
-            pass
+        # try:
+            # self.worker3.join()
+        # except:
+            # pass
+        # try:
+            # self.worker4.join()
+        # except:
+            # pass
         self.worker1=None;self.worker2=None;self.worker3=None;self.worker4 = None
          
 class GUI(Thread_Pool):
@@ -207,19 +207,19 @@ class GUI(Thread_Pool):
         self.has_actuals.grid(column=4, row=1)
         self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False))))
         self.generate_button.grid(column=3, row=2)
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('ABNB',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('COIN',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('RBLX',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('NOC',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('LMT',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('PEP',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('DASH',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('GOOG',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('AMD',False,False,True)))
-        self.cache_queue.put(threading.Thread(target=self.load_model,args=('ULTA',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('ABNB',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('COIN',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('RBLX',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('NOC',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('LMT',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('PEP',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('DASH',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('GOOG',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('AMD',False,False,True)))
+        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('ULTA',False,False,True)))
 
         self.window.mainloop()
         self.window.protocol("WM_DELETE_WINDOW", self.on_closing())
@@ -227,16 +227,18 @@ class GUI(Thread_Pool):
         while True:
             # _kill_event = threading.Event()
             self.obj = None
-            self.load_thread:threading.Thread = None
             
             # Queue for when the generate button is submitted and any other button actions go here
             while self.job_queue.qsize() > 0:
                 self.is_retrieving = True
-                self.load_thread = threading.Thread(target=self.start_loading)
-                self.load_thread.start()
+                if self.load_thread is not None:
+                    self.load_thread = threading.Thread(target=self.start_loading)
+                    self.load_thread.start()
                 self.generate_button.grid_forget()
-                if self.start_worker(self.job_queue.get(0)) != 1:
+                tmp_thread = self.job_queue.get(0)
+                if self.start_worker(tmp_thread) != 1:
                     if self.job_queue.qsize() > 0:
+                        self.job_queue.put(tmp_thread)
                         pass
                     else:
                         break
@@ -246,12 +248,15 @@ class GUI(Thread_Pool):
             # Queue for begin caching on stocks
             while self.cache_queue.qsize() > 0:
                 self.is_retrieving = True
-                self.load_thread = threading.Thread(target=self.start_loading)
-                self.load_thread.start()
+                if self.load_thread is not None:
+                    self.load_thread = threading.Thread(target=self.start_loading)
+                    self.load_thread.start()
                 self.background_tasks_label.grid(column=3,row=6)
                 self.generate_button.grid_forget()
-                if self.start_worker(self.cache_queue.get(0)) != 1:
+                tmp_thread = self.cache_queue.get(0)
+                if self.start_worker(tmp_thread) == 1:
                     if self.cache_queue.qsize() > 0:
+                        self.cache_queue.put(tmp_thread)
                         pass
                     else:
                         break
@@ -270,6 +275,8 @@ class GUI(Thread_Pool):
                 pass
             if self.exited:
                 exit(0)
+            self.load_thread:threading.Thread = None
+
                     
 if __name__ == '__main__':
     ui = GUI()

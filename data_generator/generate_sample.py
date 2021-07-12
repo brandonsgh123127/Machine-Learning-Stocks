@@ -11,15 +11,15 @@ class Sample(Normalizer):
         self.normalizer.__init__()
         self.file_list = list()
         self.DAYS_SAMPLED = 15
+    def generate_sample(self,ticker=None,is_predict=False,out=8):
         if ticker is None:
             dirs = os.listdir(f'{self.normalizer.path}/data/stock_no_tweets')
             for dir in dirs:
                 full_path = os.path.join(f'{self.normalizer.path}/data/stock_no_tweets',dir)
                 for file in os.listdir(full_path):
                     self.file_list.append(f'{str(dir)}/{file}')
-    def generate_sample(self,ticker=None,is_predict=False,out=8):
-        if ticker is None:
             rand = random.choice(self.file_list)
+            del self.file_list
         else:
             rand = ticker
         if is_predict:

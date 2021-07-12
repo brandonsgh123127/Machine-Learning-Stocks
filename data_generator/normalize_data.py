@@ -74,6 +74,7 @@ class Normalizer():
             
         return 0
     def normalize(self,out:int=8):
+        self.normalized_data = self.normalized_data[-15:]
         self.unnormalized_data = self.normalized_data
         try:
             scaler = self.min_max.fit(self.unnormalized_data) 
@@ -98,7 +99,7 @@ class Normalizer():
         scaler = self.min_max.fit(self.unnormalized_data) 
         # print(scaler.inverse_transform((data.to_numpy())))
         # print(scaler.inverse_transform((data.to_numpy())))
-        if len(data.columns) == 8:
+        if len(data.columns) == 10:
             return pd.DataFrame(scaler.inverse_transform((data.to_numpy())),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
                                                                                                           'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED DATA STORED IN NP ARRAY
         elif len(data.columns) == 3:
