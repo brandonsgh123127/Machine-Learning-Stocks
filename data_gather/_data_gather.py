@@ -59,14 +59,13 @@ class Gather():
         return self.indicator    
     # retrieve pandas_datareader object of datetime
     def set_data_from_range(self,start_date,end_date):
-        try:
-            sys.stdout = open(os.devnull, 'w')
-            self.data = pdr.get_data_yahoo(self.indicator,start=start_date.strftime("%Y-%m-%d"),end=end_date.strftime("%Y-%m-%d"))
-            sys.stdout = sys.__stdout__
-            if self.data.empty:
-                return 1
-        except:
-            return 1
+        # print(self.indicator,start_date.strftime("%Y-%m-%d"),end_date.strftime("%Y-%m-%d"))
+        # print(pdr.get_data_yahoo("SPY",start=start_date.strftime("%Y-%m-%d"),end=end_date.strftime("%Y-%m-%d")))
+        sys.stdout = open(os.devnull, 'w')
+        self.data = pdr.get_data_yahoo(self.indicator,start=start_date.strftime("%Y-%m-%d"),end=end_date.strftime("%Y-%m-%d"))
+        sys.stdout = sys.__stdout__
+        if self.data.empty:
+            raise Exception
         return 0
     def _reorder_dates(self,date1,date2):
         if date1 < date2:

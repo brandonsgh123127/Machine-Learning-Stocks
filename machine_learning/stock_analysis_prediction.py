@@ -16,6 +16,7 @@ import concurrent.futures
 import datetime
 import threading
 import sys
+# import json
 
 listLock = threading.Lock()
 _type = None
@@ -41,14 +42,14 @@ def display_model(dis:Display,name:str= "model",_has_actuals:bool=False,ticker:s
             if 'divergence' not in name:
                 dis.display_box(data[2])
     return dis
-def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,vals:str=None):
+def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,vals:str=None):
     if ticker is not None:
         ticker = ticker
     else:
-        ticker = "dash"
+        ticker = "DASH"
     path = Path(os.getcwd()).parent.absolute()
     
-    gen = Generator(ticker,path)
+    gen = Generator(ticker.upper(),path)
     gen.studies.set_indicator(f'{ticker.upper()}')
     # if current trading day, set prediction for tomorrow in date name
     dates = []
@@ -59,7 +60,12 @@ def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,
         dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 0)) #month worth of data
     
     _has_actuals = has_actuals
-    gen.generate_data_with_dates(dates[0],dates[1],is_not_closed=is_not_closed,vals=vals)
+    try:
+        # print(f'{dates[0]} to {dates[1]}')
+        gen.generate_data_with_dates(dates[0],dates[1],is_not_closed=is_not_closed,vals=vals)
+    except Exception as e:
+        print(f'[ERROR] Failed to generate data for dates ranging from {dates[0]} to {dates[1]}!\nException:\n',str(e))
+
     if _type == 'predict':
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             threads = []
@@ -176,6 +182,7 @@ if __name__ == "__main__":
     _has_actuals = sys.argv[3] == 'True'
     _is_not_closed =sys.argv[4] == 'True'
     vals = None
+    # print(sys.argv)
     if _is_not_closed:
         vals = (sys.argv[5],sys.argv[6],sys.argv[7],sys.argv[8])
     main(ticker=sys.argv[2],has_actuals=_has_actuals,is_not_closed=_is_not_closed,vals=vals)

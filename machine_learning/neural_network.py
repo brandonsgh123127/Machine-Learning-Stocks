@@ -138,7 +138,7 @@ class Network(Neural_Framework):
         models = {}
         # Retrieve all necessary data into training data
         for i in range(1,self.EPOCHS):
-            print(f'\n\n\nEPOCH {i}\n\n\n')
+            print(f'\n\n\nEPOCH {i} -- {self.model_choice}')
             train= []
             train_targets=[]
             models[i] = 1
@@ -200,7 +200,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_new_2",_is_predi
     # print(sampler.generate_sample(ticker,is_predict=(not has_actuals)))
     sampler.generate_sample(ticker,is_predict=_is_predict)
     sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
-
+    # print(sampler.normalizer.data)
     with listLock:
         if has_actuals:
             train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,140)))
@@ -237,20 +237,21 @@ def run(epochs,batch_size,name="model",model=1):
     neural_net.save_model()
 
 
-run(100,100,"model_out_new",6)
+# run(100,100,"model_out_new",6)
 # run(100,100,"model_out_new_2",7)
 # run(100,100,"model_out_new_3",8)
 
 # run(100,100,"model_out_new_4",9)
 # run(100,100,"model_out_new_5",10)
 
-# run(100,100,"model",1)
 
-# run(100,100,"model_new_2",2)
-# run(100,100,"model_new_3",3)
+run(100,100,"model",1)
+
+run(100,100,"model_new_2",2)
+run(100,100,"model_new_3",3)
 
 # RUN AFTER
-# run(100,100,"model_new_4",4)
+run(100,100,"model_new_4",4)
 # run(100,100,"model_new_5",5)
 
 # print(load("spy/2021-03-23--2021-05-12_data",name="model_out_new"))

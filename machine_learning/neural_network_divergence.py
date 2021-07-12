@@ -137,4 +137,4 @@ def run(epochs,batch_size,name="divergence",model=1):
 # run(100,100,"divergence_3",3)
 # run(100,100,"divergence_4",4)
 
-# print(load_divergence("spy/2021-03-23--2021-05-12_data",name='divergence_4',has_actuals=True))
+# print(load_divergence("spy/2021-03-23--2021-05-12_data",name='divergence_3',has_actuals=True))
