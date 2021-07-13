@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 from tkinter import ttk
 import threading
-import concurrent.futures
 import queue
 from tkinter import messagebox
 import datetime
@@ -47,6 +46,8 @@ class Thread_Pool():
         # except:
             # pass
         self.worker1=None;self.worker2=None;self.worker3=None;self.worker4 = None
+    def is_empty(self):
+        return self.worker1==None and self.worker2==None and self.worker3==None and self.worker4==None
          
 class GUI(Thread_Pool):
     def __init__(self):
@@ -56,9 +57,11 @@ class GUI(Thread_Pool):
         self.content = ttk.Frame(self.window,width=100,height=100)
         self.output_image = tk.Canvas(self.window,width=1450,height=1000)
         self.output_image.pack(expand='yes', fill='both',side='right')
-        self.background_tasks_label = tk.Label(self.content,text="Currently Pre-loading some stocks, this may take a bit...")
+        self.background_tasks_label = tk.Label(self.content,text=f'Currently pre-loading a few stocks, this may take a bit...')
         self.job_queue = queue.Queue()
         self.cache_queue = queue.Queue()
+        self.threads = []
+
         self.load_image = Image.open(f'{self.path}/data/icons/load.gif')
         self.exited = False
         self.frames = []
@@ -96,9 +99,9 @@ class GUI(Thread_Pool):
             self.close.grid_forget()
             self.close_input.grid_forget()
     def load_model(self,ticker,has_actuals,is_not_closed,is_caching=False):
+        self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
         if not is_caching:
             self.generate_button.grid_forget()
-        threads = []
         skippable = False
         if is_not_closed:
             dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
@@ -108,23 +111,25 @@ class GUI(Thread_Pool):
             skippable = True
         elif Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence_a.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u_a.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_a.png').exists() and has_actuals and not is_not_closed:
             skippable = True
+
         if not skippable:
             if is_not_closed:
-                threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'predict', f'{ticker}', f'{has_actuals == True}', f'{True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
-                threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'u', f'{ticker}', f'{has_actuals == True}', f'{True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
+                self.threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'predict', f'{ticker}', f'{has_actuals == True}', f'{True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
+                self.threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'u', f'{ticker}', f'{has_actuals == True}', f'{True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
                 time.sleep(20)
-                threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'new', f'{ticker}', f'{has_actuals == True}', f'{True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
+                self.threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'new', f'{ticker}', f'{has_actuals == True}', f'{True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False))
                 time.sleep(3)
                 self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'divergence', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}', f'{self.open_input.get()}',f'{self.high_input.get()}',f'{self.low_input.get()}',f'{self.close_input.get()}'], shell=False).decode("utf-8"))
             else:
-                threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'predict', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False))
-                threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'u', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False))
+                self.threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'predict', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False))
+                self.threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'u', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False))
                 time.sleep(20)
-                threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'new', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False))
+                self.threads.append(subprocess.Popen(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'new', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False))
                 time.sleep(3)
                 self.output = str(subprocess.check_output(["python", f'{self.path}/machine_learning/stock_analysis_prediction.py', 'divergence', f'{ticker}', f'{has_actuals == True}', f'{is_not_closed == True}'], shell=False).decode("utf-8"))
-            for thread in threads:
+            for idx,thread in enumerate(self.threads):
                 thread.wait()
+                self.threads.pop(idx)
             self.dates = self.output.split()
         else:
             self.dates = dates
@@ -146,7 +151,6 @@ class GUI(Thread_Pool):
                 self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_u_a.png'))
                 self.img4 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_new_a.png'))
                 self.img3 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence_a.png').resize((480,360),Image.ANTIALIAS))
-                print('y')
             self.output_image.delete('all')
             # self.output_image.pack(side='top')
             self.output_image.create_image(320,240,image=self.img2)
@@ -157,7 +161,10 @@ class GUI(Thread_Pool):
             
             self.output_image.create_image(320,720,image=self.img)
             # self.output_image.pack(side='bottom')
-        self.generate_button.grid(column=3, row=2)
+        for idx,thread in enumerate(self.threads):
+            self.threads.pop(idx)
+        self.background_tasks_label.config(text=f'Currently pre-loading a few stocks, this may take a bit...')
+        # self.generate_button.grid(column=3, row=2)
 
         return 0
     def on_closing(self):
@@ -212,7 +219,6 @@ class GUI(Thread_Pool):
         self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False))))
         self.generate_button.grid(column=3, row=2)
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('ABNB',False,False,True)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('COIN',False,False,True)))
@@ -272,9 +278,15 @@ class GUI(Thread_Pool):
             # Reset Screen to original state
             try:
                 self.join_workers()
-                self.is_retrieving=False
-                self.background_tasks_label.grid_forget()
-                self.generate_button.grid(column=3, row=2)
+                if self.is_empty() and len(self.threads) == 0: 
+                    self.is_retrieving=False
+                    self.background_tasks_label.grid_forget()
+                    self.generate_button.grid(column=3, row=2)
+                else:
+                    if not self.is_retrieving:
+                        self.is_retrieving=True
+                        self.background_tasks_label.grid(column=3,row=6)
+                        self.generate_button.grid_forget()
             except:
                 pass
             if self.exited:
