@@ -54,9 +54,11 @@ class GUI(Thread_Pool):
         # super().__init__()
         self.path = Path(os.getcwd()).parent.absolute()
         self.window = tk.Tk(screenName='Stock Analysis')
-        self.content = ttk.Frame(self.window,width=100,height=100)
-        self.output_image = tk.Canvas(self.window,width=1450,height=1000)
-        self.load_layout = tk.Canvas(self.content,width=400,height=400)
+        self.content = ttk.Frame(self.window,width=100,height=1080)
+        self.output_image = tk.Canvas(self.window,width=1450,height=1000,bg='white')
+        self.load_layout = tk.Canvas(self.content,width=400,height=400,bg='white')
+        s = ttk.Style(self.window)
+
         self.output_image.pack(expand='yes', fill='both',side='right')
         self.background_tasks_label = tk.Label(self.content,text=f'Currently pre-loading a few stocks, this may take a bit...')
         self.job_queue = queue.Queue()
@@ -71,6 +73,9 @@ class GUI(Thread_Pool):
         self.is_retrieving = True
         self.boolean1 = False
         self.boolean2 = False
+        s.configure('.', background='white')
+
+
 
     def get_current_price(self):
         if self.boolean2.get() == True:
