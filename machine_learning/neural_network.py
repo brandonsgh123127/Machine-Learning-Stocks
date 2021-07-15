@@ -200,13 +200,15 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_new_2",_is_predi
     train = []
     # print(sampler.generate_sample(ticker,is_predict=(not has_actuals)))
     sampler.generate_sample(ticker,is_predict=_is_predict)
-    sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
+    sampler.normalizer.data = sampler.normalizer.data.drop(['Date','High','Low'],axis=1)
+
     # print(sampler.normalizer.data)
     with listLock:
         if has_actuals:
             train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,140)))
         else:
             train.append(np.reshape(sampler.normalizer.normalized_data[-14:].to_numpy(),(1,1,140)))
+        # print(sampler.normalizer.normalized_data)
         with tf.device('/device:GPU:0'):
             prediction = neural_net.nn.predict(np.stack(train))
         # print(prediction)
@@ -218,7 +220,6 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_new_2",_is_predi
                                                                                                               'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED
         else:
             predicted = pd.DataFrame((np.reshape((prediction),(1,3))),columns=['Open','Close','Range']) #NORMALIZED
-
         unnormalized_prediction = sampler.normalizer.unnormalize(predicted).to_numpy()
         space = pd.DataFrame([[0,0]],columns=['Open','Close'])
         unnormalized_predict_values = sampler.normalizer.data.append(pd.DataFrame([[unnormalized_prediction[0,0] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Open')],unnormalized_prediction[0,1] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Close')]]],columns=['Open','Close']),ignore_index=True)
@@ -226,7 +227,8 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_new_2",_is_predi
     
         # predicted_unnormalized = pd.concat([sampler.normalizer.data,space,unnormalized_predict_values])
         predicted_unnormalized = pd.concat([unnormalized_predict_values])
-    return (sampler.normalizer.unnormalize(predicted),sampler.normalizer.unnormalized_data.tail(1),predicted_unnormalized)
+        # print(sampler.normalizer.unnormalize(predicted))
+    return (sampler.normalizer.unnormalize(predicted),sampler.normalizer.unnormalized_data.tail(1),predicted_unnormalized,sampler.normalizer.keltner)
 
 
 """Run Specified Model"""

@@ -28,7 +28,7 @@ def display_model(dis:Display,name:str= "model",_has_actuals:bool=False,ticker:s
         data = load_divergence(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}')
     with listLock:
         # print(data)
-        dis.read_studies_data(data[0],data[1])
+        dis.read_studies_data(data[0],data[1],data[3])
     locs, labels = plt.xticks()
     plt.xticks(locs)
     if not _has_actuals: #if prediction, proceed

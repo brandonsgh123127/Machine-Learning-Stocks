@@ -15,6 +15,7 @@ class Display():
         # print("Display instance initialized!")
         self.data_display = pd.DataFrame()
         self.study_display = pd.DataFrame()
+        self.keltner_display = pd.DataFrame()
         self.path = Path(os.getcwd()).parent.absolute() 
         self.color_map = {'blue':'b',
                         'green':'g',
@@ -30,9 +31,11 @@ class Display():
         self.keltner_display = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_keltner.csv',index_col=0)
         self.ticker = ticker
         self.date = date
-    def read_studies_data(self,predicted=None,actual=None):
+    def read_studies_data(self,predicted=None,actual=None,keltner=None):
         self.data_display = actual
         self.data_predict_display = predicted
+        if keltner is not None:
+            self.keltner_display=keltner
         pd.set_option("display.max.columns", None)
     def display_box(self,data=None):
         plt.cla()
@@ -46,7 +49,11 @@ class Display():
                                                     flierprops=dict(color=c, markeredgecolor=c),
                                                     medianprops=dict(color=c),
                                                     autorange=True).set_alpha(0.3)
+            self.keltner_display['middle'].transpose().plot.line()
+            self.keltner_display['upper'].transpose().plot.line()
+            self.keltner_display['lower'].transpose().plot.line()
         else:
+            # print(data)
             data.transpose().boxplot(patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
                                                     capprops=dict(color=c),
@@ -55,6 +62,9 @@ class Display():
                                                     flierprops=dict(color=c, markeredgecolor=c),
                                                     medianprops=dict(color=c),
                                                     autorange=True).set_alpha(0.3)
+            self.keltner_display['middle'].transpose().plot.line()
+            self.keltner_display['upper'].transpose().plot.line()
+            self.keltner_display['lower'].transpose().plot.line()
     def display_divergence(self,ticker=None,dates=None,color=None,has_actuals=False):
         plt.cla()
         plt.figure()
@@ -83,22 +93,6 @@ class Display():
         data = data.set_index('index')
         ax = data['Range'].plot(x='index',y='Range',style='mo', ax=ax)
         data['index'] = [3,3]
-        # data = data.set_index('index')
-        # ax = data['Derivative EMA14'].plot(x='index',y='Derivative EMA14',style='co', ax=ax)
-        # data['index'] = [4,4]
-        # data = data.set_index('index')
-        # ax = data['Derivative EMA30'].plot(x='index',y='Derivative EMA30',style='ro', ax=ax)
-        # data['index'] = [5,5]
-        # data = data.set_index('index')
-        # ax = data['Close EMA14 Diff'].plot(x='index',y='Close EMA14 Diff',style='go', ax=ax)
-        # data['index'] = [6,6]
-        # data = data.set_index('index')
-        # ax = data['Close EMA30 Diff'].plot(x='index',y='Close EMA30 Diff',style='yo', ax=ax)
-        # data['index'] = [7,7]
-        # data = data.set_index('index')
-        # ax = data['EMA14 EMA30 Diff'].plot(x='index',y='EMA14 EMA30 Diff',style='bs', ax=ax,title=f'{ticker} - {dates[1]}')
-        # data['index'] = [0,1]
-        # data = data.set_index('index')
 
         for i,row in enumerate(data_orig.index):
             for j,col in enumerate(data_orig.columns):
@@ -123,22 +117,6 @@ class Display():
         data = data.set_index('index')
         ax = data['Range'].plot(x='index',y='Range',style='mo', ax=ax)
         data['index'] = [3]
-        # data = data.set_index('index')
-        # ax = data['Derivative EMA14'].plot(x='index',y='Derivative EMA14',style='co', ax=ax)
-        # data['index'] = [4]
-        # data = data.set_index('index')
-        # ax = data['Derivative EMA30'].plot(x='index',y='Derivative EMA30',style='ro', ax=ax)
-        # data['index'] = [5]
-        # data = data.set_index('index')
-        # ax = data['Close EMA14 Diff'].plot(x='index',y='Close EMA14 Diff',style='go', ax=ax)
-        # data['index'] = [6]
-        # data = data.set_index('index')
-        # ax = data['Close EMA30 Diff'].plot(x='index',y='Close EMA30 Diff',style='yo', ax=ax)
-        # data['index'] = [7]
-        # data = data.set_index('index')
-        # ax = data['EMA14 EMA30 Diff'].plot(x='index',y='EMA14 EMA30 Diff',style='bs', ax=ax,title=f'{ticker} - {dates[1]}')
-        # data['index'] = [0]
-        # data = data.set_index('index')
 
         for i,row in enumerate(self.data_predict_display.index):
             for j,col in enumerate(self.data_predict_display.columns):
