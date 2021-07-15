@@ -27,6 +27,7 @@ class Display():
     def read_studies(self,date,ticker):
         self.data_display = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_data.csv').drop(['Adj Close'],axis=1)
         self.study_display = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_studies.csv',index_col=0)
+        self.keltner_display = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_keltner.csv',index_col=0)
         self.ticker = ticker
         self.date = date
     def read_studies_data(self,predicted=None,actual=None):

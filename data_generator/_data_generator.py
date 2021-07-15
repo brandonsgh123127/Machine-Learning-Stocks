@@ -48,8 +48,11 @@ class Generator():
         query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
 
         self.studies.data = self.studies.data.drop(['Volume'],axis=1)
+
         self.studies.apply_ema("14",self.studies.get_date_difference())
         self.studies.apply_ema("30",self.studies.get_date_difference()) 
+        self.studies.keltner_channels(20, 3.6, None)
+
         try:
             os.remove(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.studies.date_set[0]}--{self.studies.date_set[1]}')
         except:
@@ -93,8 +96,11 @@ class Generator():
         query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
 
         self.studies.data = self.studies.data.drop(['Volume'],axis=1)
+        
         self.studies.apply_ema("14",self.studies.get_date_difference())
         self.studies.apply_ema("30",self.studies.get_date_difference()) 
+        self.studies.keltner_channels(20, 3.6, None)
+        
         try:
             os.remove(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{date1.strftime("%Y-%m-%d")}--{date2.strftime("%Y-%m-%d")}')
         except:
@@ -113,12 +119,12 @@ def choose_random_ticker(csv_file):
         print(ticker)
         return ticker
 def main():
-    MAX_TICKERS=5
-    MAX_ITERS=50
+    MAX_TICKERS=1
+    MAX_ITERS=1
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
-        # ticker="SPY"
+        ticker="SPY"
         generator = Generator(ticker,path)
         # generator.generate_data_with_dates(datetime.datetime(2021,3,3),datetime.datetime(2021,4,22))
         for j in range(MAX_ITERS):

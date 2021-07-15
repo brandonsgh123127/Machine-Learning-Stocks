@@ -99,23 +99,24 @@ val1    val3_________________________
                                                           self.fib_help(val1,val2,val3,0.796),self.fib_help(val1,val2,val3,1.556),self.fib_help(val1,val2,val3,3.43),
                                                           self.fib_help(val1,val2,val3,3.83),self.fib_help(val1,val2,val3,5.44)]})
         return 0
-    def keltner_channels(self,length,factor=None,displace=None):
+    def keltner_channels(self,length:int,factor:int=2,displace:int=None):
         self.data_cp = self.data.copy()
+        self.data_cp=self.data_cp.reset_index()
         self.apply_ema(length,length) # apply length ema for middle band
         self.keltner = pd.DataFrame({'middle':[],'upper':[],'lower':[]})
         # self.keltner['middle']= self.applied_studies[f'ema{length}'].to_list()
         # print(self.keltner['middle'])
         self.data=self.data_cp
-        true_range = pd.DataFrame({'trueRange':[]})
-        avg_true_range = pd.DataFrame({'AvgTrueRange':[]})
+        true_range = pd.DataFrame(columns=['trueRange'])
+        avg_true_range = pd.DataFrame(columns=['AvgTrueRange'])
         prev_row = None
         for index,row in self.data_cp.iterrows():
             # CALCULATE TR ---MAX of ( H – L ; H – C.1 ; C.1 – L )
             if index == 0: # previous close is not valid, so just do 0
                 prev_row = row
-                true_range=true_range.append({'trueRange':max([row['High']-row['Low'],row['High']-row['Low'],row['Low']-row['Low']])},ignore_index=True)
+                true_range=true_range.append({'trueRange':max(row['High']-row['Low'],row['High']-row['Low'],row['Low']-row['Low'])},ignore_index=True)
             else:#get previous close vals
-                true_range=true_range.append({'trueRange':max([row['High']-row['Low'],row['High']-prev_row['Close'],row['Low']-prev_row['Close']])},ignore_index=True)
+                true_range=true_range.append({'trueRange':max(row['High']-row['Low'],row['High']-prev_row['Close'],row['Low']-prev_row['Close'])},ignore_index=True)
                 prev_row=row  
                 
         # iterate through keltner and calculate ATR
@@ -134,8 +135,7 @@ val1    val3_________________________
                 avg_true_range=avg_true_range.append({'AvgTrueRange':end_atr},ignore_index=True)
         # now, calculate upper and lower bands given all data
         for index,row in avg_true_range.iterrows():
-            # print(float(self.keltner['middle'][index:index+1]-(2*avg_true_range['AvgTrueRange'][index:index+1])))
-            self.keltner=self.keltner.append({'middle':float(self.applied_studies[f'ema{length}'][index:index+1]),'upper':float(self.applied_studies[f'ema{length}'][index:index+1]+(2*avg_true_range['AvgTrueRange'][index:index+1])),'lower':float(self.applied_studies[f'ema{length}'][index:index+1]-(2*avg_true_range['AvgTrueRange'][index:index+1]))},ignore_index=True)
+            self.keltner=self.keltner.append({'middle':float(self.applied_studies[f'ema14'][index:index+1].astype(float)),'upper':float(self.applied_studies[f'ema14'][index:index+1].astype(float))+float(factor*avg_true_range['AvgTrueRange'][index:index+1].astype(float)),'lower':float(self.applied_studies[f'ema14'][index:index+1].astype(float))-float(factor*avg_true_range['AvgTrueRange'][index:index+1].astype(float))},ignore_index=True)
         # print(self.keltner)
         return 0
     def reset_data(self):
@@ -155,9 +155,17 @@ val1    val3_________________________
                     os.remove("{0}_studies.csv".format(path))
                 except:
                     pass
+        files_present = glob.glob(f'{path}_keltner.csv')
+        if files_present:
+            with self.listLock:
+                try:
+                    os.remove("{0}_keltner.csv".format(path))
+                except:
+                    pass
         with self.listLock:
             self.data.to_csv("{0}_data.csv".format(path),index=False,sep=',',encoding='utf-8')
             self.applied_studies.to_csv("{0}_studies.csv".format(path),index=False,sep=',',encoding='utf-8')
+            self.keltner.to_csv("{0}_keltner.csv".format(path),index=False,sep=',',encoding='utf-8')
         return 0
     def load_data_csv(self,path):
         self.data = pd.read_csv(f'{path}_data.csv')
@@ -167,6 +175,7 @@ val1    val3_________________________
 # s.load_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\spy/2021-03-03--2021-04-22")
 # s.applied_studies = pd.DataFrame()
 # s.keltner_channels(20)
+# print(s.keltner)
 # s.apply_fibonacci(1,2, 3)
 # s.apply_ema("14",(datetime.datetime(2021,4,22)-datetime.datetime(2021,3,3)))
 # s.apply_ema("30",(datetime.datetime(2021,4,22)-datetime.datetime(2021,3,3))) 

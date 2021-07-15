@@ -54,9 +54,9 @@ class GUI(Thread_Pool):
         # super().__init__()
         self.path = Path(os.getcwd()).parent.absolute()
         self.window = tk.Tk(screenName='Stock Analysis')
-        self.content = ttk.Frame(self.window,width=100,height=1080)
+        self.content = ttk.Frame(self.window,width=100,height=100)
         self.output_image = tk.Canvas(self.window,width=1450,height=1000,bg='white')
-        self.load_layout = tk.Canvas(self.content,width=400,height=400,bg='white')
+        self.load_layout = tk.Canvas(self.content,width=200,height=200,bg='white')
         s = ttk.Style(self.window)
 
         self.output_image.pack(expand='yes', fill='both',side='right')
@@ -188,7 +188,7 @@ class GUI(Thread_Pool):
     def next_frame(self):
         # new_im = ImageTk.PhotoImage(self.load_image.copy())
         for frame in self.frames:
-            self.obj = self.load_layout.create_image(200,100,image=frame)
+            self.obj = self.load_layout.create_image(100,100,image=frame)
             time.sleep(0.2)
             self.load_layout.delete(self.obj)
         # time.sleep(0.1)
@@ -220,7 +220,7 @@ class GUI(Thread_Pool):
                     
 
     def run(self):
-        self.content.pack(side='left')
+        self.content.pack(side='top')
         self.load_layout.grid(column=3,row=9)
         self.stock_label = tk.Label(self.content,text="Stock:")
         self.stock_label.grid(column=2,row=0)
