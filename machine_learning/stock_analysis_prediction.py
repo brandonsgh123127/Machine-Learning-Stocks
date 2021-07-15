@@ -55,9 +55,9 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
     dates = []
     if is_not_closed: #same day prediction
         # print('same day')
-        dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+        dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today()) #month worth of data
     else:
-        dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 0)) #month worth of data
+        dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
     
     _has_actuals = has_actuals
     try:

@@ -207,12 +207,12 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_new_2",_is_predi
             train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,140)))
         else:
             train.append(np.reshape(sampler.normalizer.normalized_data[-14:].to_numpy(),(1,1,140)))
-        with tf.device('/device:CPU:0'):
+        with tf.device('/device:GPU:0'):
             prediction = neural_net.nn.predict(np.stack(train))
         # print(prediction)
     # print(prediction)
     # unnormalized_predict_values = pd.DataFrame((prediction[:,0] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Open')],prediction[:,2]/2 + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('High')],prediction[:,2]/2 + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Low')],prediction[:,1] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Close')],prediction[:,1] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Adj Close')]),columns=['Open','High','Low','Close','Adj Close'])
-    with tf.device('/device:CPU:0'):
+    with tf.device('/device:GPU:0'):
         if neural_net.model_choice < 6:
             predicted = pd.DataFrame((np.reshape((prediction),(1,10))),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
                                                                                                               'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED
