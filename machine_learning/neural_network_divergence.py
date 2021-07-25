@@ -102,27 +102,29 @@ class Neural_Divergence(Neural_Framework):
         except:
             print("No model exists, creating new model...")
 listLock = threading.Lock()
-def load_divergence(ticker:str=None,has_actuals:bool=False,name:str="divergence"):        
+def load_divergence(ticker:str=None,has_actuals:bool=False,name:str="divergence",device_opt='/device:CPU:0'):        
     sampler = Sample(ticker)
     # sampler.__init__(ticker)
     neural_net = Neural_Divergence(0,0)
     neural_net.load_model(name)
     train = []
     # print(sampler.generate_sample(ticker,is_predict=(not has_actuals)))
-    sampler.generate_divergence_sample(ticker,is_predict=(not has_actuals))
+    with tf.device('/device:GPU:0'):
+        sampler.generate_divergence_sample(ticker,is_predict=(not has_actuals))
     # sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
-
-    with listLock:
-        if has_actuals:
-            train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,28)))
-        else:
-            train.append(np.reshape(sampler.normalizer.normalized_data[-14:].to_numpy(),(1,1,28)))
-        prediction = neural_net.nn.predict(np.stack(train))
-    # print(prediction)
-    # unnormalized_predict_values = pd.DataFrame((prediction[:,0] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Open')],prediction[:,2]/2 + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('High')],prediction[:,2]/2 + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Low')],prediction[:,1] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Close')],prediction[:,1] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Adj Close')]),columns=['Open','High','Low','Close','Adj Close'])
-    predicted = pd.DataFrame((np.reshape((prediction),(1,2))),columns=['Divergence','Gain/Loss']) #NORMALIZED
+    with tf.device(device_opt):
+        with listLock:
+            if has_actuals:
+                train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,28)))
+            else:
+                train.append(np.reshape(sampler.normalizer.normalized_data[-14:].to_numpy(),(1,1,28)))
+            with tf.device(device_opt):
+                prediction = neural_net.nn.predict(np.stack(train))
+        # print(prediction)
+        # unnormalized_predict_values = pd.DataFrame((prediction[:,0] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Open')],prediction[:,2]/2 + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('High')],prediction[:,2]/2 + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Low')],prediction[:,1] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Close')],prediction[:,1] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Adj Close')]),columns=['Open','High','Low','Close','Adj Close'])
+        predicted = pd.DataFrame((np.reshape((prediction),(1,2))),columns=['Divergence','Gain/Loss']) #NORMALIZED
     # print(sampler.normalizer.unnormalize_divergence(predicted),sampler.normalizer.unnormalized_data.tail(1))
-    return (sampler.normalizer.unnormalize_divergence(predicted),sampler.normalizer.unnormalized_data.iloc[-1:])
+    return (sampler.normalizer.unnormalize_divergence(predicted),sampler.normalizer.unnormalized_data.iloc[-1:],sampler.normalizer.keltner)
 def run(epochs,batch_size,name="divergence",model=1):
     neural_net = Neural_Divergence(epochs,batch_size)
     neural_net.load_model(name)
@@ -137,4 +139,4 @@ def run(epochs,batch_size,name="divergence",model=1):
 # run(100,100,"divergence_3",3)
 # run(100,100,"divergence_4",4)
 
-# print(load_divergence("spy/2021-03-23--2021-05-12_data",name='divergence_3',has_actuals=True))
+# print(load_divergence("spy/2021-05-26--2021-07-16_data",name='divergence_3',has_actuals=True))

@@ -17,44 +17,52 @@ import datetime
 import threading
 import sys
 # import json
-
+import time
+import queue
+from threading_impl.Thread_Pool import Thread_Pool
 listLock = threading.Lock()
 _type = None
+dis_queue = queue.Queue()
+thread_pool = Thread_Pool(amount_of_threads=2)
+
 def display_model(dis:Display,name:str= "model",_has_actuals:bool=False,ticker:str="spy",dates:list=[],color:str="blue",is_predict=False,unnormalized_data = False):
+    # Load machine learning model either based on divergence or not
     if 'divergence' not in name:
-        data = load(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}',_is_predict=is_predict)
+        data = load(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}',_is_predict=is_predict,device_opt='/device:CPU:0')
     else:
-        # print('divergence')
-        data = load_divergence(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}')
-    with listLock:
-        # print(data)
+        data = load_divergence(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}',device_opt='/device:CPU:0')
+    # read data for loading into display portion
+    if 'divergence' not in name:
         dis.read_studies_data(data[0],data[1],data[3])
+    else:
+        dis.read_studies_data(data[0],data[1],data[2])
     locs, labels = plt.xticks()
     plt.xticks(locs)
+    # display data
     if not _has_actuals: #if prediction, proceed
         if not unnormalized_data:
             if 'divergence' not in name:
                 dis.display_predict_only(ticker=ticker,dates=dates,color=f'{color}')
             else:
+                if not _has_actuals:
                 # print('divergence dis')
-                dis.display_divergence(ticker=ticker,dates=dates,color=f'{color}')
+                    dis.display_divergence(ticker=ticker,dates=dates,color=f'{color}')
         else:
             if 'divergence' not in name:
                 dis.display_box(data[2])
-    return dis
+    dis_queue.put(dis)
 def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,vals:str=None):
     if ticker is not None:
         ticker = ticker
     else:
-        ticker = "DASH"
+        raise ValueError("Failed to find ticker name!")
     path = Path(os.getcwd()).parent.absolute()
     
     gen = Generator(ticker.upper(),path)
     gen.studies.set_indicator(f'{ticker.upper()}')
     # if current trading day, set prediction for tomorrow in date name
     dates = []
-    if is_not_closed: #same day prediction
-        # print('same day')
+    if is_not_closed: #predict next day
         dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today()) #month worth of data
     else:
         dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
@@ -65,66 +73,72 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
         gen.generate_data_with_dates(dates[0],dates[1],is_not_closed=is_not_closed,vals=vals)
     except Exception as e:
         print(f'[ERROR] Failed to generate data for dates ranging from {dates[0]} to {dates[1]}!\nException:\n',str(e))
-
+    print(str(dates[0]),str(dates[1]))
     if _type == 'predict':
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            threads = []
-            #OK MODEL
-            dis1 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis1,"model_new_2",_has_actuals,ticker,dates,'green',is_not_closed))
-            #Direction Bias model
-            dis2 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis2,"model_new_3",_has_actuals,ticker,dates,'black',is_not_closed))
-            #NEW relu-based model
-            dis4 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis4,"model_new_5",_has_actuals,ticker,dates,'blue',is_not_closed))
-            dis3 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis3,"model_new_4",_has_actuals,ticker,dates,'magenta',is_not_closed))
-                
-            # concurrent.futures.wait(threads)
-            if _has_actuals:        
-                dis3 = threads[3].result()
-                dis3.display_line(ticker=ticker,dates=dates,color="magenta")
-                dis4 = threads[2].result()
-                dis4.display_line(ticker=ticker,dates=dates,color="blue")
-                dis2 = threads[1].result()
-                dis2.display_predict_only(ticker=ticker,dates=dates,color="black")
-                dis1 = threads[0].result()
-                dis1.display_predict_only(ticker=ticker,dates=dates,color="green")
-        if not _has_actuals:
+        threads = []
+        #OK MODEL
+        dis1 = Display()
+        with listLock:
+            thread_pool.start_worker(threading.Thread(target=display_model,args=(dis1,"model_new_2",_has_actuals,ticker,dates,'green',is_not_closed)))
+        #Direction Bias model
+        dis2 = Display()
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis2,"model_new_3",_has_actuals,ticker,dates,'black',is_not_closed))) == 1:
+                thread_pool.join_workers()
+                time.sleep(2)
+        #NEW relu-based model
+        dis4 = Display()
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis4,"model_new_5",_has_actuals,ticker,dates,'blue',is_not_closed))) == 1:
+                thread_pool.join_workers()
+                time.sleep(2)
+        dis3 = Display()
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis3,"model_new_4",_has_actuals,ticker,dates,'magenta',is_not_closed))) == 1:
+                thread_pool.join_workers()
+                time.sleep(2)
+        # for thread in threads:
+            # thread.start()
+            # time.sleep(7)  
+            
+        if _has_actuals:   
+            thread_pool.join_workers()     
+            # threads[2].join()
+            dis3 = dis_queue.get()
+            dis3.display_line(ticker=ticker,dates=dates,color="magenta")
+            # threads[1].join()
+            dis4=dis_queue.get()
+            dis4.display_line(ticker=ticker,dates=dates,color="blue")
+            # threads[0].join()
+            dis2=dis_queue.get()
+            dis2.display_predict_only(ticker=ticker,dates=dates,color="black")
+            # dis1 = threads[0].result()
+            # dis1.display_predict_only(ticker=ticker,dates=dates,color="green")
+            plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_a.png')
+        else:
+            # for thread in threads:
+                # thread.join()
+            thread_pool.join_workers()
             if is_not_closed == False:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png')
             else:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict-i.png')
-
-        else:
-            plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_a.png')
-
+        
         plt.cla()
         exit(0)
-    elif _type == 'divergence':
+    elif 'divergence' == _type:
         threads = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            dis5 = Display()
-            # with listLock:
-                # threads.append(executor.submit(display_model,dis5,"divergence",_has_actuals,ticker,dates,'green'))
-            # dis6 = Display()
-            # with listLock:
-                # threads.append(executor.submit(display_model,dis6,"divergence_2",_has_actuals,ticker,dates,'black'))
-            # dis7 = Display()
-            # with listLock:
-                # threads.append(executor.submit(display_model,dis7,"divergence_3",_has_actuals,ticker,dates,'blue'))
-            dis8 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis8,"divergence_3",_has_actuals,ticker,dates,'magenta',is_not_closed))
-            if _has_actuals:
-                dis8 = threads[0].result()
-                dis8.display_divergence(ticker=ticker,dates=dates,color=f'm',has_actuals=_has_actuals)
-        print(str(dates[0]),str(dates[1]))
+        dis8 = Display()
+
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis8,"divergence_3",_has_actuals,ticker,dates,'magenta',is_not_closed))) == 1:
+                thread_pool.join_workers()
+                time.sleep(2)
+            # threads[0].start()
+            # threads[0].join()
+            thread_pool.join_workers()
+            dis8=dis_queue.get()
+            dis8.display_divergence(ticker=ticker,dates=dates,color=f'm',has_actuals=_has_actuals)
         if not has_actuals:
             if not is_not_closed:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence.png')
@@ -148,27 +162,51 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
         exit(0)
     elif _type == 'new':
         threads = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            dis10 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis10,"model_out_new",_has_actuals,ticker,dates,'green',is_not_closed))
-            dis11 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis11,"model_out_new_2",_has_actuals,ticker,dates,'black',is_not_closed))
-            dis12 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis12,"model_out_new_3",_has_actuals,ticker,dates,'blue',is_not_closed))
-            dis13 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis13,"model_out_new_4",_has_actuals,ticker,dates,'magenta',is_not_closed))
-            dis14 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis14,"model_out_new_5",_has_actuals,ticker,dates,'red',is_not_closed))
-            if _has_actuals:
-                dis13 = threads[0].result()
-                dis13.display_divergence(ticker=ticker,dates=dates,color=f'm',has_actuals=_has_actuals)
-        print(str(dates[0]),str(dates[1]))
+        dis10 = Display()
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis10,"model_out_new",_has_actuals,ticker,dates,'green',is_not_closed))) == 1:
+                thread_pool.join_workers()
+                time.sleep(2)
+        dis11 = Display()
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis11,"model_out_new_2",_has_actuals,ticker,dates,'black',is_not_closed))) == 1:
+                thread_pool.join_workers()
+                time.sleep(2)
+        # dis12 = Display()
+        # with listLock:
+            # threads.append(executor.submit(display_model,dis12,"model_out_new_3",_has_actuals,ticker,dates,'blue',is_not_closed))
+        dis13 = Display()
+        # with listLock:
+            # threads.append(executor.submit(display_model,dis13,"model_out_new_4",_has_actuals,ticker,dates,'magenta',is_not_closed))
+        dis14 = Display()
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis14,"model_out_new_5",_has_actuals,ticker,dates,'red',is_not_closed))) == 1:
+                thread_pool.join_workers()
+                time.sleep(2)
+        # for thread in threads:
+            # thread.start()
+            # time.sleep(7)  
+        # print(str(dates[0]),str(dates[1]))
+        if _has_actuals:
+            thread_pool.join_workers()
+            # threads[0].join()
+            dis13=dis_queue.get()
+            dis13.display_line(ticker=ticker,dates=dates,color=f'magenta')
+            # threads[1].join()
+            dis14=dis_queue.get()
+            dis14.display_line(ticker=ticker,dates=dates,color=f'yellow')
+            # dis12 = threads[2].result()
+            # dis12.display_predict_only(ticker=ticker,dates=dates,color=f'green')
+            # dis11 = threads[2].result()
+            # dis11.display_predict_only(ticker=ticker,dates=dates,color=f'black')
+            # threads[2].join()
+            dis10=dis_queue.get()
+            dis10.display_predict_only(ticker=ticker,dates=dates,color=f'red')
         if not has_actuals:
+            # for thread in threads:
+                # thread.join()
+            thread_pool.join_workers()
+
             if not is_not_closed:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_new.png')
             else:
@@ -182,7 +220,7 @@ if __name__ == "__main__":
     _has_actuals = sys.argv[3] == 'True'
     _is_not_closed =sys.argv[4] == 'True'
     vals = None
-    # print(sys.argv)
+    # print(_type,_has_actuals,_is_not_closed)
     if _is_not_closed:
         vals = (sys.argv[5],sys.argv[6],sys.argv[7],sys.argv[8])
     main(ticker=sys.argv[2],has_actuals=_has_actuals,is_not_closed=_is_not_closed,vals=vals)

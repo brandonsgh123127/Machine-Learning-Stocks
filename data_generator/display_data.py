@@ -67,6 +67,8 @@ class Display():
             self.keltner_display['lower'].transpose().plot.line()
     def display_divergence(self,ticker=None,dates=None,color=None,has_actuals=False):
         plt.cla()
+        # plt.close()
+        # print('f',self.data_predict_display)
         plt.figure()
         data = self.data_predict_display.reset_index()
         # data.drop(columns='index')        
@@ -79,7 +81,7 @@ class Display():
         # data.set_index(index)
         # ax = data['Gain/Loss'].transpose().plot(x='Gain/Loss',y='index',style=f'{self.color_map.get(color)}o', ax=ax)
         data.transpose().plot(kind='line',color=color)
-    def display_line(self,ticker=None,dates=None,color=None):
+    def display_line(self,ticker=None,dates=None,color='g'):
         indices_dict = {0:'Open',1:'Close',2:'Range',3:'Euclidean Open',4:'Euclidean Close',5:'Open EMA14 Diff',6:'Open EMA30 Diff',7:'Close EMA14 Diff',8:'Close EMA30 Diff',9:'EMA14 EMA30 Diff'}
         data = pd.concat([self.data_display.reset_index(),self.data_predict_display.reset_index()],ignore_index=False).set_flags(allows_duplicate_labels=True)
         data_orig = data

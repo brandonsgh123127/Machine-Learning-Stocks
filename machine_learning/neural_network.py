@@ -192,7 +192,7 @@ listLock = threading.Lock()
 
 
 """Load Specified Model"""
-def load(ticker:str=None,has_actuals:bool=False,name:str="model_new_2",_is_predict=False):        
+def load(ticker:str=None,has_actuals:bool=False,name:str="model_new_2",_is_predict=False,device_opt:str='/device:GPU:0'):        
     sampler = Sample(ticker)
     # sampler.__init__(ticker)
     neural_net = Network(0,0)
@@ -209,18 +209,20 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_new_2",_is_predi
         else:
             train.append(np.reshape(sampler.normalizer.normalized_data[-14:].to_numpy(),(1,1,140)))
         # print(sampler.normalizer.normalized_data)
-        with tf.device('/device:GPU:0'):
+        with tf.device(device_opt):
             prediction = neural_net.nn.predict(np.stack(train))
         # print(prediction)
     # print(prediction)
     # unnormalized_predict_values = pd.DataFrame((prediction[:,0] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Open')],prediction[:,2]/2 + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('High')],prediction[:,2]/2 + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Low')],prediction[:,1] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Close')],prediction[:,1] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Adj Close')]),columns=['Open','High','Low','Close','Adj Close'])
-    with tf.device('/device:GPU:0'):
+    with tf.device('/device:CPU:0'):
         if neural_net.model_choice < 6:
             predicted = pd.DataFrame((np.reshape((prediction),(1,10))),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
                                                                                                               'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED
         else:
             predicted = pd.DataFrame((np.reshape((prediction),(1,3))),columns=['Open','Close','Range']) #NORMALIZED
+    with tf.device(device_opt):
         unnormalized_prediction = sampler.normalizer.unnormalize(predicted).to_numpy()
+    with tf.device('/device:CPU:0'):
         space = pd.DataFrame([[0,0]],columns=['Open','Close'])
         unnormalized_predict_values = sampler.normalizer.data.append(pd.DataFrame([[unnormalized_prediction[0,0] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Open')],unnormalized_prediction[0,1] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Close')]]],columns=['Open','Close']),ignore_index=True)
         # print(unnormalized_prediction[0,0],unnormalized_prediction[0,1],"\npredicted dataframe")

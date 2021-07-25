@@ -51,7 +51,7 @@ class Generator():
 
         self.studies.apply_ema("14",self.studies.get_date_difference())
         self.studies.apply_ema("30",self.studies.get_date_difference()) 
-        self.studies.keltner_channels(20, 3.6, None)
+        self.studies.keltner_channels(20, 1.3, None)
 
         try:
             os.remove(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.studies.date_set[0]}--{self.studies.date_set[1]}')
@@ -99,7 +99,7 @@ class Generator():
         
         self.studies.apply_ema("14",self.studies.get_date_difference())
         self.studies.apply_ema("30",self.studies.get_date_difference()) 
-        self.studies.keltner_channels(20, 3.6, None)
+        self.studies.keltner_channels(20, 1.3, None)
         
         try:
             os.remove(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{date1.strftime("%Y-%m-%d")}--{date2.strftime("%Y-%m-%d")}')
