@@ -1,10 +1,10 @@
-import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from data_gather.news_scraper import News_Scraper
 from data_gather.studies import Studies
 from pathlib import Path
 import os
+import gc
 
 '''
 Easily display unfiltered data given the ticker and date range specified on the file
@@ -67,56 +67,44 @@ class Display():
             self.keltner_display['lower'].transpose().plot.line()
     def display_divergence(self,ticker=None,dates=None,color=None,has_actuals=False):
         plt.cla()
-        # plt.close()
-        # print('f',self.data_predict_display)
         plt.figure()
         data = self.data_predict_display.reset_index()
-        # data.drop(columns='index')        
         indices_dict = {0:'Divergence',1:'Gain/Loss'}
-        # data = data.transpose()
-        # index = [0,0]
-        # data.set_index(index)
-        # ax = data['Divergence'].transpose().plot(x='Divergence',y='index',style=f'{self.color_map.get(color)}x')
-        # index = [0,1]
-        # data.set_index(index)
-        # ax = data['Gain/Loss'].transpose().plot(x='Gain/Loss',y='index',style=f'{self.color_map.get(color)}o', ax=ax)
         data.transpose().plot(kind='line',color=color)
     def display_line(self,ticker=None,dates=None,color='g'):
-        indices_dict = {0:'Open',1:'Close',2:'Range',3:'Euclidean Open',4:'Euclidean Close',5:'Open EMA14 Diff',6:'Open EMA30 Diff',7:'Close EMA14 Diff',8:'Close EMA30 Diff',9:'EMA14 EMA30 Diff'}
-        data = pd.concat([self.data_display.reset_index(),self.data_predict_display.reset_index()],ignore_index=False).set_flags(allows_duplicate_labels=True)
-        data_orig = data
-        data['index'] = [0,0]
-        data = data.set_index('index')
-        ax = data['Open'].plot(x='index',y='Open',style=f'{self.color_map.get(color)}x')
-        data['index'] = [1,1]
-        data = data.set_index('index')
-        ax = data['Close'].plot(x='index',y='Close',style=f'{self.color_map.get(color)}o', ax=ax)
-        data['index'] = [2,2]
-        data = data.set_index('index')
-        ax = data['Range'].plot(x='index',y='Range',style='mo', ax=ax)
-        data['index'] = [3,3]
+        indices_dict = {0:'Open',1:'Close',2:'Range'}
+        self.data_display = pd.concat([self.data_display.reset_index(),self.data_predict_display.reset_index()],ignore_index=False).set_flags(allows_duplicate_labels=True)
+        self.data_display['index'] = [0,0]
+        self.data_display = self.data_display.set_index('index')
+        ax = self.data_display['Open'].plot(x='index',y='Open',style=f'{self.color_map.get(color)}x')
+        self.data_display['index'] = [1,1]
+        self.data_display = self.data_display.set_index('index')
+        ax = self.data_display['Close'].plot(x='index',y='Close',style=f'{self.color_map.get(color)}o', ax=ax)
+        self.data_display['index'] = [2,2]
+        self.data_display = self.data_display.set_index('index')
+        ax = self.data_display['Range'].plot(x='index',y='Range',style='mo', ax=ax)
+        self.data_display['index'] = [3,3]
 
-        for i,row in enumerate(data_orig.index):
-            for j,col in enumerate(data_orig.columns):
+        for i,row in enumerate(self.data_display.index):
+            for j,col in enumerate(self.data_display.columns):
                 if j == 8:
                     continue
                 if i == 0:
-                    y = round(data.iloc[i][j],2)
+                    y = round(self.data_display.iloc[i][j],2)
                     ax.text(j, y, f'{indices_dict.get(j)} - A {y}',size='x-small')
                 else:
-                    y = round(data.iloc[i][j],2)
+                    y = round(self.data_display.iloc[i][j],2)
                     ax.text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
     def display_predict_only(self,ticker=None,dates=None,color=None):
-        indices_dict = {0:'Open',1:'Close',2:'Range',3:'Euclidean Open',4:'Euclidean Close',5:'Open EMA14 Diff',6:'Open EMA30 Diff',7:'Close EMA14 Diff',8:'Close EMA30 Diff',9:'EMA14 EMA30 Diff'}
-        data = self.data_predict_display
-        data['index'] = [0]
-        data = data.set_index('index')
-        ax = data['Open'].plot(x='index',y='Open',style=f'{self.color_map.get(color)}x')
-        data['index'] = [1]
-        data = data.set_index('index')
-        ax = data['Close'].plot(x='index',y='Close',style=f'{self.color_map.get(color)}o', ax=ax)
-        data['index'] = [2]
-        data = data.set_index('index')
+        indices_dict = {0:'Open',1:'Close',2:'Range'}
+        self.data_predict_display['index'] = [0]
+        self.data_predict_display = self.data_predict_display.set_index('index')
+        ax = self.data_predict_display['Open'].plot(x='index',y='Open',style=f'{self.color_map.get(color)}x')
+        self.data_predict_display['index'] = [1]
+        self.data_predict_display = self.data_predict_display.set_index('index')
+        ax = self.data_predict_display['Close'].plot(x='index',y='Close',style=f'{self.color_map.get(color)}o', ax=ax)
+        self.data_predict_display['index'] = [2]
+        data = self.data_predict_display.set_index('index')
         ax = data['Range'].plot(x='index',y='Range',style='mo', ax=ax)
         data['index'] = [3]
 

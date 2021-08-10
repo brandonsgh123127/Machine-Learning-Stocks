@@ -2,6 +2,7 @@ from data_generator.normalize_data import Normalizer
 import pandas as pd
 import numpy as np
 import os,random
+import sys
 '''
 This class will retrieve any file given, and take a sample of data, and retrieve only a static subset for prediction analysis
 '''
@@ -9,19 +10,26 @@ class Sample(Normalizer):
     def __init__(self,ticker=None):
         self.normalizer = Normalizer()
         self.normalizer.__init__()
-        self.file_list = list()
         self.DAYS_SAMPLED = 15
-    def generate_sample(self,ticker=None,is_predict=False,out=8):
-        if ticker is None:
-            dirs = os.listdir(f'{self.normalizer.path}/data/stock_no_tweets')
-            for dir in dirs:
-                full_path = os.path.join(f'{self.normalizer.path}/data/stock_no_tweets',dir)
-                for file in os.listdir(full_path):
-                    self.file_list.append(f'{str(dir)}/{file}')
-            rand = random.choice(self.file_list)
-            del self.file_list
-        else:
-            rand = ticker
+        self.ticker=ticker
+    def generate_sample(self,is_predict=False,out=8):
+        try:
+            file_list:list = []
+            if self.ticker is None:
+                dirs = os.listdir(f'{self.normalizer.path}/data/stock_no_tweets')
+                for dir in dirs:
+                    full_path = os.path.join(f'{self.normalizer.path}/data/stock_no_tweets',dir)
+                    for file in os.listdir(full_path):
+                        file_list.append(f'{str(dir)}/{file}')
+                rand = random.choice(file_list)
+                del file_list
+            else:
+                rand = self.ticker
+        except AttributeError as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            raise Exception("AttributeError:\n",str(e))
         if is_predict:
             # print("Predict Mode")
             self.DAYS_SAMPLED = 14
@@ -29,14 +37,8 @@ class Sample(Normalizer):
         # Iterate through dataframe and retrieve random sample
         self.normalizer.convert_derivatives(out=out)
         self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
-        # print(self.normalizer.normalized_data)   
-        # print(self.normalizer.normalized_data)
-        # print(len(self.normalizer.normalized_data))
         try:
-            # if out == 8:
             rc = self.normalizer.normalize()
-            # if out == 2:
-                # rc = self.normalizer.normalize(out=2)
             if rc == 1:
                 raise Exception("[Error] Normalize did not return exit code 1")
         except Exception as e:
@@ -59,9 +61,7 @@ class Sample(Normalizer):
         # Iterate through dataframe and retrieve random sample
         self.normalizer.convert_divergence()
         self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
-            
-        # print(self.normalizer.normalized_data)
-        # print(len(self.normalizer.normalized_data))
+
         rc = self.normalizer.normalize_divergence()
         if rc == 1:
             raise Exception("Normalize did not return exit code 1")

@@ -1,10 +1,8 @@
 from pathlib import Path
 import os
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler,MinMaxScaler
-from sklearn.preprocessing import normalize
+from sklearn.preprocessing import MinMaxScaler
 
 '''
 Class that takes in studies and stock data, then transforms the data into a new dataframe.
@@ -90,16 +88,14 @@ class Normalizer():
         return 0
     def normalize_divergence(self):
         self.unnormalized_data = self.normalized_data
+        scaler = self.min_max.fit(self.unnormalized_data) 
         try:
-            self.normalized_data = pd.DataFrame(self.min_max.fit_transform(self.normalized_data),columns=['Divergence','Gain/Loss']) #NORMALIZED DATA STORED IN NP ARRAY
+            self.normalized_data = pd.DataFrame(scaler.fit_transform(self.normalized_data),columns=['Divergence','Gain/Loss']) #NORMALIZED DATA STORED IN NP ARRAY
         except:
             return 1
         return 0
     def unnormalize(self,data):
-        # print(self.min_max.inverse_transform((data.to_numpy())))
         scaler = self.min_max.fit(self.unnormalized_data) 
-        # print(scaler.inverse_transform((data.to_numpy())))
-        # print(scaler.inverse_transform((data.to_numpy())))
         if len(data.columns) == 10:
             return pd.DataFrame(scaler.inverse_transform((data.to_numpy())),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
                                                                                                           'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED DATA STORED IN NP ARRAY
@@ -111,7 +107,8 @@ class Normalizer():
             return pd.DataFrame(scaler.inverse_transform((new_data.to_numpy())),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
                                                                                                           'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED DATA STORED IN NP ARRAY
     def unnormalize_divergence(self,data):
-        return pd.DataFrame(self.min_max.inverse_transform((data.to_numpy())),columns=['Divergence','Gain/Loss'])
+        scaler = self.min_max.fit(self.unnormalized_data)
+        return pd.DataFrame(scaler.inverse_transform((data.to_numpy())),columns=['Divergence','Gain/Loss'])
     def display_line(self):
         self.normalized_data.plot()
         plt.show()

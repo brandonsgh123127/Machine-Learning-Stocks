@@ -3,8 +3,9 @@ import os
 from data_gather.news_scraper import News_Scraper
 from data_gather.studies import Studies
 import random
-import datetime
-from json.decoder import JSONDecodeError
+from threading_impl.Thread_Pool import Thread_Pool
+import threading
+import time
 '''
     This class allows for unification of data, studies and news for future machine learning training.
     data formatting 
@@ -19,46 +20,41 @@ class Generator():
 
         
     def generate_data(self):
-        self.studies.gen_random_dates()
-        # Loop until valid data populates
-        while self.studies.set_data_from_range(self.studies.date_set[0],self.studies.date_set[1]) != 0 or self.studies.data.isnull().values.any() or len(self.studies.data) < 16:
-            self.studies.gen_random_dates()
-        try:
-            os.mkdir("{0}/data/tweets".format(self.path))
-        except:
-            pass
-        try:
-            os.mkdir("{0}/data/stock_no_tweets".format(self.path))
-        except:
-            pass
-        try:
-            os.mkdir(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/')
-        except:
-            pass
-        try:
-            os.mkdir("{0}/data/stock".format(self.path))
-        except:
-            pass
-        # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
-        query_param1 = {"query": "{}".format(self.ticker)}
-        query_param2 = {"maxResults":"500"}
-        query_param3 = {"fromDate":"{}".format(self.studies.date_set[0].strftime("%Y%m%d%H%M"))}
-        query_param4 = {"toDate":"{}".format(self.studies.date_set[1].strftime("%Y%m%d%H%M"))}
-        query_params = {}
-        query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
+        # studies.__init__()
+        with threading.Lock():
+            studies = Studies(self.ticker)
+            studies.gen_random_dates()
+            # Loop until valid data populates
+            try:
+                while studies.set_data_from_range(studies.date_set[0],studies.date_set[1]) != 0 or studies.data.isnull().values.any() or len(studies.data) < 16:
+                    # print("looping...",flush=True)
+                    studies.gen_random_dates()
+            except:
+                pass
 
-        self.studies.data = self.studies.data.drop(['Volume'],axis=1)
-
-        self.studies.apply_ema("14",self.studies.get_date_difference())
-        self.studies.apply_ema("30",self.studies.get_date_difference()) 
-        self.studies.keltner_channels(20, 1.3, None)
-
+            # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
+            query_param1 = {"query": "{}".format(self.ticker)}
+            query_param2 = {"maxResults":"500"}
+            query_param3 = {"fromDate":"{}".format(studies.date_set[0].strftime("%Y%m%d%H%M"))}
+            query_param4 = {"toDate":"{}".format(studies.date_set[1].strftime("%Y%m%d%H%M"))}
+            query_params = {}
+            query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
         try:
-            os.remove(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.studies.date_set[0]}--{self.studies.date_set[1]}')
+            studies.data = studies.data.drop(['Volume'],axis=1)
+            
+            studies.apply_ema("14",studies.get_date_difference())
+            studies.apply_ema("30",studies.get_date_difference()) 
+            studies.apply_fibonacci()
+            studies.keltner_channels(20, 1.3, None)
+        except Exception as e:
+            # raise Exception("[ERROR] Exception:\n{}".format(str(e)))
+            return
+        try:
+            os.remove(f'{self.path}/data/stock_no_tweets/{studies.get_indicator()}/{studies.date_set[0]}--{studies.date_set[1]}')
         except:
             pass
-        self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{self.studies.date_set[0]}--{self.studies.date_set[1]}')
-        self.studies.reset_data()
+        studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{studies.get_indicator()}/{studies.date_set[0]}--{studies.date_set[1]}')
+        del studies
         
     def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,vals:tuple=None):
         self.studies.date_set = (date1,date2)
@@ -73,17 +69,8 @@ class Generator():
             self.studies.data = self.studies.data.append({'Open': f'{vals[0]}','High': f'{vals[1]}','Low': f'{vals[2]}','Close': f'{vals[3]}','Adj Close': f'{vals[3]}'}, ignore_index=True)
         try:
             os.mkdir("{0}/data/tweets".format(self.path))
-        except:
-            pass
-        try:
             os.mkdir("{0}/data/stock_no_tweets".format(self.path))
-        except:
-            pass
-        try:
             os.mkdir(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/')
-        except:
-            pass
-        try:
             os.mkdir("{0}/data/stock".format(self.path))
         except:
             pass
@@ -99,7 +86,9 @@ class Generator():
         
         self.studies.apply_ema("14",self.studies.get_date_difference())
         self.studies.apply_ema("30",self.studies.get_date_difference()) 
+        self.studies.apply_fibonacci()
         self.studies.keltner_channels(20, 1.3, None)
+        
         
         try:
             os.remove(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{date1.strftime("%Y-%m-%d")}--{date2.strftime("%Y-%m-%d")}')
@@ -119,19 +108,27 @@ def choose_random_ticker(csv_file):
         print(ticker)
         return ticker
 def main():
-    MAX_TICKERS=10
+    MAX_TICKERS=500
     MAX_ITERS=50
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
         # ticker="SPY"
         generator = Generator(ticker,path)
+        try:
+            with threading.Lock():
+                os.mkdir("{0}/data/tweets".format(path))
+                os.mkdir("{0}/data/stock_no_tweets".format(path))
+                os.mkdir(f'{path}/data/stock_no_tweets/{ticker}/')
+                os.mkdir("{0}/data/stock".format(path))
+        except:
+            pass
         # generator.generate_data_with_dates(datetime.datetime(2021,3,3),datetime.datetime(2021,4,22))
+        s_time = time.time()
         for j in range(MAX_ITERS):
-            try:
-                generator.generate_data()
-            except:
-                pass
+            generator.generate_data()
+        e_time = time.time() - s_time
+        print(e_time)
         del generator
         
     
