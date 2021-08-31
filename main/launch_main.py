@@ -25,31 +25,45 @@ class GUI(Thread_Pool):
     def __init__(self):
         super().__init__(amount_of_threads=2)
         self.path = Path(os.getcwd()).parent.absolute()
-        self.window = tk.Tk(screenName='Stock Analysis')
-        self.content = ttk.Frame(self.window,width=100,height=100)
-        self.output_image = tk.Canvas(self.window,width=1400,height=1400,bg='white')
-        self.load_layout = tk.Canvas(self.content,width=200,height=200,bg='white')
-        s = ttk.Style(self.window)
-        self.page_loc = 1 # Map page number to location
-        self.buttonImage = Image.open(f'{self.path}/data/icons/next.png')
-        self.buttonPhoto = ImageTk.PhotoImage(self.buttonImage)
-        self.buttonImage2 = Image.open(f'{self.path}/data/icons/previous.png')
-        self.buttonPhoto2 = ImageTk.PhotoImage(self.buttonImage2)
-
-        self.output_image.pack(expand='yes',side='right')
-        self.background_tasks_label = tk.Label(self.content,text=f'Currently pre-loading a few stocks, this may take a bit...')
         self.job_queue = queue.Queue()
         self.cache_queue = queue.Queue()
         self.threads = []
         self.load_thread:threading.Thread = None
+        
+        self.window = tk.Tk(screenName='Stock Analysis')
+        self.content = ttk.Frame(self.window,width=100,height=100)
+        self.boolean1 = tk.BooleanVar()
+        self.boolean2 = tk.BooleanVar()
+        self.force_bool = tk.BooleanVar()
+
+        self.stock_input = tk.Entry(self.content)
+        self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get()))))
+        self.output_image = tk.Canvas(self.window,width=1400,height=1400,bg='white')
+        self.load_layout = tk.Canvas(self.content,width=200,height=200,bg='white')
+
+        self.window.bind('<Return>',self.job_queue.put(threading.Thread(target=self.analyze_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get()))))
+        s = ttk.Style(self.window)
+        self.page_loc = 1 # Map page number to location
+        try: # if image exists, don't recreate
+            self.buttonImage.size 
+        except:
+            self.buttonImage = Image.open(f'{self.path}/data/icons/next.png')
+            self.buttonPhoto = ImageTk.PhotoImage(self.buttonImage)
+            self.buttonImage2 = Image.open(f'{self.path}/data/icons/previous.png')
+            self.buttonPhoto2 = ImageTk.PhotoImage(self.buttonImage2)
+            self.next_page_button = ttk.Button(self.content, padding='10 10 10 10',image=self.buttonPhoto,text="",command= lambda: self.job_queue.put(threading.Thread(target=self.analysis_page,args=())))
+            self.next_page_button.grid(column=4, row=20)
+            self.previous_page_button = ttk.Button(self.content, padding='10 10 10 10',image=self.buttonPhoto2,text="",command= lambda: self.job_queue.put(threading.Thread(target=self.predict_page,args=())))
+            self.previous_page_button.grid(column=2, row=20)
+
+        self.output_image.pack(expand='yes',side='right')
+        self.background_tasks_label = tk.Label(self.content,text=f'Currently pre-loading a few stocks, this may take a bit...')
         self.load_image = Image.open(f'{self.path}/data/icons/load.gif')
         self.exited = False
         self.frames = []
         self.loc = 0
         self.lock = threading.Lock()
         self.is_retrieving = True
-        self.boolean1 = False
-        self.boolean2 = False
         s.configure('.', background='white')
 
 
@@ -147,16 +161,21 @@ class GUI(Thread_Pool):
 
             if not skippable:
                 if is_not_closed:
-                    self.threads.append(analyze_stock(ticker=ticker, has_actuals=has_actuals, is_not_closed=True,opn=self.open_input.get(),high=self.high_input.get(),low=self.low_input.get(),close=self.close_input.get(),tpe='predict'))
+                    thread = threading.Thread(target=analyze_stock,args=(ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'predict'))
+                    thread.start()
+                    thread.join()
                     gc.collect()
-                    time.sleep(5)
-                    self.threads.append(analyze_stock(ticker=ticker, has_actuals=has_actuals, is_not_closed=True,opn=self.open_input.get(),high=self.high_input.get(),low=self.low_input.get(),close=self.close_input.get(),tpe='model_out_2'))
+                    thread = threading.Thread(target=analyze_stock,args=(ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'model_out_2'))
+                    thread.start()
+                    thread.join()
                     gc.collect()
-                    time.sleep(5)
-                    self.threads.append(analyze_stock(ticker=ticker, has_actuals=has_actuals, is_not_closed=True,opn=self.open_input.get(),high=self.high_input.get(),low=self.low_input.get(),close=self.close_input.get(),tpe='chart'))
+                    thread = threading.Thread(target=analyze_stock,args=(ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'chart'))
+                    thread.start()
+                    thread.join()
                     gc.collect()
-                    time.sleep(5)
-                    self.threads.append(analyze_stock(ticker=ticker, has_actuals=has_actuals, is_not_closed=True,opn=self.open_input.get(),high=self.high_input.get(),low=self.low_input.get(),close=self.close_input.get(),tpe='divergence'))
+                    thread = threading.Thread(target=analyze_stock,args=(ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'divergence'))
+                    thread.start()
+                    thread.join()
                 else:
                     thread = threading.Thread(target=analyze_stock,args=(ticker, has_actuals, False,None,None,None,None,None,'predict'))
                     thread.start()
@@ -216,15 +235,10 @@ class GUI(Thread_Pool):
     
     """Set view to new window to make sure user wants to quit"""
     def on_closing(self):
-        self.__init__()
-        self.window.iconify()
+        self.exited = True
+        self.window.destroy()
+        exit(0)
 
-        if messagebox.askokcancel("Quit", "Do you want to quit?"):
-            self.exited = True
-            exit(0)
-        else:
-            self.__init__()
-            self.run()
     def next_frame(self):
         # new_im = ImageTk.PhotoImage(self.load_image.copy())
         for frame in self.frames:            
@@ -300,27 +314,23 @@ class GUI(Thread_Pool):
         self.has_actuals.grid(column=4, row=1)
         self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get()))))
         self.generate_button.grid(column=3, row=2)
-        self.next_page_button = ttk.Button(self.content, padding='10 10 10 10',image=self.buttonPhoto,text="",command= lambda: self.job_queue.put(threading.Thread(target=self.analysis_page,args=())))
-        self.next_page_button.grid(column=4, row=20)
-        self.previous_page_button = ttk.Button(self.content, padding='10 10 10 10',image=self.buttonPhoto2,text="",command= lambda: self.job_queue.put(threading.Thread(target=self.predict_page,args=())))
-        self.previous_page_button.grid(column=2, row=20)
         # self.next_page_button.pack(side='bottom')
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True,False)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True,False)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True,False)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('COIN',False,False,True,False)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('RBLX',False,False,True,False)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('NOC',False,False,True,False)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('DASH',False,False,True,False)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('ABNB',False,False,True,False)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('SNOW',False,False,True,False)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('XLU',False,False,True,False)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('SNOW',False,False,True,False)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('UPS',False,False,True,False)))
-        # self.cache_queue.put(threading.Thread(target=self.load_model,args=('ULTA',False,False,True,False)))
-        
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True,False)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True,False)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('COIN',False,False,True,False)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('RBLX',False,False,True,False)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('NOC',False,False,True,False)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('DASH',False,False,True,False)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('ABNB',False,False,True,False)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('SNOW',False,False,True,False)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('XLU',False,False,True,False)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('SNOW',False,False,True,False)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('UPS',False,False,True,False)))
+        self.cache_queue.put(threading.Thread(target=self.load_model,args=('ULTA',False,False,True,False)))
+        self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
+
         self.window.mainloop()
-        self.window.protocol("WM_DELETE_WINDOW", self.on_closing())
     """ Constant loop that checks for tasks to-be completed.  Manages Computations"""
     def task_loop(self):
         while True:
@@ -355,20 +365,20 @@ class GUI(Thread_Pool):
                     self.load_thread = threading.Thread(target=self.start_loading)
                     self.load_thread.start()
                 self.background_tasks_label.grid(column=3,row=6)
-                self.generate_button.grid_forget()
+                # self.generate_button.grid_forget()
                 tmp_thread = self.cache_queue.get()
                 try:
                     if self.start_worker(tmp_thread) == 0:
                         if self.cache_queue.qsize() > 0:
                             pass
                         else:
-                            gc.collect()
                             break
                     else:
                         # pass
                         self.cache_queue.put(tmp_thread)
                         self.join_workers()
-                except: # Already started the thread, just add back, ignoring error
+                except Exception as e: # Already started the thread, just add back, ignoring error
+                    print(str(e))
                     pass
 
                             
