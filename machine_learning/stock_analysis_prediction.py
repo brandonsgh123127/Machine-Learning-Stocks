@@ -23,10 +23,12 @@ from threading_impl.Thread_Pool import Thread_Pool
 listLock = threading.Lock()
 _type = None
 dis_queue = queue.Queue()
+data_queue = queue.Queue()
 thread_pool = Thread_Pool(amount_of_threads=3)
 
 def display_model(dis:Display,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",dates:list=[],color:str="blue",is_predict=False,unnormalized_data = False):
     global dis_queue
+    global data_queue
     # Load machine learning model either based on divergence or not
     if 'divergence' not in name:
         data = load(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}',_is_predict=is_predict,device_opt='/device:CPU:0')
@@ -50,9 +52,11 @@ def display_model(dis:Display,name:str= "model_relu",_has_actuals:bool=False,tic
         if unnormalized_data:
             dis.display_box(data[2])
     dis_queue.put(dis)
+    data_queue.put((data[0],data[1]))
 def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,vals:tuple=None,opn:str=None,high:str=None,low:str=None,close:str=None,tpe:str=None):
-    global dis_queue
+    global dis_queue,data_queue
     global _type
+    data_queue = queue.Queue()
     dis_queue = queue.Queue()
     thread_pool = Thread_Pool(amount_of_threads=4)
 
@@ -119,7 +123,6 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
         del dis2
         del dis3
         gc.collect()
-        exit(0)
     elif 'divergence' == _type:
         dis8 = Display()
         with listLock:
@@ -140,7 +143,6 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
         plt.cla()
         del dis8 
         gc.collect()
-        exit(0)
     elif _type == 'chart':
         dis9 = Display()
         dis9 = display_model(dis9,"model_relu",has_actuals,ticker,dates,'green',is_not_closed,True)
@@ -157,7 +159,6 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
         plt.cla()
         del dis9
         gc.collect()
-        exit(0)
     elif _type == 'model_out_2':
         dis10 = Display()
         with listLock:
@@ -198,7 +199,7 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
         del dis11 
         del dis12
         gc.collect()
-        exit(0)
+    return (ticker,data_queue)#Return Data from machine learning models
 if __name__ == "__main__":
     _type = sys.argv[1]
     _has_actuals = sys.argv[3] == 'True'
