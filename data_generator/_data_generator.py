@@ -62,6 +62,8 @@ class Generator():
         try:
             # self.studies.set_data_from_range(date1,date2)
             self.studies.set_data_from_range(self.studies.date_set[0],self.studies.date_set[1])
+            self.studies.data = self.studies.data.reset_index()
+            self.studies.data = self.studies.data.drop(['Date'],axis=1)
         except Exception as e:
             print(f'[ERROR] Failed to generate data!',str(e))
             raise Exception
@@ -69,8 +71,17 @@ class Generator():
             self.studies.data = self.studies.data.append({'Open': f'{vals[0]}','High': f'{vals[1]}','Low': f'{vals[2]}','Close': f'{vals[3]}','Adj Close': f'{vals[3]}'}, ignore_index=True)
         try:
             os.mkdir("{0}/data/tweets".format(self.path))
+        except:
+            pass
+        try:
             os.mkdir("{0}/data/stock_no_tweets".format(self.path))
+        except:
+            pass
+        try:
             os.mkdir(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/')
+        except:
+            pass
+        try:
             os.mkdir("{0}/data/stock".format(self.path))
         except:
             pass
@@ -83,6 +94,7 @@ class Generator():
         query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
 
         self.studies.data = self.studies.data.drop(['Volume'],axis=1)
+        # print(self.studies.data)
         
         self.studies.apply_ema("14",self.studies.get_date_difference())
         self.studies.apply_ema("30",self.studies.get_date_difference()) 
@@ -117,9 +129,18 @@ def main():
         generator = Generator(ticker,path)
         try:
             with threading.Lock():
-                os.mkdir("{0}/data/tweets".format(path))
-                os.mkdir("{0}/data/stock_no_tweets".format(path))
-                os.mkdir(f'{path}/data/stock_no_tweets/{ticker}/')
+                try:
+                    os.mkdir("{0}/data/tweets".format(path))
+                except:
+                    pass
+                try:
+                    os.mkdir("{0}/data/stock_no_tweets".format(path))
+                except:
+                    pass 
+                try:
+                    os.mkdir(f'{path}/data/stock_no_tweets/{ticker}/')
+                except:
+                    pass 
                 os.mkdir("{0}/data/stock".format(path))
         except:
             pass

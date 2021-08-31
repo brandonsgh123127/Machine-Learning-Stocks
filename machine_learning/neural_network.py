@@ -14,6 +14,7 @@ class Network(Neural_Framework):
         self.model_map_names = {1:"model_relu",2:"model_leaky",3:"model_sigmoid",4:"model_relu2",5:"model_leaky2",
                                 6:"model_sigmoid2"}
 
+    @tf.function
     def create_model(self,model_choice=2):
         # tf.function()
         self.model_choice =model_choice
@@ -139,8 +140,17 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
     train = []
     # print(sampler.generate_sample(ticker,is_predict=(not has_actuals)))
     sampler.generate_sample(is_predict=_is_predict)
-    sampler.normalizer.data = sampler.normalizer.data.drop(['Date','High','Low'],axis=1)
-
+    try: # verify there is no extra 'index' column
+        sampler.normalizer.data = sampler.normalizer.data.drop(['index'],axis=1)
+    except Exception as e:
+        print('[ERROR] Failed to drop "index" from sampler data',str(e))
+    try:
+        sampler.normalizer.data = sampler.normalizer.data.drop(['Date','High','Low'],axis=1)
+    except:
+        try:
+            sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
+        except Exception as e:
+            print('[ERROR] Failed to drop "High" and "Low" from sampler data!',str(e))
     with listLock:
         if has_actuals:
             train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,140)))
@@ -156,7 +166,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
     # space = pd.DataFrame([[0,0]],columns=['Open','Close'])
     unnormalized_predict_values = sampler.normalizer.data.append(pd.DataFrame([[unnormalized_prediction[0,0] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Open')],unnormalized_prediction[0,1] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Close')]]],columns=['Open','Close']),ignore_index=True)
     predicted_unnormalized = pd.concat([unnormalized_predict_values])
-    return (sampler.normalizer.unnormalize(predicted),sampler.normalizer.unnormalized_data.tail(1),predicted_unnormalized,sampler.normalizer.keltner)
+    return (sampler.normalizer.unnormalize(predicted),sampler.normalizer.unnormalized_data.tail(1),predicted_unnormalized,sampler.normalizer.keltner,sampler.normalizer.fib)
 
 
 """Run Specified Model"""

@@ -8,6 +8,7 @@ import os,sys
 import requests
 import threading
 import mysql.connector
+import time
 
 
 '''CORE CLASS IMPLEMENTATION--
@@ -65,9 +66,12 @@ class Gather():
         # print(self.indicator,start_date.strftime("%Y-%m-%d"),end_date.strftime("%Y-%m-%d"))
         # print(pdr.get_data_yahoo("SPY",start=start_date.strftime("%Y-%m-%d"),end=end_date.strftime("%Y-%m-%d")))
         with threading.Lock():
-            sys.stdout = open(os.devnull, 'w')
-            self.data = pdr.get_data_yahoo(self.indicator,start=start_date.strftime("%Y-%m-%d"),end=end_date.strftime("%Y-%m-%d"))
-            sys.stdout = sys.__stdout__
+            try:
+                sys.stdout = open(os.devnull, 'w')
+                self.data = pdr.get_data_yahoo(self.indicator,start=start_date.strftime("%Y-%m-%d"),end=end_date.strftime("%Y-%m-%d"))
+                sys.stdout = sys.__stdout__
+            except:
+                time.sleep(300) # Sleep since API is does not want to communicate
         if self.data.empty:
             raise Exception("[ERROR] Data is empty!\nDates:{} -- {}".format(start_date,end_date))
         return 0

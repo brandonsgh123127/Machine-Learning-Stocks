@@ -34,9 +34,9 @@ def display_model(dis:Display,name:str= "model_relu",_has_actuals:bool=False,tic
         data = load_divergence(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}',device_opt='/device:CPU:0')
     # read data for loading into display portion
     if 'divergence' not in name:
-        dis.read_studies_data(data[0],data[1],data[3])
+        dis.read_studies_data(data[0],data[1],data[3],data[4])
     else:
-        dis.read_studies_data(data[0],data[1],data[2])
+        dis.read_studies_data(data[0],data[1],data[2],data[3])
     locs, labels = plt.xticks()
     plt.xticks(locs)
     # display data
@@ -50,8 +50,16 @@ def display_model(dis:Display,name:str= "model_relu",_has_actuals:bool=False,tic
         if unnormalized_data:
             dis.display_box(data[2])
     dis_queue.put(dis)
-def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,vals:str=None):
+def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,vals:tuple=None,opn:str=None,high:str=None,low:str=None,close:str=None,tpe:str=None):
     global dis_queue
+    global _type
+    dis_queue = queue.Queue()
+    thread_pool = Thread_Pool(amount_of_threads=4)
+
+    if type is not None: # passed from launch_main
+        _type=tpe
+    if vals is None and opn is not None: # passed from launch_main
+        vals = (opn,high,low,close)
     if ticker is not None:
         ticker = ticker
     else:
@@ -72,8 +80,8 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
         # print(f'{dates[0]} to {dates[1]}')
         gen.generate_data_with_dates(dates[0],dates[1],is_not_closed=is_not_closed,vals=vals)
     except Exception as e:
-        print(f'[ERROR] Failed to generate data for dates ranging from {dates[0]} to {dates[1]}!\nException:\n',str(e))
-    print(str(dates[0]),str(dates[1]))
+        print(f'[ERROR] Failed to generate data for dates ranging from {dates[0]} to {dates[1]}!\nException:\n',str(e),flush=True)
+        raise Exception(str(e))
     if _type == 'predict':
         dis1 = Display()
         with listLock:
@@ -137,11 +145,13 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
         dis9 = Display()
         dis9 = display_model(dis9,"model_relu",has_actuals,ticker,dates,'green',is_not_closed,True)
         if not has_actuals:
+            plt.tight_layout()
             if is_not_closed == False:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart.png')
             else:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart-pred.png')
         else:
+            plt.tight_layout()
             plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart_actual.png')
         plt.clf()
         plt.cla()

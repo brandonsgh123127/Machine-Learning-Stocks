@@ -47,10 +47,10 @@ class Studies(Gather):
         val3 third low/high to predict levels
     '''
     def fib_help(self,val1,val2,val3,fib_val):
-        if val1<val2: # means val 3 is higher low
+        if val1<val2: # means val 3 is higher low -- upwards
             return ( val3 + ((val2-val1)*fib_val))
-        else: # val 3 is a lower high
-            return ( val3 - ((val2-val1)*fib_val))
+        else: # val 3 is a lower high -- downards
+            return ( val3 - ((val2-val1)*-(fib_val)))
     '''
     Fibonacci extensions utilized for predicting key breaking points
         val2 ------------------------                 val3
@@ -80,14 +80,16 @@ val1    val3_________________________          vall2
         '''
         # Find greatest/least 3 points for pattern
         
-        '''
-        TO BE IMPLEMENTED
-        '''
         with threading.Lock():
-            minm = (self.data['Low'].min(),self.data['Low'].idxmin())
-            maxm = (self.data['High'].max(),self.data['High'].idxmax())
             # val1=None;val2=None;val3=None
             # iterate through data to find all min and max
+            try:
+                # self.data = self.data.set
+                self.data = self.data.reset_index()
+                self.data=self.data.drop(['Date'],axis=1)
+                # print(self.data)
+            except Exception as e:
+                pass
             local_max_high = self.data.High[(self.data.High.shift(1) < self.data.High) & (self.data.High.shift(-1) < self.data.High)]
             local_min_high = self.data.High[(self.data.High.shift(1) > self.data.High) & (self.data.High.shift(-1) > self.data.High)]
             # local_max_high = local_max_high.reset_index()
@@ -110,40 +112,75 @@ val1    val3_________________________          vall2
             val1=None;val2=None;val3=None
             for i,row in new_set['Vals'].iteritems(): # val 1 
                 if i != 0:
-                    # attempt upwards fib
-                    try:
-                        if row < float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) < row : # if low is found, jump to this value
-                            val1 =  row
-                            # find val2 by finding next local high
-                            for j,sub in new_set['Vals'].iteritems():
-                                if j < i:
-                                    continue
-                                else: # find val2 by making sure next local high is valid
-                                    if sub > float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) > sub:
-                                        val2 = sub
-                                        # find val3 by getting next low
-                                        for k,low in new_set['Vals'].iteritems():
-                                            if k < j:
-                                                continue
-                                            else:
-                                                if low < float(new_set.at[k - 1,'Vals']) and not float(new_set.at[k + 1,'Vals']) < low:
-                                                    val3 = low
-                                                    break 
-                                                else:
-                                                    continue
-                                        break
-                                    else:
+                    # if the first value is lower than the close , do upwards fib, else downwards
+                    if new_set.at[0,'Vals'] < new_set.at[len(new_set.index)-1,'Vals']:
+                        # attempt upwards fib
+                        try:
+                            if row < float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) < row : # if low is found, jump to this value
+                                val1 =  row
+                                # find val2 by finding next local high
+                                for j,sub in new_set['Vals'].iteritems():
+                                    if j < i:
                                         continue
-                            break
-                        else:
-                            continue
-                                    
-                    except Exception as e:
-                        exc_type, exc_obj, exc_tb = sys.exc_info()
-                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                        print(exc_type, fname, exc_tb.tb_lineno)
-                        print("[ERROR] Failed upwards fib!  This could be due to not finding a higher low...")    
-                                
+                                    else: # find val2 by making sure next local high is valid
+                                        if sub > float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) > sub:
+                                            val2 = sub
+                                            # find val3 by getting next low
+                                            for k,low in new_set['Vals'].iteritems():
+                                                if k < j:
+                                                    continue
+                                                else:
+                                                    if low < float(new_set.at[k - 1,'Vals']) and not float(new_set.at[k + 1,'Vals']) < low:
+                                                        val3 = low
+                                                        break 
+                                                    else:
+                                                        continue
+                                            break
+                                        else:
+                                            continue
+                                break
+                            else:
+                                continue
+                                        
+                        except Exception as e:
+                            exc_type, exc_obj, exc_tb = sys.exc_info()
+                            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                            print(exc_type, fname, exc_tb.tb_lineno)
+                            print("[ERROR] Failed upwards fib!  This could be due to not finding a higher low...",flush=True)  
+                    else:
+                        # attempt downwards fib
+                        try:
+                            if row > float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) > row : # if low is found, jump to this value
+                                val1 =  row
+                                # find val2 by finding next local high
+                                for j,sub in new_set['Vals'].iteritems():
+                                    if j < i:
+                                        continue
+                                    else: # find val2 by making sure next local low is valid
+                                        if sub < float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) < sub:
+                                            val2 = sub
+                                            # find val3 by getting next high
+                                            for k,low in new_set['Vals'].iteritems():
+                                                if k < j:
+                                                    continue
+                                                else:
+                                                    if low > float(new_set.at[k - 1,'Vals']) and not float(new_set.at[k + 1,'Vals']) > low:
+                                                        val3 = low
+                                                        break 
+                                                    else:
+                                                        continue
+                                            break
+                                        else:
+                                            continue
+                                break
+                            else:
+                                continue
+                                        
+                        except Exception as e:
+                            exc_type, exc_obj, exc_tb = sys.exc_info()
+                            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                            print(exc_type, fname, exc_tb.tb_lineno)
+                            print("[ERROR] Failed downwards fib!  This could be due to not finding a lower high...",flush=True)  
                 else:
                     val1=float(row)
                     continue
@@ -154,7 +191,6 @@ val1    val3_________________________          vall2
                                                               '0.382':[self.fib_help(val1,val2,val3,0.382)],'0.5':[self.fib_help(val1,val2,val3,0.5)],'0.618':[self.fib_help(val1,val2,val3,0.618)],
                                                               '0.796':[self.fib_help(val1,val2,val3,0.796)],'1.556':[self.fib_help(val1,val2,val3,1.556)],'3.43':[self.fib_help(val1,val2,val3,3.43)],
                                                               '3.83':[self.fib_help(val1,val2,val3,3.83)],'5.44':[self.fib_help(val1,val2,val3,5.44)]})
-            print(self.fibonacci_extension)
         return 0
     ''' Keltner Channels for display data'''
     def keltner_channels(self,length:int,factor:int=2,displace:int=None):
@@ -238,8 +274,8 @@ val1    val3_________________________          vall2
             self.applied_studies = pd.read_csv(f'{path}_studies.csv')
             self.keltner = pd.read_csv(f'{path}_keltner.csv')
             self.fibonacci_extension = pd.read_csv(f'{path}_fib.csv')
-# s = Studies("SPY")
-# s.load_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\spy/2019-01-30--2019-04-02")
+# s = Studies("RBLX")
+# s.load_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\rblx/2021-06-23--2021-08-13")
 # s.applied_studies = pd.DataFrame()
 # s.keltner_channels(20)
 # print(s.keltner)

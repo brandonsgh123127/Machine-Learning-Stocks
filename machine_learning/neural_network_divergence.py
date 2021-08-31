@@ -97,7 +97,7 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,name:str="divergence"
             train.append(np.reshape(sampler.normalizer.normalized_data[-14:].to_numpy(),(1,1,28)))
         prediction = neural_net.nn.predict(np.stack(train))
     predicted = pd.DataFrame((np.reshape((prediction),(1,2))),columns=['Divergence','Gain/Loss']) #NORMALIZED
-    return (sampler.normalizer.unnormalize_divergence(predicted),sampler.normalizer.unnormalized_data.iloc[-1:],sampler.normalizer.keltner)
+    return (sampler.normalizer.unnormalize_divergence(predicted),sampler.normalizer.unnormalized_data.iloc[-1:],sampler.normalizer.keltner,sampler.normalizer.fib)
 def run(epochs,batch_size,name="divergence",model=1):
     neural_net = Neural_Divergence(epochs,batch_size)
     neural_net.load_model(name)

@@ -20,8 +20,18 @@ class Normalizer():
         self.min_max = MinMaxScaler()
     def read_data(self,date,ticker):
         self.data = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_data.csv').drop(['Adj Close'],axis=1)
+        try:
+            self.data = self.data.drop(['index'],axis=1)
+            self.data = self.data.drop(['level_0'],axis=1)
+        except:
+            print('[INFO] Could not find columns "index" and/or "level_0" from normalizer')
+            pass
         self.studies = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_studies.csv',index_col=False)
-        self.keltner = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_keltner.csv',index_col=False)
+        try:
+            self.keltner = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_keltner.csv',index_col=False)
+            self.fib = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_fib.csv',index_col=False)
+        except:
+            pass
         pd.set_option("display.max.columns", None)
     def convert_derivatives(self,out=8):
         self.normalized_data = pd.DataFrame((),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
