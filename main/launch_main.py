@@ -4,6 +4,7 @@ import subprocess
 import tensorflow
 import keras
 import tkinter as tk
+from multiprocessing import Process
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from pathlib import Path
@@ -23,7 +24,7 @@ from machine_learning.stock_analysis_prediction import main as analyze_stock
 class GUI(Thread_Pool):
 
     def __init__(self):
-        super().__init__(amount_of_threads=2)
+        super().__init__(amount_of_threads=1)
         self.path = Path(os.getcwd()).parent.absolute()
         self.job_queue = queue.Queue()
         self.cache_queue = queue.Queue()
@@ -41,7 +42,7 @@ class GUI(Thread_Pool):
         self.output_image = tk.Canvas(self.window,width=1400,height=1400,bg='white')
         self.load_layout = tk.Canvas(self.content,width=200,height=200,bg='white')
 
-        self.window.bind('<Return>',self.job_queue.put(threading.Thread(target=self.analyze_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get()))))
+        self.window.bind('<Return>',self.enter_button_callback)
         s = ttk.Style(self.window)
         self.page_loc = 1 # Map page number to location
         try: # if image exists, don't recreate
@@ -68,6 +69,8 @@ class GUI(Thread_Pool):
 
 
 
+    def enter_button_callback(self,event):
+        self.job_queue.put(threading.Thread(target=self.analyze_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get())))
     def get_current_price(self):
         if self.boolean2.get() == True:
             self.open = tk.Label(self.content,text="Open:")
@@ -236,8 +239,13 @@ class GUI(Thread_Pool):
     """Set view to new window to make sure user wants to quit"""
     def on_closing(self):
         self.exited = True
+        self.stop_threads=True
+        self.is_retrieving = False
+        self.content.destroy()
         self.window.destroy()
         exit(0)
+        
+
 
     def next_frame(self):
         # new_im = ImageTk.PhotoImage(self.load_image.copy())
@@ -280,7 +288,7 @@ class GUI(Thread_Pool):
         if self.page_loc == 1:#Predict page
             self.page_loc = 2
             self.generate_button.grid_remove()
-            self.generate_button = ttk.Button(self.content, text="Analyze",command= lambda: self.job_queue.put(threading.Thread(target=self.analyze_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get()))))
+            self.generate_button = ttk.Button(self.content, text="Analyze",command= self.enter_button_callback)
             self.output_image.delete('all')
 
     """ Swap to Predict page """            
@@ -328,15 +336,24 @@ class GUI(Thread_Pool):
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('SNOW',False,False,True,False)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('UPS',False,False,True,False)))
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('ULTA',False,False,True,False)))
-        self.window.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.window.protocol("WM_DELETE_WINDOW", lambda : self.on_closing())
 
         self.window.mainloop()
+    def exit_check(self):
+        while True:
+            if self.exited:
+                raise ChildProcessError('[INFO] Application Signal End.')         
+            else:
+                time.sleep(3)  
     """ Constant loop that checks for tasks to-be completed.  Manages Computations"""
     def task_loop(self):
+        exit_thread = threading.Thread(target=self.exit_check)
+        exit_thread.daemon = True
+        exit_thread.start()
         while True:
-            self.obj = None
             if self.exited:
-                exit(0)            
+                raise ChildProcessError('[INFO] Application Signal End.')         
+            self.obj = None 
             # Queue for when the generate button is submitted and any other button actions go here
             while self.job_queue.qsize() > 0:
                 self.is_retrieving = True
@@ -407,6 +424,9 @@ class GUI(Thread_Pool):
    
 if __name__ == '__main__':
     ui = GUI()
-    threading.Thread(target=ui.task_loop).start()
+    t = threading.Thread(target=ui.task_loop)
+    t.daemon=True
+    t.start()
     ui.run()
+    
     
