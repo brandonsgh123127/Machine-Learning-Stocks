@@ -52,7 +52,7 @@ def display_model(dis:Display,name:str= "model_relu",_has_actuals:bool=False,tic
         if unnormalized_data:
             dis.display_box(data[2])
     dis_queue.put(dis)
-    data_queue.put((data[0],data[1]))
+    data_queue.put((data[0],data[1],data[2])) # Data[2] will be the unnormalized predicted open/close... most useful
 def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,vals:tuple=None,opn:str=None,high:str=None,low:str=None,close:str=None,tpe:str=None):
     global dis_queue,data_queue
     global _type
@@ -90,6 +90,7 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
         dis1 = Display()
         with listLock:
             thread_pool.start_worker(threading.Thread(target=display_model,args=(dis1,"model_relu",_has_actuals,ticker,dates,'green',is_not_closed)))
+        dis1=dis_queue.get()
         dis2 = Display()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis2,"model_leaky",_has_actuals,ticker,dates,'black',is_not_closed))) == 1:
@@ -114,6 +115,7 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
             thread_pool.join_workers()
             dis3.display_predict_only(ticker=ticker,dates=dates,color="magenta")
             dis2.display_predict_only(ticker=ticker,dates=dates,color="black")
+            dis1.display_predict_only(ticker=ticker,dates=dates,color="green")
             if is_not_closed == False:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png')
             else:

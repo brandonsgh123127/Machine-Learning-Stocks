@@ -20,7 +20,7 @@ from threading_impl.Thread_Pool import Thread_Pool
 import gc
 import concurrent.futures
 from machine_learning.stock_analysis_prediction import main as analyze_stock
-
+from tkinter import StringVar
          
 class GUI(Thread_Pool):
 
@@ -39,12 +39,24 @@ class GUI(Thread_Pool):
         self.boolean2 = tk.BooleanVar()
         self.force_bool = tk.BooleanVar()
 
+        self.watchlist = []
+        self.watchlist_file = open(f'{self.path}/data/watchlist/default.csv','r')
+        lines = self.watchlist_file.readlines()
+        for line in lines:
+            try:
+                self.watchlist.append(line[0:line.find(',')].strip().upper())
+            except:
+                self.watchlist.append(line.strip().upper())
+        self.quick_select= StringVar(self.content)
+        self.quick_select.set('SPY') # default value
         self.stock_input = tk.Entry(self.content)
-        self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get()))))
+        self.stock_dropdown = tk.OptionMenu(self.content,self.quick_select,*self.watchlist)
+        self.quick_select.trace('w',self.quick_gen)
+        self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
         self.output_image = tk.Canvas(self.window,width=1400,height=1400,bg='white')
         self.load_layout = tk.Canvas(self.content,width=200,height=200,bg='white')
 
-        self.window.bind('<Return>',self.enter_button_callback)
+        self.window.bind('<Return>',self.generate_callback)
         s = ttk.Style(self.window)
         self.page_loc = 1 # Map page number to location
         try: # if image exists, don't recreate
@@ -70,9 +82,16 @@ class GUI(Thread_Pool):
         s.configure('.', background='white')
 
 
-
-    def enter_button_callback(self,event):
-        self.job_queue.put(threading.Thread(target=self.analyze_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get())))
+    def quick_gen(self,event,*args,**vargs):
+        self.stock_input.delete(0,tk.END)
+        self.stock_input.insert(0,self.quick_select.get())
+        self.generate_callback(event)
+        
+    def generate_callback(self,event):
+        if self.page_loc == 1:
+            self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get())))
+        elif self.page_loc == 2:
+            self.job_queue.put(threading.Thread(target=self.analyze_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get())))
     def get_current_price(self):
         if self.boolean2.get() == True:
             self.open = tk.Label(self.content,text="Open:")
@@ -117,12 +136,10 @@ class GUI(Thread_Pool):
             elif not force_generation and (Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart_actual.png').exists()  and has_actuals and not is_not_closed):
                 skippable = True
             if not skippable:
-                self.output = str(analyze_stock(ticker, has_actuals, is_not_closed, type='chart'))
+                self.machine_learning_data.put(analyze_stock(ticker, has_actuals, is_not_closed, type='chart'))
                 gc.collect()
                 time.sleep(5)
-                self.dates = self.output.split()
-            else:
-                self.dates = dates
+            self.dates = dates
             # print(self.dates)
             if not is_caching:
                 if not has_actuals:
@@ -286,7 +303,7 @@ class GUI(Thread_Pool):
         if self.page_loc == 1:#Predict page
             self.page_loc = 2
             self.generate_button.grid_remove()
-            self.generate_button = ttk.Button(self.content, text="Analyze",command= self.enter_button_callback)
+            self.generate_button = ttk.Button(self.content, text="Analyze",command= self.generate_callback)
             self.output_image.delete('all')
 
     """ Swap to Predict page """            
@@ -294,7 +311,7 @@ class GUI(Thread_Pool):
         if self.page_loc == 2:#Analysis page
             self.page_loc = 1
             self.generate_button.grid_remove()
-            self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get()))))
+            self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
             self.output_image.delete('all')
         
     """ Manages GUI-side.  Button actions map to functions"""
@@ -303,9 +320,9 @@ class GUI(Thread_Pool):
         self.load_layout.grid(column=3,row=9)
         self.stock_label = tk.Label(self.content,text="Stock:")
         self.stock_label.grid(column=2,row=0)
-        self.stock_input = tk.Entry(self.content)
         self.stock_input.insert(0,'SPY')
         self.stock_input.grid(column=3,row=0)
+        self.stock_dropdown.grid(column=4,row=0)
         self.boolean1 = tk.BooleanVar()
         self.boolean1.set(False)
         self.boolean2 = tk.BooleanVar()
@@ -318,7 +335,7 @@ class GUI(Thread_Pool):
         self.force_refresh.grid(column=2, row=2)
         self.has_actuals = ttk.Checkbutton(self.content, text="Compare Predicted", variable=self.boolean1)
         self.has_actuals.grid(column=4, row=1)
-        self.generate_button = ttk.Button(self.content, text="Generate",command= lambda: self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get()))))
+        self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
         self.generate_button.grid(column=3, row=2)
         # self.next_page_button.pack(side='bottom')
         self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True,False)))
