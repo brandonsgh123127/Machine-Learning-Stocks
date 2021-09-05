@@ -4,7 +4,6 @@ import numpy as np
 from data_generator.generate_sample import Sample
 from pathlib import Path
 import os
-import pandas as pd
 import matplotlib.pyplot as plt
 from machine_learning.neural_network import Network
 from machine_learning.neural_network import load
@@ -16,135 +15,199 @@ import concurrent.futures
 import datetime
 import threading
 import sys
-
+# import json
+import time
+import queue
+import gc
+from threading_impl.Thread_Pool import Thread_Pool
 listLock = threading.Lock()
 _type = None
-def display_model(dis:Display,name:str= "model",_has_actuals:bool=False,ticker:str="spy",dates:list=[],color:str="blue",unnormalized_data = False):
+dis_queue = queue.Queue()
+data_queue = queue.Queue()
+thread_pool = Thread_Pool(amount_of_threads=3)
+
+def display_model(dis:Display,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",dates:list=[],color:str="blue",is_predict=False,unnormalized_data = False):
+    global dis_queue
+    global data_queue
+    # Load machine learning model either based on divergence or not
     if 'divergence' not in name:
-        data = load(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}')
+        data = load(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}',_is_predict=is_predict,device_opt='/device:CPU:0')
     else:
-        # print('divergence')
-        data = load_divergence(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}')
-    with listLock:
-        # print(data)
-        dis.read_studies_data(data[0],data[1])
+        data = load_divergence(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}',device_opt='/device:CPU:0')
+    # read data for loading into display portion
+    if 'divergence' not in name:
+        dis.read_studies_data(data[0],data[1],data[3],data[4])
+    else:
+        dis.read_studies_data(data[0],data[1],data[2],data[3])
     locs, labels = plt.xticks()
     plt.xticks(locs)
+    # display data
     if not _has_actuals: #if prediction, proceed
         if not unnormalized_data:
-            if 'divergence' not in name:
-                dis.display_predict_only(ticker=ticker,dates=dates,color=f'{color}')
-            else:
-                # print('divergence dis')
+            if 'divergence' in name:
                 dis.display_divergence(ticker=ticker,dates=dates,color=f'{color}')
         else:
-            if 'divergence' not in name:
-                dis.display_box(data[2])
-    return dis
-def main(ticker:str = "spy",has_actuals:bool = True, is_not_closed:bool = False,vals:str=None):
+            dis.display_box(data[2])
+    else:
+        if unnormalized_data:
+            dis.display_box(data[2])
+    dis_queue.put(dis)
+    data_queue.put((data[0],data[1],data[2])) # Data[2] will be the unnormalized predicted open/close... most useful
+def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,vals:tuple=None,opn:str=None,high:str=None,low:str=None,close:str=None,tpe:str=None):
+    global dis_queue,data_queue
+    global _type
+    data_queue = queue.Queue()
+    dis_queue = queue.Queue()
+    thread_pool = Thread_Pool(amount_of_threads=4)
+
+    if type is not None: # passed from launch_main
+        _type=tpe
+    if vals is None and opn is not None: # passed from launch_main
+        vals = (opn,high,low,close)
     if ticker is not None:
         ticker = ticker
     else:
-        ticker = "dash"
+        raise ValueError("Failed to find ticker name!")
     path = Path(os.getcwd()).parent.absolute()
     
-    gen = Generator(ticker,path)
+    gen = Generator(ticker.upper(),path)
     gen.studies.set_indicator(f'{ticker.upper()}')
     # if current trading day, set prediction for tomorrow in date name
     dates = []
-    if is_not_closed: #same day prediction
-        # print('same day')
-        dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+    if is_not_closed: #predict next day
+        dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today()) #month worth of data
     else:
-        dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 0)) #month worth of data
+        dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
     
     _has_actuals = has_actuals
-    gen.generate_data_with_dates(dates[0],dates[1],is_not_closed=is_not_closed,vals=vals)
+    try:
+        # print(f'{dates[0]} to {dates[1]}')
+        gen.generate_data_with_dates(dates[0],dates[1],is_not_closed=is_not_closed,vals=vals)
+    except Exception as e:
+        print(f'[ERROR] Failed to generate data for dates ranging from {dates[0]} to {dates[1]}!\nException:\n',str(e),flush=True)
+        raise Exception(str(e))
     if _type == 'predict':
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            threads = []
-            #OK MODEL
-            dis1 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis1,"model_new_2",_has_actuals,ticker,dates,'green'))
-            #Direction Bias model
-            dis2 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis2,"model_new_3",_has_actuals,ticker,dates,'black'))
-            #NEW relu-based model
-            dis4 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis4,"model_new_5",_has_actuals,ticker,dates,'blue'))
-            dis3 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis3,"model_new_4",_has_actuals,ticker,dates,'magenta'))
-                
-            # concurrent.futures.wait(threads)
-            if _has_actuals:        
-                dis3 = threads[3].result()
-                dis3.display_line(ticker=ticker,dates=dates,color="magenta")
-                dis4 = threads[2].result()
-                dis4.display_line(ticker=ticker,dates=dates,color="blue")
-                dis2 = threads[1].result()
-                dis2.display_predict_only(ticker=ticker,dates=dates,color="black")
-                dis1 = threads[0].result()
-                dis1.display_predict_only(ticker=ticker,dates=dates,color="green")
-        if not _has_actuals:
+        dis1 = Display()
+        with listLock:
+            thread_pool.start_worker(threading.Thread(target=display_model,args=(dis1,"model_relu",_has_actuals,ticker,dates,'green',is_not_closed)))
+        dis1=dis_queue.get()
+        dis2 = Display()
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis2,"model_leaky",_has_actuals,ticker,dates,'black',is_not_closed))) == 1:
+                time.sleep(3)
+                thread_pool.join_workers()
+        dis2=dis_queue.get()
+        dis3 = Display()
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis3,"model_sigmoid",_has_actuals,ticker,dates,'magenta',is_not_closed))) == 1:
+                time.sleep(3)
+                thread_pool.join_workers()
+        dis3 = dis_queue.get()
+        
+        dis_queue = queue.Queue()
+        if _has_actuals:   
+            thread_pool.join_workers()     
+            dis3.display_line(ticker=ticker,dates=dates,color="magenta")
+            dis2.display_predict_only(ticker=ticker,dates=dates,color="black")
+            dis1.display_predict_only(ticker=ticker,dates=dates,color="green")
+            plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_actual.png')
+        else:
+            thread_pool.join_workers()
+            dis3.display_predict_only(ticker=ticker,dates=dates,color="magenta")
+            dis2.display_predict_only(ticker=ticker,dates=dates,color="black")
+            dis1.display_predict_only(ticker=ticker,dates=dates,color="green")
             if is_not_closed == False:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png')
             else:
-                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict-i.png')
-
-        else:
-            plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_a.png')
-
+                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict-pred.png')
+        plt.clf()
         plt.cla()
-        exit(0)
-    elif _type == 'divergence':
-        threads = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            dis5 = Display()
-            # with listLock:
-                # threads.append(executor.submit(display_model,dis5,"divergence",_has_actuals,ticker,dates,'green'))
-            # dis6 = Display()
-            # with listLock:
-                # threads.append(executor.submit(display_model,dis6,"divergence_2",_has_actuals,ticker,dates,'black'))
-            # dis7 = Display()
-            # with listLock:
-                # threads.append(executor.submit(display_model,dis7,"divergence_3",_has_actuals,ticker,dates,'blue'))
-            dis8 = Display()
-            with listLock:
-                threads.append(executor.submit(display_model,dis8,"divergence_4",_has_actuals,ticker,dates,'magenta'))
-            if _has_actuals:
-                dis8 = threads[0].result()
-                dis8.display_divergence(ticker=ticker,dates=dates,color=f'm',has_actuals=_has_actuals)
-        print(str(dates[0]),str(dates[1]))
+        del dis2
+        del dis3
+        gc.collect()
+    elif 'divergence' == _type:
+        dis8 = Display()
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis8,"divergence_3",_has_actuals,ticker,dates,'magenta',is_not_closed))) == 1:
+                time.sleep(3)
+                thread_pool.join_workers()
+            thread_pool.join_workers()
+            dis8=dis_queue.get()
+            dis8.display_divergence(ticker=ticker,dates=dates,color=f'm',has_actuals=_has_actuals)
         if not has_actuals:
             if not is_not_closed:
                 plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence.png')
             else:
-                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence-i.png')
+                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence-pred.png')
         else:
-            plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence_a.png')
+            plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence_actual.png')
+        plt.clf()
         plt.cla()
-        exit(0)
-    elif _type == 'u':
+        del dis8 
+        gc.collect()
+    elif _type == 'chart':
         dis9 = Display()
-        dis9 = display_model(dis9,"model_new_2",False,ticker,dates,'green',True)
+        dis9 = display_model(dis9,"model_relu",has_actuals,ticker,dates,'green',is_not_closed,True)
         if not has_actuals:
+            plt.tight_layout()
             if is_not_closed == False:
-                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u.png')
+                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart.png')
             else:
-                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u-i.png')
+                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart-pred.png')
         else:
-            plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_u_a.png')
+            plt.tight_layout()
+            plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart_actual.png')
+        plt.clf()
         plt.cla()
-        exit(0)
+        del dis9
+        gc.collect()
+    elif _type == 'model_out_2':
+        dis10 = Display()
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis10,"model_relu2",_has_actuals,ticker,dates,'green',is_not_closed))) == 1:
+                time.sleep(3)
+                thread_pool.join_workers()
+        dis11 = Display()
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis11,"model_leaky2",_has_actuals,ticker,dates,'black',is_not_closed))) == 1:
+                time.sleep(3)
+                thread_pool.join_workers()
+        dis12 = Display()
+        with listLock:
+            while thread_pool.start_worker(threading.Thread(target=display_model,args=(dis12,"model_sigmoid2",_has_actuals,ticker,dates,'magenta',is_not_closed))) == 1:
+                time.sleep(3)
+                thread_pool.join_workers()
+        dis10=dis_queue.get()
+        dis11=dis_queue.get()
+        dis12=dis_queue.get()
+        if not _has_actuals:
+            thread_pool.join_workers()
+            dis12.display_predict_only(ticker=ticker,dates=dates,color=f'magenta')
+            dis11.display_predict_only(ticker=ticker,dates=dates,color=f'black')
+            dis10.display_predict_only(ticker=ticker,dates=dates,color=f'green')
+            if not is_not_closed:
+                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_2.png')
+            else:
+                plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_2-pred.png')
+        else:
+            thread_pool.join_workers()
+            dis12.display_line(ticker=ticker,dates=dates,color=f'magenta')
+            dis11.display_line(ticker=ticker,dates=dates,color=f'black')
+            dis10.display_predict_only(ticker=ticker,dates=dates,color=f'green')
+            plt.savefig(f'{path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_2_actual.png')
+        plt.clf()
+        plt.cla()
+        del dis10
+        del dis11 
+        del dis12
+        gc.collect()
+    return (ticker,data_queue)#Return Data from machine learning models
 if __name__ == "__main__":
     _type = sys.argv[1]
     _has_actuals = sys.argv[3] == 'True'
     _is_not_closed =sys.argv[4] == 'True'
     vals = None
+    # print(_type,_has_actuals,_is_not_closed)
     if _is_not_closed:
         vals = (sys.argv[5],sys.argv[6],sys.argv[7],sys.argv[8])
     main(ticker=sys.argv[2],has_actuals=_has_actuals,is_not_closed=_is_not_closed,vals=vals)
