@@ -85,10 +85,8 @@ class Gather():
     def get_option_data(self):
         with threading.Lock():
             try:
-                # sys.stdout = open(os.devnull, 'w')
                 ticker = yf.Ticker(self.indicator)
                 exps = ticker.options
-                # Get options for each expiration
                 options = pd.DataFrame()
                 for e in exps:
                     if (datetime.datetime.strptime(e,'%Y-%m-%d') - datetime.datetime.today()).days < 7:
@@ -152,7 +150,7 @@ class Gather():
         return response.json()
 
 
-g = Gather()
-g.set_indicator('SPY')
-g.get_option_data()
-print(g.options.columns)
+# g = Gather()
+# g.set_indicator('SPY')
+# g.get_option_data()
+# print(g.options.columns)
