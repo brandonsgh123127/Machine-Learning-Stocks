@@ -23,14 +23,13 @@ class Generator():
         # studies.__init__()
         with threading.Lock():
             studies = Studies(self.ticker)
-            studies.gen_random_dates()
+            dates = studies.gen_random_dates()
             # Loop until valid data populates
             try:
                 while studies.set_data_from_range(studies.date_set[0],studies.date_set[1]) != 0 or studies.data.isnull().values.any() or len(studies.data) < 16:
                     # print("looping...",flush=True)
                     studies.gen_random_dates()
-            except:
-        except RuntimeError:
+            except RuntimeError:
                 pass
 
             # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
@@ -42,14 +41,15 @@ class Generator():
             query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
         try:
             studies.data = studies.data.drop(['Volume'],axis=1)
-            
-        studies.reset_data()
-        studies.load_data_mysql(dates[0],dates[1])
-        studies.apply_ema("14",self.studies.get_date_difference())
-        studies.load_data_mysql(dates[0],dates[1])
-        studies.apply_ema("30",self.studies.get_date_difference())
-        studies.keltner_channels(20, 1.3, None)
-            return
+            studies.reset_data()
+            studies.load_data_mysql(dates[0],dates[1])
+            studies.apply_ema("14",self.studies.get_date_difference())
+            studies.load_data_mysql(dates[0],dates[1])
+            studies.apply_ema("30",self.studies.get_date_difference())
+            studies.keltner_channels(20, 1.3, None)
+        except Exception as e:
+            # raise Exception("[ERROR] Exception:\n{}".format(str(e)))
+            return  
         try:
             os.remove(f'{self.path}/data/stock_no_tweets/{studies.get_indicator()}/{studies.date_set[0]}--{studies.date_set[1]}')
         except:

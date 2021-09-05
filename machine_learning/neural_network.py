@@ -183,10 +183,6 @@ def run(epochs,batch_size,name="model_relu",model=1):
         train_history = model[i]
         print(train_history)
     neural_net.save_model()
-try:
-            self.keltner = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_keltner.csv',index_col=False)
-            self.fib = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_fib.csv',index_col=False)
-
 
 
 # run(100,100,"model_relu",1)
@@ -195,6 +191,3 @@ try:
 # run(100,100,"model_relu2",4)
 # run(100,100,"model_leaky2",5)
 # run(100,100,"model_sigmoid2",6)
-
-
-# print(load("spy/2021-06-18--2021-08-08_data",name="model_relu"))
