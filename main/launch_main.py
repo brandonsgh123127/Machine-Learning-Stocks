@@ -35,10 +35,15 @@ class GUI(Thread_Pool):
         
         self.window = tk.Tk(screenName='Stock Analysis')
         self.content = ttk.Frame(self.window,width=100,height=100)
+        self.title_opts = {1:'Predict Mode',
+                           2:'Analysis Mode',
+                           3:'15 Min Timer Mode'}
+        self.title = ttk.Label(self.window,text=self.title_opts.get(1))
         self.boolean1 = tk.BooleanVar()
         self.boolean2 = tk.BooleanVar()
         self.force_bool = tk.BooleanVar()
 
+        # Add Dropdown list of pre-defined stocks... 
         self.watchlist = []
         self.watchlist_file = open(f'{self.path}/data/watchlist/default.csv','r')
         lines = self.watchlist_file.readlines()
@@ -49,6 +54,8 @@ class GUI(Thread_Pool):
                 self.watchlist.append(line.strip().upper())
         self.quick_select= StringVar(self.content)
         self.quick_select.set('SPY') # default value
+        
+        
         self.stock_input = tk.Entry(self.content)
         self.stock_dropdown = tk.OptionMenu(self.content,self.quick_select,*self.watchlist)
         self.quick_select.trace('w',self.quick_gen)
@@ -66,10 +73,10 @@ class GUI(Thread_Pool):
             self.buttonPhoto = ImageTk.PhotoImage(self.buttonImage)
             self.buttonImage2 = Image.open(f'{self.path}/data/icons/previous.png')
             self.buttonPhoto2 = ImageTk.PhotoImage(self.buttonImage2)
-            self.next_page_button = ttk.Button(self.content, padding='10 10 10 10',image=self.buttonPhoto,text="",command= lambda: self.job_queue.put(threading.Thread(target=self.analysis_page,args=())))
+            self.next_page_button = ttk.Button(self.content, padding='10 10 10 10',image=self.buttonPhoto,text="",command= lambda: self.job_queue.put(threading.Thread(target=self.next_page,args=())))
             self.next_page_button.grid(column=4, row=20)
-            self.previous_page_button = ttk.Button(self.content, padding='10 10 10 10',image=self.buttonPhoto2,text="",command= lambda: self.job_queue.put(threading.Thread(target=self.predict_page,args=())))
-            self.previous_page_button.grid(column=2, row=20)
+            self.previous_page_button = ttk.Button(self.content, padding='10 10 10 10',image=self.buttonPhoto2,text="",command= lambda: self.job_queue.put(threading.Thread(target=self.back_page,args=())))
+            # self.previous_page_button.grid(column=2, row=20)
 
         self.output_image.pack(expand='yes',side='right')
         self.background_tasks_label = tk.Label(self.content,text=f'Currently pre-loading a few stocks, this may take a bit...')
@@ -87,14 +94,15 @@ class GUI(Thread_Pool):
         self.stock_input.insert(0,self.quick_select.get())
         self.generate_callback(event)
         
-    def generate_callback(self,event):
+    def generate_callback(self,event=None):
+        self.quick_select.set(self.stock_input.get().upper()) # default value
         if self.page_loc == 1:
             self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get())))
         elif self.page_loc == 2:
             self.job_queue.put(threading.Thread(target=self.analyze_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get())))
     def get_current_price(self):
         if self.boolean2.get() == True:
-            self.open = tk.Label(self.content,text="Open:")
+            self.open = tk.Label(self.content,text="Open:") 
             self.open.grid(column=1,row=3)
             self.open_input = tk.Entry(self.content)
             self.open_input.grid(column=2,row=3)
@@ -299,24 +307,43 @@ class GUI(Thread_Pool):
             raise ChildProcessError
         
     """ Swap to Analysis page """            
-    def analysis_page(self):
+    def next_page(self):
         if self.page_loc == 1:#Predict page
             self.page_loc = 2
             self.generate_button.grid_remove()
             self.generate_button = ttk.Button(self.content, text="Analyze",command= self.generate_callback)
+            self.previous_page_button.grid(column=2, row=20)
             self.output_image.delete('all')
+        elif self.page_loc == 2:#Analysis page
+            self.page_loc = 3
+            self.generate_button.grid_remove()
+            self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
+            self.next_page_button.grid_forget() # Hide the next page button
+            self.output_image.delete('all')
+        self.title['text'] = self.title_opts.get(self.page_loc)
+
 
     """ Swap to Predict page """            
-    def predict_page(self):
-        if self.page_loc == 2:#Analysis page
+    def back_page(self):
+        if self.page_loc == 3:#Analysis page
+            self.page_loc = 2
+            self.generate_button.grid_remove()
+            self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
+            self.next_page_button.grid(column=4, row=20)
+            self.output_image.delete('all')
+        elif self.page_loc == 2:#Analysis page
             self.page_loc = 1
             self.generate_button.grid_remove()
             self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
+            self.previous_page_button.grid_forget()
             self.output_image.delete('all')
-        
+        self.title['text'] = self.title_opts.get(self.page_loc)
+
     """ Manages GUI-side.  Button actions map to functions"""
     def run(self):
         self.content.pack(side='top')
+        self.title.pack(side='top')
+        # self.title.grid(column=15,row=0)
         self.load_layout.grid(column=3,row=9)
         self.stock_label = tk.Label(self.content,text="Stock:")
         self.stock_label.grid(column=2,row=0)

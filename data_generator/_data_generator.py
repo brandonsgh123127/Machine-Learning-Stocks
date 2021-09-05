@@ -26,7 +26,7 @@ class Generator():
             studies.gen_random_dates()
             # Loop until valid data populates
             try:
-                while studies.set_data_from_range(studies.date_set[0],studies.date_set[1]) != 0 or studies.data.isnull().values.any() or len(studies.data) < 16:
+                while studies.get_data(studies.date_set[0],studies.date_set[1]) != 0 or studies.data.isnull().values.any() or len(studies.data) < 16:
                     # print("looping...",flush=True)
                     studies.gen_random_dates()
             except:
@@ -60,8 +60,8 @@ class Generator():
         self.studies.date_set = (date1,date2)
         # Loop until valid data populates
         try:
-            # self.studies.set_data_from_range(date1,date2)
-            self.studies.set_data_from_range(self.studies.date_set[0],self.studies.date_set[1])
+            # self.studies.get_data(date1,date2)
+            self.studies.get_data(self.studies.date_set[0],self.studies.date_set[1])
             self.studies.data = self.studies.data.reset_index()
             self.studies.data = self.studies.data.drop(['Date'],axis=1)
         except Exception as e:

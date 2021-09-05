@@ -1,6 +1,7 @@
 import yfinance as yf
 import datetime
 from pandas_datareader import data as pdr
+import pandas as pd
 import twitter
 import random
 import pytz
@@ -51,6 +52,7 @@ class Gather():
                           sleep_on_rate_limit="true")
         self.indicator = ""
         self.data : pdr.DataReader= None
+        self.options : pd.DataFrame = None
         self.date_set = ()
         self.bearer="AAAAAAAAAAAAAAAAAAAAAJdONwEAAAAAzi2H1WrnhmAddAQKwveAfRN1DAY%3DdSFsj3bTRnDqqMxNmnxEKTG6O6UN3t3VMtnC0Y7xaGxqAF1QVq"
         self.headers = {"Authorization": "Bearer {0}".format(self.bearer), "content-type": "application/json",'Accept-encoding': 'gzip',
@@ -62,7 +64,7 @@ class Gather():
         with threading.Lock():
             return self.indicator    
     # retrieve pandas_datareader object of datetime
-    def set_data_from_range(self,start_date,end_date):
+    def get_data(self,start_date,end_date):
         # print(self.indicator,start_date.strftime("%Y-%m-%d"),end_date.strftime("%Y-%m-%d"))
         # print(pdr.get_data_yahoo("SPY",start=start_date.strftime("%Y-%m-%d"),end=end_date.strftime("%Y-%m-%d")))
         with threading.Lock():
@@ -80,6 +82,44 @@ class Gather():
             return (date1,date2) 
         else:
             return (date2,date1)
+    def get_option_data(self):
+        with threading.Lock():
+            try:
+                # sys.stdout = open(os.devnull, 'w')
+                ticker = yf.Ticker(self.indicator)
+                exps = ticker.options
+                # Get options for each expiration
+                options = pd.DataFrame()
+                for e in exps:
+                    if (datetime.datetime.strptime(e,'%Y-%m-%d') - datetime.datetime.today()).days < 7:
+                        opt = ticker.option_chain(e)
+                        opt = pd.DataFrame().append(opt.calls).append(opt.puts)
+                        opt['expirationDate'] = e
+                        options = options.append(opt, ignore_index=True)
+                    else:
+                        break
+                # Bizarre error in yfinance that gives the wrong expiration date
+                # Add 1 day to get the correct expiration date
+                options['expirationDate'] = pd.to_datetime(options['expirationDate']) + datetime.timedelta(days = 1)
+                options['dte'] = (options['expirationDate'] - datetime.datetime.today()).dt.days / 365
+                
+                # Boolean column if the option is a CALL
+                options['CALL'] = options['contractSymbol'].str[4:].apply(
+                    lambda x: "C" in x)
+                
+                options[['bid', 'ask', 'strike']] = options[['bid', 'ask', 'strike']].apply(pd.to_numeric)
+                options['mark'] = (options['bid'] + options['ask']) / 2 # Calculate the midpoint of the bid-ask
+                
+                # Drop unnecessary and meaningless columns
+                self.options = options.drop(columns = ['contractSize', 'currency', 'change', 'percentChange', 'lastTradeDate', 'lastPrice'])
+                # sys.stdout = sys.__stdout__
+            except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
+                print(str(e))
+                time.sleep(300) # Sleep since API is does not want to communicate
+        return 0
     # Generate random date for data generation
     def gen_random_dates(self):
         with threading.Lock():
@@ -103,9 +143,6 @@ class Gather():
                 return (self.date_set[0] - self.date_set[1]).days
             else:
                 return (date2 - date1).days
-    def get_data(self):
-        with threading.Lock():
-            return self.data
     # Twitter API Web Scraper for data on specific stocks
     def get_recent_news(self,query):
         response = requests.post(self.search_url,json=query, headers=self.headers)
@@ -113,3 +150,9 @@ class Gather():
         if response.status_code != 200:
             raise Exception(response.status_code, response.text)
         return response.json()
+
+
+g = Gather()
+g.set_indicator('SPY')
+g.get_option_data()
+print(g.options.columns)
