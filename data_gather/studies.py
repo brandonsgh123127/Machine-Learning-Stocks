@@ -1,4 +1,4 @@
-from data_gather.data_gatherer import Gather
+from data_gather._data_gather import Gather
 import pandas as pd
 import os
 import glob
@@ -45,8 +45,7 @@ class Studies(Gather):
     def apply_ema(self, length,span=None,half=None):
         # Calculate locally, then push to database
         data = self.data.drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Date':'Date','Close':f'ema{length}'})
-        data = data.drop(['Date'],axis=1)
-    def apply_ema(self, length,span,half=None):
+        # data = data.drop(['Date'],axis=1)
         if half is not None:
             self.applied_studies= pd.concat([self.applied_studies,pd.DataFrame({f'ema{length}': [self.data.ewm(span=int(length)).mean()]},halflife=half)],axis=1)
         else:
@@ -107,6 +106,7 @@ class Studies(Gather):
                         """
                         retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator}',
                                                                                     'date':self.data.loc[index,:]['Date']},multi=True)
+                        # self.data=self.data.drop(['Date'],axis=1)
                         for retrieve_result in retrieve_data_result:
                             id_res = retrieve_result.fetchall()
                             if len(id_res) == 0:
@@ -181,7 +181,7 @@ val1    val3_________________________          vall2
             try:
                 # self.data = self.data.set
                 self.data = self.data.reset_index()
-                self.data=self.data.drop(['Date'],axis=1)
+                # self.data=self.data.drop(['Date'],axis=1)
                 # print(self.data)
             except Exception as e:
                 pass
@@ -291,7 +291,7 @@ val1    val3_________________________          vall2
     def keltner_channels(self,length:int,factor:int=2,displace:int=None):
         with threading.Lock():
             self.data_cp = self.data.copy()
-            self.data_cp=self.data_cp.reset_index()
+            # self.data_cp=self.data_cp.reset_index()
             self.apply_ema(length,length) # apply length ema for middle band
             self.keltner = pd.DataFrame({'middle':[],'upper':[],'lower':[]})
             self.data=self.data_cp
@@ -381,7 +381,10 @@ val1    val3_________________________          vall2
         try:
             self.set_data_from_range(datetime.datetime.strptime(start,'%Y-%m-%d'), datetime.datetime.strptime(end,'%Y-%m-%d')) # Make sure data is generated in database
         except:
-            self.set_data_from_range(start, end)
+            try:
+                self.set_data_from_range(start, end)
+            except Exception as e:
+                print('[Error] Failed to load mysql data!\nException:\n',str(e))
         '''
         Fetch stock data per date range
         '''

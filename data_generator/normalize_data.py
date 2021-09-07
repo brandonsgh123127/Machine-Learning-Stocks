@@ -64,22 +64,27 @@ class Normalizer():
     def append_data(self,struct:pd.DataFrame,label:str,val):
         struct = struct.append({label:val},ignore_index=True)
         return struct
-    def mysql_read_data(self,initial_date:datetime.datetime,ticker):
+    def mysql_read_data(self,initial_date,ticker):
         try:
             self.cnx = self.db_con.cursor(buffered=True)
+            # If string, convert to datetime.datetime
+            if type(initial_date) is str:
+                initial_date = datetime.datetime.strptime(initial_date,'%Y-%m-%d')
             date_result = self.cnx.execute("""
         select * from stocks.`data` where stocks.`data`.date >= DATE(%s) and stocks.`data`.date <= DATE(%s) and `stock-id` = (select `id` from stocks.`stock` where stock = %s) ORDER BY stocks.`data`.`date` ASC
-        """, (initial_date, initial_date + datetime.timedelta(days=45), ticker),multi=True)
+        """, (initial_date.strftime('%Y-%m-%d'),(initial_date + datetime.timedelta(days=45)).strftime('%Y-%m-%d'), ticker.upper()),multi=True)
         except Exception as e:
-            print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date} to {initial_date + datetime.timedelta(days=45)}!\nException:\n',str(e))
+            print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date + datetime.timedelta(days=45)).strftime("%Y-%m-%d")}!\nException:\n',str(e))
             raise RuntimeError
         # date_res = self.cnx.fetchall()
+        # print(date_result,flush=True)
         for res in date_result:
+            print(res,flush=True)
             r_set = res.fetchall()
-            if len(r_set) == 0:
-                raise RuntimeError
+            if len(r_set) == 0: # empty results 
+                raise RuntimeError("Failed to query any results for statement:\n",f'select * from stocks.`data` where stocks.`data`.date >= DATE({initial_date.strftime("%Y-%m-%d")}) and stocks.`data`.date <= DATE({(initial_date + datetime.timedelta(days=45)).strftime("%Y-%m-%d")}) and `stock-id` = (select `id` from stocks.`stock` where stock = {ticker.upper()}) ORDER BY stocks.`data`.`date` ASC')
             for set in r_set:
-                if len(set) == 0:
+                if len(set) == 0: #if somehow a result got returned and no values included, fail
                     print(f'[ERROR] Failed to retrieve data for {ticker} from range {initial_date}--{initial_date + datetime.timedelta(days=45)}\n')
                     exit(1)
                 try:
@@ -117,22 +122,26 @@ class Normalizer():
         self.data = self.data.rename(columns={0: "Date", 1: "Open", 2: "High",3: "Low",4: "Close",5: "Adj Close"})
         self.cnx.close()
         return self.data
-    def mysql_read_studies(self,initial_date:datetime.datetime,ticker):
+    def mysql_read_studies(self,initial_date,ticker):
         self.cnx = self.db_con.cursor(buffered=True)
+        if type(initial_date) is str:
+            initial_date = datetime.datetime.strptime(initial_date,'%Y-%m-%d')
         date_result = self.cnx.execute("""
         select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
         ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id` INNER JOIN stocks.`data` ON
          stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id` AND stocks.`data`.date >= %s and stocks.`data`.date <= %s 
          INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
-        """, (initial_date, initial_date + datetime.timedelta(days=45),ticker),multi=True)
+        """, (initial_date.strftime('%Y-%m-%d'), (initial_date + datetime.timedelta(days=45)).strftime("%Y-%m-%d"),ticker),multi=True)
         # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
         tmp_14 = pd.DataFrame(columns=['ema14'])
         tmp_30 = pd.DataFrame(columns=['ema30'])
-        # print(self.cnx.fetchall())
-        for set in date_result:
+        # print(date_result)
+        date_res = self.cnx.fetchall()
+        for set in date_res:
             s = set.fetchall()
+            print(s)
             if len(s) == 0:
-                print(f'[ERROR] Failed to retrieve study data for {ticker} from range {initial_date}--{initial_date + datetime.timedelta(days=45)}\nException:\n')
+                print(f'[ERROR] Failed to retrieve study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date + datetime.timedelta(days=45)).strftime("%Y-%m-%d")}')
                 break
             try:
                 # Iterate through each element to retrieve values
@@ -160,7 +169,7 @@ class Normalizer():
     
     def read_data(self,date,ticker):
         try:
-            self.data = self.mysql_read_data(date, ticker)
+            self.mysql_read_data(date, ticker)
             self.data = self.data.drop(['Adj Close','Date'],axis=1)
         except:
             print('[ERROR] Failed to read data!\n')
@@ -170,8 +179,25 @@ class Normalizer():
         except Exception as e:
             print('[ERROR] Failed to read studies!\nException:\n',str(e))
             raise RuntimeError
+        try:
+            self.data = self.data.drop(['index'],axis=1)
+            self.data = self.data.drop(['level_0'],axis=1)
+        except:
+            print('[INFO] Could not find columns "index" and/or "level_0" from normalizer')
+            pass
+        
+        """
+        TODO: Implement MYSQL keltner and fib entries
+        """
+        try:
+            self.keltner = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_keltner.csv',index_col=False)
+            self.fib = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_fib.csv',index_col=False)
+        except:
+            pass
         pd.set_option("display.max.columns", None)
     def convert_derivatives(self,out=8):
+        self.data = self.data.astype('float')
+        self.studies = self.studies.astype('float')
         self.normalized_data = pd.DataFrame((),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
                                                                                                       'Close EMA30 Diff','EMA14 EMA30 Diff'])
         self.normalized_data["Open"] = self.data["Open"]
@@ -261,8 +287,7 @@ class Normalizer():
         self.normalized_data.plot()
         plt.show()
 # norm = Normalizer()
-# norm.read_data("2016-03-18--2016-07-23","CCL")
-# DAYS_SAMPLED=15
+# norm.read_data("2016-03-18","CCL")
 # norm.convert_derivatives()
 # print(norm.normalized_data)
 # norm.display_line()

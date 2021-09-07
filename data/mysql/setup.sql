@@ -56,8 +56,8 @@ drop table `data`;
 drop table `study-data`;
 
 SHOW TABLES FROM stocks;
-select * from stocks.`data`;
-select * from stocks.stock;
+select * from stocks.`data` where stocks.`data`.date >= DATE('2021-07-18') and stocks.`data`.date <= DATE('2021-09-01') and `stock-id` = (select `id` from stocks.`stock` where stock = 'SPY') ORDER BY stocks.`data`.`date` ASC;
+select * from stocks.data;
 select * from stocks.study;
 SELECT `id` FROM stocks.stock;
 ALTER TABLE stocks.stock ADD UNIQUE `stock-id` (id);

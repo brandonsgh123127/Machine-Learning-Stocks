@@ -64,7 +64,7 @@ class Generator():
             # self.studies.set_data_from_range(date1,date2)
             self.studies.set_data_from_range(self.studies.date_set[0],self.studies.date_set[1])
             self.studies.data = self.studies.data.reset_index()
-            self.studies.data = self.studies.data.drop(['Date'],axis=1)
+            # self.studies.data = self.studies.data.drop(['Date'],axis=1)
         except Exception as e:
             print(f'[ERROR] Failed to generate data!',str(e))
             raise Exception

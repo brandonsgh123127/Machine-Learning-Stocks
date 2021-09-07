@@ -1,4 +1,4 @@
-from .data_gatherer import Gather
+from data_gather._data_gather import Gather
 import re
 import pandas as pd
 
