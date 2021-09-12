@@ -87,7 +87,7 @@ class GUI(Thread_Pool):
         self.stock_input.insert(0,self.quick_select.get())
         self.generate_callback(event)
         
-    def generate_callback(self,event):
+    def generate_callback(self,event=None):
         if self.page_loc == 1:
             self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get())))
         elif self.page_loc == 2:
