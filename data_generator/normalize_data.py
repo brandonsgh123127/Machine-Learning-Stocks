@@ -71,7 +71,7 @@ class Normalizer():
             if type(initial_date) is str:
                 initial_date = datetime.datetime.strptime(initial_date,'%Y-%m-%d')
             date_result = self.cnx.execute("""
-        select * from stocks.`data` where stocks.`data`.date >= DATE(%s) and stocks.`data`.date <= DATE(%s) and `stock-id` = (select `id` from stocks.`stock` where stock = %s) ORDER BY stocks.`data`.`date` ASC
+        select * from stocks.`data` where stocks.`data`.`date` >= DATE(%s) and stocks.`data`.`date` <= DATE(%s) and `stock-id` = (select `id` from stocks.`stock` where stock = %s) ORDER BY stocks.`data`.`date` ASC
         """, (initial_date.strftime('%Y-%m-%d'),(initial_date + datetime.timedelta(days=45)).strftime('%Y-%m-%d'), ticker.upper()),multi=True)
         except Exception as e:
             print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date + datetime.timedelta(days=45)).strftime("%Y-%m-%d")}!\nException:\n',str(e))
@@ -79,10 +79,9 @@ class Normalizer():
         # date_res = self.cnx.fetchall()
         # print(date_result,flush=True)
         for res in date_result:
-            print(res,flush=True)
             r_set = res.fetchall()
             if len(r_set) == 0: # empty results 
-                raise RuntimeError("Failed to query any results for statement:\n",f'select * from stocks.`data` where stocks.`data`.date >= DATE({initial_date.strftime("%Y-%m-%d")}) and stocks.`data`.date <= DATE({(initial_date + datetime.timedelta(days=45)).strftime("%Y-%m-%d")}) and `stock-id` = (select `id` from stocks.`stock` where stock = {ticker.upper()}) ORDER BY stocks.`data`.`date` ASC')
+                raise RuntimeError("Failed to query any results for statement:",f'select * from stocks.`data` where stocks.`data`.date >= DATE({initial_date.strftime("%Y-%m-%d")}) and stocks.`data`.date <= DATE({(initial_date + datetime.timedelta(days=45)).strftime("%Y-%m-%d")}) and `stock-id` = (select `id` from stocks.`stock` where stock = {ticker.upper()}) ORDER BY stocks.`data`.`date` ASC')
             for set in r_set:
                 if len(set) == 0: #if somehow a result got returned and no values included, fail
                     print(f'[ERROR] Failed to retrieve data for {ticker} from range {initial_date}--{initial_date + datetime.timedelta(days=45)}\n')
@@ -136,8 +135,8 @@ class Normalizer():
         tmp_14 = pd.DataFrame(columns=['ema14'])
         tmp_30 = pd.DataFrame(columns=['ema30'])
         # print(date_result)
-        date_res = self.cnx.fetchall()
-        for set in date_res:
+        # date_res = self.cnx.fetchall()
+        for set in date_result:
             s = set.fetchall()
             print(s)
             if len(s) == 0:

@@ -117,13 +117,13 @@ class Gather():
                                     VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2(%(stock)s,512))),%(stock)s)"""
                         try:
                             # print('[INFO] inserting')
-                            insert_resultado = self.cnx.execute(insert_stmt, { 'stock': f'{self.indicator}'},multi=True)
+                            insert_resultado = self.cnx.execute(insert_stmt, { 'stock': f'{self.indicator.upper()}'},multi=True)
                             self.db_con.commit()
                             # print('[INFO] Success')
                         except mysql.connector.errors.IntegrityError as e:
                             pass
                         except Exception as e:
-                            print(f'[ERROR] Failed to insert stock named {self.indicator} into database!\nException:\n',str(e))
+                            print(f'[ERROR] Failed to insert stock named {self.indicator.upper()} into database!\nException:\n',str(e))
                             exc_type, exc_obj, exc_tb = sys.exc_info()
                             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                             print(exc_type, fname, exc_tb.tb_lineno)
@@ -143,7 +143,7 @@ class Gather():
                 #Append dates to database
                 for index, row in self.data.iterrows():
                     insert_date_stmt = """INSERT INTO `stocks`.`data` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
-                    VALUES (AES_ENCRYPT(%(data_id)s, UNHEX(SHA2(%(stock)s,512))), AES_ENCRYPT(%(stock)s, UNHEX(SHA2("stock",512))),
+                    VALUES (AES_ENCRYPT(%(data_id)s, UNHEX(SHA2(%(stock)s,512))), AES_ENCRYPT(%(stock)s, UNHEX(SHA2(%(stock)s,512))),
                     DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
                     try: 
                         # print(row.name)

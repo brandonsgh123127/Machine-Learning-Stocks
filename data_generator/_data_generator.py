@@ -70,22 +70,6 @@ class Generator():
             raise Exception
         if is_not_closed:
             self.studies.data = self.studies.data.append({'Open': f'{vals[0]}','High': f'{vals[1]}','Low': f'{vals[2]}','Close': f'{vals[3]}','Adj Close': f'{vals[3]}'}, ignore_index=True)
-        try:
-            os.mkdir("{0}/data/tweets".format(self.path))
-        except:
-            pass
-        try:
-            os.mkdir("{0}/data/stock_no_tweets".format(self.path))
-        except:
-            pass
-        try:
-            os.mkdir(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/')
-        except:
-            pass
-        try:
-            os.mkdir("{0}/data/stock".format(self.path))
-        except:
-            pass
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
         query_param1 = {"query": "{}".format(self.ticker)}
         query_param2 = {"maxResults":"500"}
@@ -101,13 +85,6 @@ class Generator():
         self.studies.apply_ema("30",self.studies.get_date_difference()) 
         self.studies.apply_fibonacci()
         self.studies.keltner_channels(20, 1.3, None)
-        
-        
-        try:
-            os.remove(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{date1.strftime("%Y-%m-%d")}--{date2.strftime("%Y-%m-%d")}')
-        except:
-            pass
-        self.studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{self.studies.get_indicator()}/{date1.strftime("%Y-%m-%d")}--{date2.strftime("%Y-%m-%d")}')
         self.studies.reset_data()
         self.studies = Studies(self.ticker)
     def get_ticker(self):
