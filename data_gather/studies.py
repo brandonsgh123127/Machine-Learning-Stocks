@@ -373,9 +373,9 @@ val1    val3_________________________          vall2
                                                                                             'val9':self.fibonacci_extension.at[0,"0.618"],
                                                                                             'val10':self.fibonacci_extension.at[0,"0.796"],
                                                                                             'val11':self.fibonacci_extension.at[0,"1.556"],
-                                                                                            'val12':self.fibonacci_extension.at[0,"5.44"],
-                                                                                            'val13':self.fibonacci_extension.at[0,"3.43"],
-                                                                                            'val14':self.fibonacci_extension.at[0,"3.83"]
+                                                                                            'val12':self.fibonacci_extension.at[0,"3.43"],
+                                                                                            'val13':self.fibonacci_extension.at[0,"3.83"],
+                                                                                            'val14':self.fibonacci_extension.at[0,"5.44"]
                                                                                             })
                             self.db_con.commit()
                         except mysql.connector.errors.IntegrityError:

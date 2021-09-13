@@ -64,17 +64,17 @@ select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER 
 select * from stocks.data;
 select * from stocks.study;
 select * from stocks.`study-data`;
-ALTER TABLE stocks.`study-data` 
-ADD COLUMN `val5` VARCHAR(45) NULL AFTER `val4`,
-ADD COLUMN `val6` VARCHAR(45) NULL AFTER `val5`,
-ADD COLUMN `val7` VARCHAR(45) NULL AFTER `val6`,
-ADD COLUMN `val8` VARCHAR(45) NULL AFTER `val7`,
-ADD COLUMN `val9` VARCHAR(45) NULL AFTER `val8`,
-ADD COLUMN `val10` VARCHAR(45) NULL AFTER `val9`,
-ADD COLUMN `val11` VARCHAR(45) NULL AFTER `val10`,
-ADD COLUMN `val12` VARCHAR(45) NULL AFTER `val11`,
-ADD COLUMN `val13` VARCHAR(45) NULL AFTER `val12`,
-ADD COLUMN `val14` VARCHAR(45) NULL AFTER `val13`;
+-- ALTER TABLE stocks.`study-data` 
+-- ADD COLUMN `val5` VARCHAR(45) NULL AFTER `val4`,
+-- ADD COLUMN `val6` VARCHAR(45) NULL AFTER `val5`,
+-- ADD COLUMN `val7` VARCHAR(45) NULL AFTER `val6`,
+-- ADD COLUMN `val8` VARCHAR(45) NULL AFTER `val7`,
+-- ADD COLUMN `val9` VARCHAR(45) NULL AFTER `val8`,
+-- ADD COLUMN `val10` VARCHAR(45) NULL AFTER `val9`,
+-- ADD COLUMN `val11` VARCHAR(45) NULL AFTER `val10`,
+-- ADD COLUMN `val12` VARCHAR(45) NULL AFTER `val11`,
+-- ADD COLUMN `val13` VARCHAR(45) NULL AFTER `val12`,
+-- ADD COLUMN `val14` VARCHAR(45) NULL AFTER `val13`;
 
 
 SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE('2021-09-01');

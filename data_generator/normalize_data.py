@@ -71,17 +71,19 @@ class Normalizer():
             if type(initial_date) is str:
                 initial_date = datetime.datetime.strptime(initial_date,'%Y-%m-%d')
             date_result = self.cnx.execute("""
-        select * from stocks.`data` where stocks.`data`.`date` >= DATE(%s) and stocks.`data`.`date` <= DATE(%s) and `stock-id` = (select `id` from stocks.`stock` where stock = %s) ORDER BY stocks.`data`.`date` ASC
-        """, (initial_date.strftime('%Y-%m-%d'),(initial_date + datetime.timedelta(days=45)).strftime('%Y-%m-%d'), ticker.upper()),multi=True)
+        select * from stocks.`data` where stocks.`data`.`date` >= DATE(%(start)s) and stocks.`data`.`date` <= DATE(%(end)s) and `stock-id` = (select `id` from stocks.`stock` where stock = %(stock)s) ORDER BY stocks.`data`.`date` ASC
+        """, ({'end':initial_date.strftime('%Y-%m-%d'),
+               'start':(initial_date - datetime.timedelta(days=45)).strftime('%Y-%m-%d'),
+               'stock':ticker.upper()}),multi=True)
         except Exception as e:
-            print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date + datetime.timedelta(days=45)).strftime("%Y-%m-%d")}!\nException:\n',str(e))
+            print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d")}!\nException:\n',str(e))
             raise RuntimeError
         # date_res = self.cnx.fetchall()
         # print(date_result,flush=True)
         for res in date_result:
             r_set = res.fetchall()
             if len(r_set) == 0: # empty results 
-                raise RuntimeError("Failed to query any results for statement:",f'select * from stocks.`data` where stocks.`data`.date >= DATE({initial_date.strftime("%Y-%m-%d")}) and stocks.`data`.date <= DATE({(initial_date + datetime.timedelta(days=45)).strftime("%Y-%m-%d")}) and `stock-id` = (select `id` from stocks.`stock` where stock = {ticker.upper()}) ORDER BY stocks.`data`.`date` ASC')
+                raise RuntimeError("Failed to query any results for statement:",f'select * from stocks.`data` where stocks.`data`.date >= DATE({(initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d")}) and stocks.`data`.date <= DATE({initial_date.strftime("%Y-%m-%d")}) and `stock-id` = (select `id` from stocks.`stock` where stock = {ticker.upper()}) ORDER BY stocks.`data`.`date` ASC')
             for set in r_set:
                 if len(set) == 0: #if somehow a result got returned and no values included, fail
                     print(f'[ERROR] Failed to retrieve data for {ticker} from range {initial_date}--{initial_date + datetime.timedelta(days=45)}\n')
@@ -121,51 +123,184 @@ class Normalizer():
         self.data = self.data.rename(columns={0: "Date", 1: "Open", 2: "High",3: "Low",4: "Close",5: "Adj Close"})
         self.cnx.close()
         return self.data
-    def mysql_read_studies(self,initial_date,ticker):
+    def mysql_read_studies(self,initial_date,ticker,study):
         self.cnx = self.db_con.cursor(buffered=True)
         if type(initial_date) is str:
             initial_date = datetime.datetime.strptime(initial_date,'%Y-%m-%d')
-        date_result = self.cnx.execute("""
-        select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
-        ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id` INNER JOIN stocks.`data` ON
-         stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id` AND stocks.`data`.date >= %s and stocks.`data`.date <= %s 
-         INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
-        """, (initial_date.strftime('%Y-%m-%d'), (initial_date + datetime.timedelta(days=45)).strftime("%Y-%m-%d"),ticker),multi=True)
-        # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
-        tmp_14 = pd.DataFrame(columns=['ema14'])
-        tmp_30 = pd.DataFrame(columns=['ema30'])
-        # print(date_result)
-        # date_res = self.cnx.fetchall()
-        for set in date_result:
-            s = set.fetchall()
-            print(s)
-            if len(s) == 0:
-                print(f'[ERROR] Failed to retrieve study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date + datetime.timedelta(days=45)).strftime("%Y-%m-%d")}')
-                break
-            try:
-                # Iterate through each element to retrieve values
-                cur_val = None
-                for index,row in enumerate(s):
-                    cur_val = row[0]
-                    # print(row)
-                    if row[1] == 'ema14':
-                        tmp_14 = tmp_14.append({row[1]:cur_val},ignore_index=True)
-                    elif row[1] == 'ema30':
-                        tmp_30 = tmp_30.append({row[1]:cur_val},ignore_index=True)
-            except Exception as e:
-                print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                print(exc_type, fname, exc_tb.tb_lineno)
-                self.cnx.close()
-                return
-        # After retrieving data, Store to self.data
-        self.studies = pd.concat([tmp_14,tmp_30],ignore_index=True,axis=1)
-        self.studies = self.studies.rename(columns={0: "ema14", 1: "ema30"})
-        self.cnx.close()
-        return self.studies
-    
-    
+        if study == 'ema':
+            date_result = self.cnx.execute("""
+            select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
+            ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id` INNER JOIN stocks.`data` ON
+             stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id`
+              AND stocks.`data`.date >= %s
+               AND stocks.`data`.date <= %s
+                AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+                AND stocks.`study`.`study` like 'ema%' 
+             INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
+            """, ((initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d"),
+                  initial_date.strftime('%Y-%m-%d'),
+                  ticker),multi=True)
+            # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
+            tmp_14 = pd.DataFrame(columns=['ema14'])
+            tmp_30 = pd.DataFrame(columns=['ema30'])
+            # print(date_result)
+            # date_res = self.cnx.fetchall()
+            for set in date_result:
+                s = set.fetchall()
+                # print(s)
+                if len(s) == 0:
+                    print(f'[ERROR] Failed to retrieve ema study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d")}')
+                    break
+                try:
+                    # Iterate through each element to retrieve values
+                    cur_val = None
+                    for index,row in enumerate(s):
+                        cur_val = row[0]
+                        # print(row)
+                        if row[1] == 'ema14':
+                            tmp_14 = tmp_14.append({row[1]:cur_val},ignore_index=True)
+                        elif row[1] == 'ema30':
+                            tmp_30 = tmp_30.append({row[1]:cur_val},ignore_index=True)
+                        else:
+                            pass
+                except Exception as e:
+                    print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(exc_type, fname, exc_tb.tb_lineno)
+                    self.cnx.close()
+                    return
+            # After retrieving data, Store to self.data
+            self.studies = pd.concat([tmp_14,tmp_30],ignore_index=True,axis=1)
+            self.studies = self.studies.rename(columns={0: "ema14", 1: "ema30"})
+            self.cnx.close()
+            return self.studies
+        elif study == 'fib':
+            date_result = self.cnx.execute("""
+            select stocks.`study-data`.val1, stocks.`study-data`.val2,
+            stocks.`study-data`.val3, stocks.`study-data`.val4, stocks.`study-data`.val5,
+            stocks.`study-data`.val6, stocks.`study-data`.val7, stocks.`study-data`.val8,
+            stocks.`study-data`.val9, stocks.`study-data`.val10, stocks.`study-data`.val11,
+            stocks.`study-data`.val12, stocks.`study-data`.val13, stocks.`study-data`.val14,
+            stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
+            ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id` INNER JOIN stocks.`data` ON
+             stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id` 
+             AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+             AND stocks.`study`.`study` = 'fibonacci'
+              AND stocks.`data`.date >= DATE(%s)
+               AND stocks.`data`.date <= DATE(%s) 
+             INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
+            """, ((initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d"),
+                  initial_date.strftime('%Y-%m-%d'),
+                  ticker),multi=True)
+            # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
+            fib1 = pd.DataFrame(columns=['0.202'])
+            fib2 = pd.DataFrame(columns=['0.236'])
+            fib3 = pd.DataFrame(columns=['0.241'])
+            fib4 = pd.DataFrame(columns=['0.273'])
+            fib5 = pd.DataFrame(columns=['0.283'])
+            fib6 = pd.DataFrame(columns=['0.316'])
+            fib7 = pd.DataFrame(columns=['0.382'])
+            fib8 = pd.DataFrame(columns=['0.5'])
+            fib9 = pd.DataFrame(columns=['0.618'])
+            fib10 = pd.DataFrame(columns=['0.796']) 
+            fib11 = pd.DataFrame(columns=['1.556'])
+            fib12 = pd.DataFrame(columns=['3.43'])
+            fib13 = pd.DataFrame(columns=['3.83'])
+            fib14 = pd.DataFrame(columns=['5.44'])
+            # print(date_result)
+            # date_res = self.cnx.fetchall()
+            for set in date_result:
+                s = set.fetchall()
+                # print(s)
+                if len(s) == 0:
+                    print(f'[ERROR] Failed to retrieve fib study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d")}')
+                    break
+                try:
+                    # Iterate through each element to retrieve values
+                    cur_val = None
+                    for index,row in enumerate(s):
+                        # print(row)
+                        fib1 = fib1.append({'0.202':row[0]},ignore_index=True)
+                        fib2 = fib2.append({'0.236':row[1]},ignore_index=True)
+                        fib3 = fib3.append({'0.241':row[2]},ignore_index=True)
+                        fib4 = fib4.append({'0.273':row[3]},ignore_index=True)
+                        fib5 = fib5.append({'0.283':row[4]},ignore_index=True)
+                        fib6 = fib6.append({'0.316':row[5]},ignore_index=True)
+                        fib7 = fib7.append({'0.382':row[6]},ignore_index=True)
+                        fib8 = fib8.append({'0.5':row[7]},ignore_index=True)
+                        fib9 = fib9.append({'0.618':row[8]},ignore_index=True)
+                        fib10 = fib10.append({'0.796':row[9]},ignore_index=True)
+                        fib11 = fib11.append({'1.556':row[10]},ignore_index=True)
+                        fib12 = fib12.append({'3.43':row[11]},ignore_index=True)
+                        fib13 = fib13.append({'3.83':row[12]},ignore_index=True)
+                        fib14 = fib14.append({'5.44':row[13]},ignore_index=True)
+                except Exception as e:
+                    print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(exc_type, fname, exc_tb.tb_lineno)
+                    self.cnx.close()
+            # After retrieving data, Store to self.data
+            fib = pd.concat([fib1,fib2,fib3,fib4,fib5,
+                             fib6,fib7,fib8,fib9,fib10,
+                             fib11,fib12,fib13,fib14],ignore_index=True,axis=1)
+            self.fib = fib.rename(columns={0: "0.202", 1: "236",
+                                           2: "0.241", 3: "0.273",
+                                           4: "0.283", 5: "0.316",
+                                           6: "0.382", 7: "0.5",
+                                           8: "0.618", 9: "0.796",
+                                           10: "1.556", 11: "3.43",
+                                           12: "3.83", 13: "5.44",})
+            self.fib = fib
+            self.cnx.close()
+            return self.fib
+        elif study == 'keltner':
+            date_result = self.cnx.execute("""
+            select stocks.`study-data`.val1, stocks.`study-data`.val2, stocks.`study-data`.val3,
+             stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
+            ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+             INNER JOIN stocks.`data` ON
+             stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id`
+              AND stocks.`data`.date >= %s
+               AND stocks.`data`.date <= %s
+                AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+                AND stocks.`study`.`study` = 'keltner20-1.3' 
+             INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
+            """, ((initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d"),
+                  initial_date.strftime('%Y-%m-%d'),
+                  ticker),multi=True)
+            # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
+            middle = pd.DataFrame(columns=['middle'])
+            upper= pd.DataFrame(columns=['upper'])
+            lower= pd.DataFrame(columns=['lower'])
+            # print(date_result)
+            # date_res = self.cnx.fetchall()
+            for set in date_result:
+                s = set.fetchall()
+                # print(s)
+                if len(s) == 0:
+                    print(f'[ERROR] Failed to retrieve keltner study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d")}')
+                    break
+                try:
+                    # Iterate through each element to retrieve values
+                    cur_val = None
+                    for index,row in enumerate(s):
+                        middle = middle.append({'middle':row[0]},ignore_index=True)
+                        upper = upper.append({'upper':row[1]},ignore_index=True)
+                        lower = lower.append({'lower':row[2]},ignore_index=True)
+                except Exception as e:
+                    print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(exc_type, fname, exc_tb.tb_lineno)
+                    self.cnx.close()
+                    return
+            # After retrieving data, Store to self.data
+            keltner = pd.concat([middle,upper,lower],ignore_index=True,axis=1)
+            self.keltner = keltner.rename(columns={0: "middle", 1: "upper", 2: "lower"})
+            self.cnx.close()
+            return self.keltner
     def read_data(self,date,ticker):
         try:
             self.mysql_read_data(date, ticker)
@@ -174,9 +309,19 @@ class Normalizer():
             print('[ERROR] Failed to read data!\n')
             raise RuntimeError
         try:
-            self.studies = self.mysql_read_studies(date,ticker)
+            self.studies = self.mysql_read_studies(date,ticker,'ema')
         except Exception as e:
-            print('[ERROR] Failed to read studies!\nException:\n',str(e))
+            print('[ERROR] Failed to read ema studies!\nException:\n',str(e))
+            raise RuntimeError
+        try:
+            self.keltner= self.mysql_read_studies(date,ticker,'keltner')
+        except Exception as e:
+            print('[ERROR] Failed to read keltner study!\nException:\n',str(e))
+            raise RuntimeError
+        try:
+            self.fib = self.mysql_read_studies(date,ticker,'fib')
+        except Exception as e:
+            print('[ERROR] Failed to read ema14 study!\nException:\n',str(e))
             raise RuntimeError
         try:
             self.data = self.data.drop(['index'],axis=1)
@@ -236,6 +381,7 @@ class Normalizer():
                 self.normalized_data.loc[index,"EMA14 EMA30 Diff"] = (self.studies.at[index,"ema14"] - self.studies.at[index,'ema30'])/self.studies.at[index,"ema14"]
         return 0
     def convert_divergence(self):
+        self.data = self.data.astype('float')
         self.normalized_data = pd.DataFrame((),columns=['Divergence','Gain/Loss'])
         self.normalized_data["Divergence"] = self.data["Open"]
         self.normalized_data["Gain/Loss"] = self.data["Close"]

@@ -49,8 +49,8 @@ class Display():
         c = 'blue'
         if data is None:
             self.fib_display = pd.DataFrame([self.fib_display.reset_index().to_numpy().reshape(14)],columns={'0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'}).reset_index()
-            self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.keltner_display.index) + 2)]
-            self.fib_display = self.fib_display.reset_index()
+            # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.keltner_display.index) + 2)]
+            self.fib_display = self.fib_display.reset_index().astype('float')
             self.fib_display['0.202'].transpose().plot.line(color='green',x='0.202',y='0.202')
             self.fib_display['0.236'].transpose().plot.line()
             self.fib_display['0.241'].transpose().plot.line()
@@ -75,7 +75,7 @@ class Display():
                                                     autorange=True).set_alpha(0.3)
             # print(self.keltner_display)
             # self.keltner_display = pd.DataFrame([self.keltner_display.reset_index().to_numpy()],columns={'middle','upper','lower'})
-            self.keltner_display = self.keltner_display.reset_index().set_axis(['middle','upper','lower'], 1)
+            self.keltner_display = self.keltner_display.reset_index().astype('float').set_axis(['middle','upper','lower'], 1)
             self.keltner_display['middle'].transpose().plot.line()
             self.keltner_display['upper'].transpose().plot.line()
             self.keltner_display['lower'].transpose().plot.line()
@@ -84,8 +84,8 @@ class Display():
             # self.fib_display = pd.DataFrame([self.fib_display.reset_index().to_numpy().reshape(15)],columns={'0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'}).reset_index()
             # print(self.fib_display.reset_index(),self.fib_display.columns,self.fib_display.index,flush=True)
             self.fib_display = self.fib_display.reset_index().set_axis(['index','0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'], 1)
-            self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.keltner_display.index) + 2)]
-            self.fib_display = self.fib_display.reset_index()
+            # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.keltner_display.index) + 2)]
+            self.fib_display = self.fib_display.reset_index().astype('float')
             self.fib_display['0.202'].transpose().plot.line(color='green',x='0.202',y='0.202')
             self.fib_display['0.236'].transpose().plot.line()
             self.fib_display['0.241'].transpose().plot.line()
@@ -108,6 +108,7 @@ class Display():
                                                     flierprops=dict(color=c, markeredgecolor=c),
                                                     medianprops=dict(color=c),
                                                     autorange=True).set_alpha(0.3)
+            self.keltner_display = self.keltner_display.astype('float')
             self.keltner_display['middle'].transpose().plot.line()
             self.keltner_display['upper'].transpose().plot.line()
             self.keltner_display['lower'].transpose().plot.line()
