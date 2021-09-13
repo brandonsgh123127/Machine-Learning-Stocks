@@ -60,8 +60,7 @@ drop table `study-data`;
 DELETE FROM `study-data`;
 
 SHOW TABLES FROM stocks;
-select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id` INNER JOIN stocks.`data` ON stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id` AND stocks.`data`.date >= DATE('2021-07-18') and stocks.`data`.date <= DATE('2021-09-12') INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = 'SPY' ORDER BY stocks.`data`.`date` ASC;;
-select * from stocks.data;
+select * from stocks.`data`;
 select * from stocks.study;
 select * from stocks.`study-data`;
 -- ALTER TABLE stocks.`study-data` 
@@ -77,7 +76,7 @@ select * from stocks.`study-data`;
 -- ADD COLUMN `val14` VARCHAR(45) NULL AFTER `val13`;
 
 
-SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE('2021-09-01');
+SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`>= DATE('2021-09-01');
 SELECT `stock` FROM stocks.stock where `id` like 'SPY';
 ALTER TABLE stocks.stock ADD UNIQUE `stock-id` (id);
 select * from stocks.`stock`;
