@@ -28,8 +28,8 @@ class Gather():
     
     MAX_DATE = datetime.datetime.now().date()
     MIN_DATE = datetime.datetime(2013,1,1).date()
-    MIN_RANGE = 50 # at least 7 days generated
-    MAX_RANGE = 75 # at most 1 month to look at trend
+    MIN_RANGE = 75 # at least 7 days generated
+    MAX_RANGE = 100 # at most 1 month to look at trend
     DAYS_IN_MONTH = {1:31,
                      2:28,
                      3:31,

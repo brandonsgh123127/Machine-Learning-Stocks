@@ -128,9 +128,9 @@ class GUI(Thread_Pool):
                 self.generate_button.grid_forget()
             skippable = False
             if is_not_closed:
-                dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
             else:
-                dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
             if not force_generation and (Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart.png').exists() and not has_actuals and not is_not_closed):
                 skippable = True
             elif not force_generation and (Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart_actual.png').exists()  and has_actuals and not is_not_closed):
@@ -168,18 +168,18 @@ class GUI(Thread_Pool):
             skippable = False
             # When predicting next day, set day to +1
             if is_not_closed:
-                dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
             else:
-                dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
             if not force_generation and (Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png').exists() and not has_actuals and not is_not_closed):
                 skippable = True
             elif not force_generation and (Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence_actual.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart_actual.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_actual.png').exists() and has_actuals and not is_not_closed):
                 skippable = True
             
             if is_not_closed: #predict next day
-                dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today()) #month worth of data
+                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today()) #month worth of data
             else:
-                dates = (datetime.date.today() - datetime.timedelta(days = 50), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
 
             if not skippable:
                 if is_not_closed:

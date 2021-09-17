@@ -27,7 +27,7 @@ class Gather():
     cnx:mysql.connector.cursor = None
     MAX_DATE = datetime.datetime.now().date()
     MIN_DATE = datetime.datetime(2017,1,1).date()
-    MIN_RANGE = 30
+    MIN_RANGE = 75
     MAX_RANGE = 730
     DAYS_IN_MONTH = {1:31,
                      2:28,
