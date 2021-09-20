@@ -89,10 +89,13 @@ class Studies(Gather):
                         except Exception as e:
                             print(f'[ERROR] Failed to Insert study into stocks.study named ema{length}!\nException:\n',str(e))
                             raise mysql.connector.Error
+                    
                     else:
                         # Get study_id
                         self.study_id = study_id_res[0][0].decode('latin1')
-                        
+                    
+                    
+                    # Calculate and store data to DB ...    
                     for index,row in self.applied_studies.iterrows():
                         self.cnx = self.db_con.cursor()
 
