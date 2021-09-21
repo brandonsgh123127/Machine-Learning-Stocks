@@ -61,12 +61,14 @@ class Normalizer():
                 print(err) 
                 raise Exception
         self.cnx = self.db_con.cursor(buffered=True)
+        self.cnx.autocommit = True
     def append_data(self,struct:pd.DataFrame,label:str,val):
         struct = struct.append({label:val},ignore_index=True)
         return struct
     def mysql_read_data(self,initial_date,ticker):
         try:
             self.cnx = self.db_con.cursor(buffered=True)
+            self.cnx.autocommit = True
             # If string, convert to datetime.datetime
             if type(initial_date) is str:
                 initial_date = datetime.datetime.strptime(initial_date,'%Y-%m-%d')
@@ -125,6 +127,7 @@ class Normalizer():
         return self.data
     def mysql_read_studies(self,initial_date,ticker,study):
         self.cnx = self.db_con.cursor(buffered=True)
+        self.cnx.autocommit = True
         if type(initial_date) is str:
             initial_date = datetime.datetime.strptime(initial_date,'%Y-%m-%d')
         if study == 'ema':
@@ -147,7 +150,6 @@ class Normalizer():
             # date_res = self.cnx.fetchall()
             for set in date_result:
                 s = set.fetchall()
-                # print(s)
                 if len(s) == 0:
                     print(f'[ERROR] Failed to retrieve ema study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d")}')
                     break
@@ -162,6 +164,7 @@ class Normalizer():
                         elif row[1] == 'ema30':
                             tmp_30 = tmp_30.append({row[1]:cur_val},ignore_index=True)
                         else:
+                            print('Unknown value in ema')
                             pass
                 except Exception as e:
                     print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
@@ -212,7 +215,6 @@ class Normalizer():
             # date_res = self.cnx.fetchall()
             for set in date_result:
                 s = set.fetchall()
-                # print(s)
                 if len(s) == 0:
                     print(f'[ERROR] Failed to retrieve fib study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d")}')
                     break

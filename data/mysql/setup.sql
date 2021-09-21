@@ -76,10 +76,21 @@ select * from stocks.`study-data`;
 -- ADD COLUMN `val14` VARCHAR(45) NULL AFTER `val13`;
 
 
-SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`>= DATE('2021-09-01');
+SELECT `stocks`.`data`.`date` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE('2021-09-01');
 SELECT `stock` FROM stocks.stock where `id` like 'SPY';
+SELECT * FROM stocks.`data` INNER JOIN stocks.stock WHERE `stock-id` = stocks.stock.`id` and stocks.stock.`stock` = "ULTA" AND stocks.`data`.`date` = "2021-09-01";
 ALTER TABLE stocks.stock ADD UNIQUE `stock-id` (id);
-select * from stocks.`stock`;
+select * from stocks.`study-data`;
+SELECT * FROM stocks.`data` INNER JOIN stocks.stock 
+                        ON `stocks`.`data`.`stock-id` = `stocks`.`stock`.`id` 
+                          AND stocks.stock.`stock` = "SPY"
+                            INNER JOIN stocks.`study-data` ON
+                            stocks.stock.`id` = stocks.`study-data`.`stock-id`
+                            INNER JOIN stocks.`study` ON
+                            stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+                            AND stocks.`study-data`.`study-id` = (AES_ENCRYPT('14', UNHEX(SHA2('14',512)))) 
+                            AND stocks.`study-data`.`id` = (AES_ENCRYPT("2021-09-01 00:00:00SPY14", UNHEX(SHA2("2021-09-01 00:00:00SPY14",512))))
+                            AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`;
 SHOW INDEX FROM stocks.stock;
 
 #select * from stocks.`data` where `stock-id` = (select data_id from stocks.stock where `stock` = 'AMD' LIMIT 1);
