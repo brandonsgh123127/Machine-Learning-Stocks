@@ -165,50 +165,44 @@ class GUI(Thread_Pool):
             self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
             if not is_caching:
                 self.generate_button.grid_forget()
-            skippable = False
             # When predicting next day, set day to +1
             if is_not_closed:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
             else:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
-            if not force_generation and (Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict.png').exists() and not has_actuals and not is_not_closed):
-                skippable = True
-            elif not force_generation and (Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_divergence_actual.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart_actual.png').exists() and Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_actual.png').exists() and has_actuals and not is_not_closed):
-                skippable = True
             
             if is_not_closed: #predict next day
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today()) #month worth of data
             else:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
 
-            if not skippable:
-                if is_not_closed:
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'predict')
-                        self.machine_learning_data.put(thread.result())
-                        gc.collect()
-                        thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'model_out_2')
-                        self.machine_learning_data.put(thread.result())
-                        gc.collect()
-                        thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'chart')
-                        self.machine_learning_data.put(thread.result())
-                        gc.collect()
-                        thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'divergence')
-                        self.machine_learning_data.put(thread.result())
-                else:
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None,'predict')
-                        self.machine_learning_data.put(thread.result())
-                        gc.collect()
-                        thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None,'model_out_2')
-                        self.machine_learning_data.put(thread.result())
-                        gc.collect()
-                        thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None,'chart')
-                        self.machine_learning_data.put(thread.result())
-                        gc.collect()
-                        thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None,'divergence')
-                        self.machine_learning_data.put(thread.result())
-                        gc.collect()
+            if is_not_closed:
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'predict')
+                    self.machine_learning_data.put(thread.result())
+                    gc.collect()
+                    thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'model_out_2')
+                    self.machine_learning_data.put(thread.result())
+                    gc.collect()
+                    thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'chart')
+                    self.machine_learning_data.put(thread.result())
+                    gc.collect()
+                    thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'divergence')
+                    self.machine_learning_data.put(thread.result())
+            else:
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None,'predict')
+                    self.machine_learning_data.put(thread.result())
+                    gc.collect()
+                    thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None,'model_out_2')
+                    self.machine_learning_data.put(thread.result())
+                    gc.collect()
+                    thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None,'chart')
+                    self.machine_learning_data.put(thread.result())
+                    gc.collect()
+                    thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None,'divergence')
+                    self.machine_learning_data.put(thread.result())
+                    gc.collect()
 
                 # for idx,thread in enumerate(self.threads):
                     # thread.start()
