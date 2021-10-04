@@ -100,3 +100,14 @@ SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id`, `stocks`.`data`.`d
 SELECT * FROM stocks.`study-data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND stocks.`study-data`.`stock-id` = stocks.stock.id INNER JOIN stocks.`data` ON stocks.`study-data`.`data-id` = stocks.`data`.`data-id` INNER JOIN stocks.study ON stocks.study.study = "ema14" AND stocks.study.`study-id` = stocks.`study-data`.`study-id`;
 SELECT * FROM stocks.`study-data`  INNER JOIN stocks.study ON stocks.study.study = "ema30";
 SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'OCUL' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`;
+SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
+                        ON `stock-id` = stocks.stock.`id` 
+                          AND stocks.stock.`stock` = "SPY"
+                           AND `stocks`.`data`.`date` = DATE("2021-10-01")
+                           INNER JOIN stocks.`study-data` ON
+                            stocks.stock.`id` = stocks.`study-data`.`stock-id`
+                            INNER JOIN stocks.`study` ON
+                            stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+                            AND stocks.`study-data`.`study-id` = (AES_ENCRYPT("fibonacci", UNHEX(SHA2("fibonacci",512))))
+                            AND stocks.`study-data`.`id` = (AES_ENCRYPT("2021-10-01spyfibonacci", UNHEX(SHA2("2021-10-01spyfibonacci",512))))
+                            AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`;

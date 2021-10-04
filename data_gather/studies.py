@@ -75,7 +75,7 @@ class Studies(Gather):
                     study_id_res = s_res.fetchall()
                     if len(study_id_res) == 0:
                         print(f'[INFO] Failed to query study named ema{length} from database! Creating new Study...\n')
-                        insert_study_stmt = """INSERT INTO stocks.study (`study-id`,study) 
+                        insert_study_stmt = """REPLACE INTO stocks.study (`study-id`,study) 
                             VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(ema)s)"""
                         # Insert new study into DB
                         try:
@@ -109,12 +109,12 @@ class Studies(Gather):
                         INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
                         """
                         retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
-                                                                                    'date':self.data.loc[index,:]['Date']},multi=True)
+                                                                                    'date':self.data.loc[index,:]['Date'].strftime("%Y-%m-%d")},multi=True)
                         # self.data=self.data.drop(['Date'],axis=1)
                         for retrieve_result in retrieve_data_result:
                             id_res = retrieve_result.fetchall()
                             if len(id_res) == 0:
-                                print(f'[ERROR] Failed to locate a data /id for current index {index} with date {self.data.loc[index,:]["Date"]} under {retrieve_data_result}')
+                                print(f'[ERROR] Failed to locate a data /id for current index {index} with date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")} under {retrieve_data_result}')
                                 continue
                             else:
                                 self.stock_id = id_res[0][1].decode('latin1')
@@ -136,7 +136,7 @@ class Studies(Gather):
                             self.cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
                                                                                             'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d'),
                                                                                             'id':length,
-                                                                                            'study-data-id':f'{self.data.loc[index,:]["Date"]}{self.indicator}{length}'})
+                                                                                            'study-data-id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator}{length}'})
                             __skippable = False
                             result = self.cnx.fetchone()
                             # Query new stock, id
@@ -156,14 +156,14 @@ class Studies(Gather):
                             raise mysql.connector.errors.DatabaseError()
                         
                         # Execute insert for study-data
-                        insert_studies_db_stmt = """INSERT INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) 
+                        insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) 
                             VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),
                             %(stock-id)s,%(data-id)s,%(study-id)s,%(val)s)
                             """
                         try:
-                            print(f'[INFO] INSERTING values for {self.indicator.upper()} for date {self.data.loc[index,:]["Date"]}...',flush=True)
+                            print(f'[INFO] INSERTING values for {self.indicator.upper()} for date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}...',flush=True)
                             # print(type(self.stock_id),type(self.data_id),type(self.study_id),row['ema14'])
-                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"]}{self.indicator}{length}',
+                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}',
                                                                                             'stock-id':self.stock_id,
                                                                                             'data-id':self.data_id,
                                                                                             'study-id':self.study_id,
@@ -328,6 +328,7 @@ val1    val3_________________________          vall2
                                                               '0.382':[self.fib_help(val1,val2,val3,0.382)],'0.5':[self.fib_help(val1,val2,val3,0.5)],'0.618':[self.fib_help(val1,val2,val3,0.618)],
                                                               '0.796':[self.fib_help(val1,val2,val3,0.796)],'1.556':[self.fib_help(val1,val2,val3,1.556)],'3.43':[self.fib_help(val1,val2,val3,3.43)],
                                                               '3.83':[self.fib_help(val1,val2,val3,3.83)],'5.44':[self.fib_help(val1,val2,val3,5.44)]})
+
         """
                 MYSQL PORTION... 
                 ADD VALUES to DB
@@ -353,7 +354,7 @@ val1    val3_________________________          vall2
                     study_id_res = s_res.fetchall()
                     if len(study_id_res) == 0:
                         print(f'[INFO] Failed to query study named fibonacci from database! Creating new Study...\n')
-                        insert_study_stmt = """INSERT INTO stocks.study (`study-id`,study) 
+                        insert_study_stmt = """REPLACE INTO stocks.study (`study-id`,study) 
                             VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(fib)s)"""
                         # Insert new study into DB
                         try:
@@ -387,12 +388,12 @@ val1    val3_________________________          vall2
                         INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
                         """
                         retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
-                                                                                    'date':self.data.loc[index,:]['Date']},multi=True)
+                                                                                    'date':self.data.loc[index,:]['Date'].strftime("%Y-%m-%d")},multi=True)
                         # self.data=self.data.drop(['Date'],axis=1)
                         for retrieve_result in retrieve_data_result:
                             id_res = retrieve_result.fetchall()
                             if len(id_res) == 0:
-                                print(f'[ERROR] Failed to locate a data-id for current index {index} with date {self.data.loc[index,:]["Date"]} under {retrieve_data_result}')
+                                print(f'[ERROR] Failed to locate a data-id for current index {index} with date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")} under {retrieve_data_result}')
                                 continue
                             else:
                                 self.stock_id = id_res[0][1].decode('latin1')
@@ -407,14 +408,15 @@ val1    val3_________________________          vall2
                             INNER JOIN stocks.`study` ON
                             stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
                             AND stocks.`study-data`.`study-id` = (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))))
-                            AND stocks.`study-data`.`id` = (AES_ENCRYPT(%(study-data-id)s, UNHEX(SHA2(%(study-data-id)s,512))))
                             AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`
                             """
+                            # AND stocks.`study-data`.`id` = (AES_ENCRYPT(%(study-data-id)s, UNHEX(SHA2(%(study-data-id)s,512))))
+
                         try:
                             check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
                                                                                             'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d'),
                                                                                             'id': 'fibonacci',
-                                                                                            'study-data-id':f'{self.data.loc[index,:]["Date"]}{self.indicator}fibonacci'})
+                                                                                            'study-data-id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci'})
                             __skippable = False
                             result = self.cnx.fetchone()
                             # Query new stock, id
@@ -434,7 +436,7 @@ val1    val3_________________________          vall2
                             raise mysql.connector.errors.DatabaseError()
 
                         # Insert data if not in db...
-                        insert_studies_db_stmt = """INSERT INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
+                        insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
                                                     `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
                             VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),
                             %(stock-id)s,%(data-id)s,%(study-id)s,%(val1)s,%(val2)s,
@@ -443,7 +445,7 @@ val1    val3_________________________          vall2
                             """
                         try:
                             # print(type(self.stock_id),type(self.data_id),type(self.study_id),row['ema14'])
-                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"]}{self.indicator}fibonacci',
+                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci',
                                                                                             'stock-id':self.stock_id,
                                                                                             'data-id':self.data_id,
                                                                                             'study-id':self.study_id,
@@ -537,7 +539,7 @@ val1    val3_________________________          vall2
                     study_id_res = s_res.fetchall()
                     if len(study_id_res) == 0:
                         print(f'[INFO] Failed to query study named keltner{length}-{factor} from database! Creating new Study...\n')
-                        insert_study_stmt = """INSERT INTO stocks.study (`study-id`,study) 
+                        insert_study_stmt = """REPLACE INTO stocks.study (`study-id`,study) 
                             VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(keltner)s)"""
                         # Insert new study into DB
                         try:
@@ -579,13 +581,13 @@ val1    val3_________________________          vall2
                                 self.stock_id = id_res[0][1].decode('latin1')
                                 self.data_id = id_res[0][0].decode('latin1')
                         # Execute insert for study-data
-                        insert_studies_db_stmt = """INSERT INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,`val2`,`val3`) 
+                        insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,`val2`,`val3`) 
                             VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),
                             %(stock-id)s,%(data-id)s,%(study-id)s,%(val1)s,%(val2)s,%(val3)s)
                             """
                         try:
                             # print(type(self.stock_id),type(self.data_id),type(self.study_id),type(row['middle']))
-                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"]}{self.indicator}keltner{length}{factor}',
+                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}',
                                                                                             'stock-id':self.stock_id,
                                                                                             'data-id':self.data_id,
                                                                                             'study-id':self.study_id,

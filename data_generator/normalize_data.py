@@ -146,6 +146,7 @@ class Normalizer():
             # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
             tmp_14 = pd.DataFrame(columns=['ema14'])
             tmp_30 = pd.DataFrame(columns=['ema30'])
+            tmp_20 = pd.DataFrame(columns=['ema20'])
             # print(date_result)
             # date_res = self.cnx.fetchall()
             for set in date_result:
@@ -163,8 +164,10 @@ class Normalizer():
                             tmp_14 = tmp_14.append({row[1]:cur_val},ignore_index=True)
                         elif row[1] == 'ema30':
                             tmp_30 = tmp_30.append({row[1]:cur_val},ignore_index=True)
+                        elif row[1] == 'ema20':
+                            tmp_20 = tmp_20.append({row[1]:cur_val},ignore_index=True)
                         else:
-                            print('Unknown value in ema')
+                            print('Unknown value in ema',row)
                             pass
                 except Exception as e:
                     print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
@@ -174,8 +177,8 @@ class Normalizer():
                     self.cnx.close()
                     return
             # After retrieving data, Store to self.data
-            self.studies = pd.concat([tmp_14,tmp_30],ignore_index=True,axis=1)
-            self.studies = self.studies.rename(columns={0: "ema14", 1: "ema30"})
+            self.studies = pd.concat([tmp_14,tmp_30,tmp_20],ignore_index=True,axis=1)
+            self.studies = self.studies.rename(columns={0: "ema14", 1: "ema30", 2: "ema20"})
             self.cnx.close()
             return self.studies
         elif study == 'fib':
@@ -254,7 +257,6 @@ class Normalizer():
                                            8: "0.618", 9: "0.796",
                                            10: "1.556", 11: "3.43",
                                            12: "3.83", 13: "5.44",})
-            self.fib = fib
             self.cnx.close()
             return self.fib
         elif study == 'keltner':

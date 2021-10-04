@@ -49,7 +49,7 @@ class Display():
         c = 'blue'
         if data is None:
             self.fib_display = pd.DataFrame([self.fib_display.reset_index().to_numpy().reshape(14)],columns={'0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'}).reset_index()
-            # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.keltner_display.index) + 2)]
+            # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.data_display.index) - len(self.keltner_display.index))]
             self.fib_display = self.fib_display.reset_index().astype('float')
             self.fib_display['0.202'].transpose().plot.line(color='green',x='0.202',y='0.202')
             self.fib_display['0.236'].transpose().plot.line()
