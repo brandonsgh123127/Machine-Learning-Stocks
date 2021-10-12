@@ -5,6 +5,8 @@ import keras
 import tensorflow as tf
 import numpy as np
 from data_generator.generate_sample import Sample
+from pathlib import Path
+import os
 import pandas as pd
 import threading
 from machine_learning.neural_framework import Neural_Framework
@@ -98,6 +100,8 @@ class Network(Neural_Framework):
                     sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
                 except Exception as e:
                     print('[Error] Failed batch!\nException:\n',str(e))
+                except Exception as e:
+                    print(str(e))
                     continue
                 try:
                     train.append(np.reshape(sampler.normalizer.normalized_data.iloc[:-1].to_numpy(),(1,1,140)))# Retrieve all except for last data to be analyzed/predicted
@@ -187,6 +191,3 @@ def run(epochs,batch_size,name="model_relu",model=1):
 # run(100,100,"model_relu2",4)
 # run(100,100,"model_leaky2",5)
 # run(100,100,"model_sigmoid2",6)
-
-
-# print(load("spy/2021-06-18--2021-08-08_data",name="model_relu"))

@@ -2,9 +2,14 @@ from data_gather._data_gather import Gather
 import pandas as pd
 import os
 import glob
+import datetime
 import threading
 import gc
-import sys
+import uuid
+import mysql.connector
+from mysql.connector import errorcode
+import sys,os
+
 '''
     This class manages stock-data implementations of studies. 
     As of now, EMA is only implemented, as this is the core indicator for our
@@ -26,20 +31,152 @@ class Studies(Gather):
         self.listLock = threading.Lock()
         # pd.set_option('display.max_rows',300)
         # pd.set_option('display.max_columns',10)
+        self.Date = pd.DataFrame(columns=['Date'])
+        self.Open = pd.DataFrame(columns=['Open'],dtype='float')
+        self.High = pd.DataFrame(columns=['High'],dtype='float')
+        self.Low = pd.DataFrame(columns=['Low'],dtype='float')
+        self.Close = pd.DataFrame(columns=['Close'],dtype='float')
+        self.AdjClose = pd.DataFrame(columns=['Adj Close'],dtype='float')
     def set_timeframe(self,new_timeframe):
         self.timeframe = new_timeframe
     def get_timeframe(self):
         return self.timeframe
     # Save EMA to self defined applied_studies
-    def apply_ema(self, length,span,half=None):
-        if half is not None:
-            self.applied_studies= pd.concat([self.applied_studies,pd.DataFrame({f'ema{length}': [self.data.ewm(span=int(length)).mean()]},halflife=half)],axis=1)
-        else:
-            with threading.Lock():
-                data = self.data.copy().drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Close':f'ema{length}'}).ewm(alpha=2/(int(length)+1),adjust=True).mean()
-                self.applied_studies= pd.concat([self.applied_studies,data],axis=1)
-                del data
-                gc.collect()
+    def apply_ema(self, length,span=None,half=None):
+        # Calculate locally, then push to database
+        # data = self.data.drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Date':'Date','Close':f'ema{length}'})
+        # data = data.drop(['Date'],axis=1)
+        with threading.Lock():
+            try:
+                data = self.data.drop(['Date'],axis=1)
+            except:
+                pass
+            data = data.copy().drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Close':f'ema{length}'}).ewm(alpha=2/(int(length)+1),adjust=True).mean()
+            self.applied_studies= pd.concat([self.applied_studies,data],axis=1)
+            del data
+            gc.collect()
+        # Retrieve query from database, confirm that stock is in database, else make new query
+        select_stmt = "SELECT stock FROM stocks.stock WHERE stock like %(stock)s"
+        self.cnx = self.db_con.cursor()
+        self.cnx.autocommit = True
+        # print('[INFO] Select stock')
+        resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator.upper()},multi=True)
+        for result in resultado:
+            # Query new stock, id
+            if len(result.fetchall()) == 0:
+                print(f'[ERROR] Failed to query stock named {self.indicator.upper()} from database!\n')
+                raise mysql.connector.Error
+            else:
+                select_study_stmt = "SELECT `study-id` FROM stocks.study WHERE study like %(study)s"
+                # print('[INFO] Select study id')
+                study_result = self.cnx.execute(select_study_stmt, { 'study': f'ema{length}'},multi=True)
+                for s_res in study_result:
+                    # Non existent DB value
+                    study_id_res = s_res.fetchall()
+                    if len(study_id_res) == 0:
+                        print(f'[INFO] Failed to query study named ema{length} from database! Creating new Study...\n')
+                        insert_study_stmt = """REPLACE INTO stocks.study (`study-id`,study) 
+                            VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(ema)s)"""
+                        # Insert new study into DB
+                        try:
+                            insert_result = self.cnx.execute(insert_study_stmt,{'id':f'{length}',
+                                                                            'ema':f'ema{length}'},multi=True)
+                            self.db_con.commit()
+                            
+                            # Now get the id from the db
+                            retrieve_study_id_stmt = """ SELECT `study-id` FROM stocks.study WHERE `study` like %(study)s"""
+                            retrieve_study_id_result = self.cnx.execute(retrieve_study_id_stmt,{'study':f'ema{length}'},multi=True)
+                            for r in retrieve_study_id_result:
+                                id_result = r.fetchall()
+                                self.study_id = id_result[0][0].decode('latin1')
+                        except mysql.connector.errors.IntegrityError:
+                            pass
+                        except Exception as e:
+                            print(f'[ERROR] Failed to Insert study into stocks.study named ema{length}!\nException:\n',str(e))
+                            raise mysql.connector.Error
+                    
+                    else:
+                        # Get study_id
+                        self.study_id = study_id_res[0][0].decode('latin1')
+                    
+                    
+                    # Calculate and store data to DB ...    
+                    for index,row in self.applied_studies.iterrows():
+                        self.cnx = self.db_con.cursor()
+                        self.cnx.autocommit = True
+                        # Retrieve the stock-id, and data-point id in a single select statement
+                        retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` 
+                        INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
+                        """
+                        retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
+                                                                                    'date':self.data.loc[index,:]['Date'].strftime("%Y-%m-%d")},multi=True)
+                        # self.data=self.data.drop(['Date'],axis=1)
+                        for retrieve_result in retrieve_data_result:
+                            id_res = retrieve_result.fetchall()
+                            if len(id_res) == 0:
+                                print(f'[ERROR] Failed to locate a data /id for current index {index} with date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")} under {retrieve_data_result}')
+                                continue
+                            else:
+                                self.stock_id = id_res[0][1].decode('latin1')
+                                self.data_id = id_res[0][0].decode('latin1')
+                        
+                        # Before inserting data, check cached data, verify if there is data there...
+                        check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
+                        ON `stocks`.`data`.`stock-id` = `stocks`.`stock`.`id` 
+                          AND `stocks`.`stock`.`stock` = "%(stock)s"
+                           AND `stocks`.`data`.`date` = DATE(%(date)s)
+                            INNER JOIN stocks.`study-data` ON
+                            stocks.stock.`id` = stocks.`study-data`.`stock-id`
+                            INNER JOIN stocks.`study` ON
+                            stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+                            AND stocks.`study-data`.`id` = (AES_ENCRYPT(%(study-data-id)s, UNHEX(SHA2(%(study-data-id)s,512))))
+                            AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`
+                            """
+                        try:
+                            self.cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
+                                                                                            'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d'),
+                                                                                            'id':length,
+                                                                                            'study-data-id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator}{length}'})
+                            __skippable = False
+                            result = self.cnx.fetchone()
+                            # Query new stock, id
+                            if result is None:
+                                print(f'[INFO] No prior study ema data found for {self.indicator.upper()} on {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}... Creating ema {length} data...!\n',flush=True)
+                            else:
+                                __skippable=True
+                                continue
+                            if __skippable: # continue loop if found cached data
+                                continue
+                        except mysql.connector.errors.IntegrityError: # should not happen
+                            self.cnx.close()
+                            pass
+                        except Exception as e:
+                            print('[ERROR] Failed to check for cached study-data element!\nException:\n',str(e))
+                            self.cnx.close()
+                            raise mysql.connector.errors.DatabaseError()
+                        
+                        # Execute insert for study-data
+                        insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) 
+                            VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),
+                            %(stock-id)s,%(data-id)s,%(study-id)s,%(val)s)
+                            """
+                        try:
+                            print(f'[INFO] INSERTING values for {self.indicator.upper()} for date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}...',flush=True)
+                            # print(type(self.stock_id),type(self.data_id),type(self.study_id),row['ema14'])
+                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}',
+                                                                                            'stock-id':self.stock_id,
+                                                                                            'data-id':self.data_id,
+                                                                                            'study-id':self.study_id,
+                                                                                            'val':row[f'ema{length}']})
+                            self.db_con.commit()
+                        except mysql.connector.errors.IntegrityError:
+                            self.cnx.close()
+                            pass
+                        except Exception as e:
+                            print('[ERROR] Failed to insert study-data element!\nException:\n',str(e))
+                            self.cnx.close()
+                            pass
+        self.cnx.close()
         return 0
     '''
         val1 first low/high
@@ -51,32 +188,32 @@ class Studies(Gather):
             return ( val3 + ((val2-val1)*fib_val))
         else: # val 3 is a lower high -- downards
             return ( val3 - ((val2-val1)*-(fib_val)))
-    '''
-    Fibonacci extensions utilized for predicting key breaking points
+        '''
+        Fibonacci extensions utilized for predicting key breaking points
         val2 ------------------------                 val3
        ||                                    val1   /  \
       / \   ---------------------           / \    /    \ 
      /  \  /----------------------- or     /  \   /      \
     /   \ /                               /    \ /        \
 val1    val3_________________________          vall2
-    '''
+        '''
     def apply_fibonacci(self):
         '''
         Fibonacci values:
-        `0.236
-        `0.382
-        `0.5
-        `0.618
-        `0.796
-        `0.316
-        `0.202
-        `0.241
-        `0.283
-        `1.556
-        `2.73
-        `5.44
-        `3.83
-        `3.43
+        0.236
+        0.382
+        0.5
+        0.618
+        0.796
+        0.316
+        0.202
+        0.241
+        0.283
+        1.556
+        2.73
+        5.44
+        3.83
+        3.43
         '''
         # Find greatest/least 3 points for pattern
         
@@ -86,7 +223,7 @@ val1    val3_________________________          vall2
             try:
                 # self.data = self.data.set
                 self.data = self.data.reset_index()
-                self.data=self.data.drop(['Date'],axis=1)
+                # self.data=self.data.drop(['Date'],axis=1)
                 # print(self.data)
             except Exception as e:
                 pass
@@ -185,18 +322,165 @@ val1    val3_________________________          vall2
                     val1=float(row)
                     continue
 
-            # calculate values 
+            # calculate values  -- 14 vals
             self.fibonacci_extension= pd.DataFrame({'0.202':[self.fib_help(val1,val2,val3,0.202)],'0.236':[self.fib_help(val1,val2,val3,0.236)],'0.241':[self.fib_help(val1,val2,val3,0.241)],
                                                               '0.273':[self.fib_help(val1,val2,val3,0.273)],'0.283':[self.fib_help(val1,val2,val3,0.283)],'0.316':[self.fib_help(val1,val2,val3,0.316)],
                                                               '0.382':[self.fib_help(val1,val2,val3,0.382)],'0.5':[self.fib_help(val1,val2,val3,0.5)],'0.618':[self.fib_help(val1,val2,val3,0.618)],
                                                               '0.796':[self.fib_help(val1,val2,val3,0.796)],'1.556':[self.fib_help(val1,val2,val3,1.556)],'3.43':[self.fib_help(val1,val2,val3,3.43)],
                                                               '3.83':[self.fib_help(val1,val2,val3,3.83)],'5.44':[self.fib_help(val1,val2,val3,5.44)]})
+
+        """
+                MYSQL PORTION... 
+                ADD VALUES to DB
+        """
+        
+        # Retrieve query from database, confirm that stock is in database, else make new query
+        select_stmt = "SELECT stock FROM stocks.stock WHERE stock like %(stock)s"
+        self.cnx = self.db_con.cursor()
+        self.cnx.autocommit = True
+        # print('[INFO] Select stock')
+        resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator.upper()},multi=True)
+        for result in resultado:
+            # Query new stock, id
+            if len(result.fetchall()) == 0:
+                print(f'[ERROR] Failed to query stock named {self.indicator.upper()} from database!\n')
+                raise mysql.connector.Error
+            else:
+                select_study_stmt = "SELECT `study-id` FROM stocks.study WHERE study like %(study)s"
+                # print('[INFO] Select study id')
+                study_result = self.cnx.execute(select_study_stmt, { 'study': f'fibonacci'},multi=True)
+                for s_res in study_result:
+                    # Non existent DB value
+                    study_id_res = s_res.fetchall()
+                    if len(study_id_res) == 0:
+                        print(f'[INFO] Failed to query study named fibonacci from database! Creating new Study...\n')
+                        insert_study_stmt = """REPLACE INTO stocks.study (`study-id`,study) 
+                            VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(fib)s)"""
+                        # Insert new study into DB
+                        try:
+                            insert_result = self.cnx.execute(insert_study_stmt,{'id':f'fibonacci',
+                                                                            'fib':f'fibonacci'},multi=True)
+                            self.db_con.commit()
+                            
+                            # Now get the id from the db
+                            retrieve_study_id_stmt = """ SELECT `study-id` FROM stocks.study WHERE `study` like %(study)s"""
+                            retrieve_study_id_result = self.cnx.execute(retrieve_study_id_stmt,{'study':f'fibonacci'},multi=True)
+                            for r in retrieve_study_id_result:
+                                id_result = r.fetchall()
+                                self.study_id = id_result[0][0]
+                        except mysql.connector.errors.IntegrityError:
+                            pass
+                        except Exception as e:
+                            print(f'[ERROR] Failed to Insert study into stocks.study named fibonacci!\nException:\n',str(e))
+                            raise mysql.connector.Error
+                    else:
+                        # Get study_id
+                        self.study_id = study_id_res[0][0].decode('latin1')
+                        
+                        
+                    # Now, Start the process for inserting fib data...
+                    
+                    for index,row in self.data.iterrows():
+                        self.cnx = self.db_con.cursor()
+                        self.cnx.autocommit = True
+                        # Retrieve the stock-id, and data-point id in a single select statement
+                        retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` 
+                        INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
+                        """
+                        retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
+                                                                                    'date':self.data.loc[index,:]['Date'].strftime("%Y-%m-%d")},multi=True)
+                        # self.data=self.data.drop(['Date'],axis=1)
+                        for retrieve_result in retrieve_data_result:
+                            id_res = retrieve_result.fetchall()
+                            if len(id_res) == 0:
+                                print(f'[ERROR] Failed to locate a data-id for current index {index} with date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")} under {retrieve_data_result}')
+                                continue
+                            else:
+                                self.stock_id = id_res[0][1].decode('latin1')
+                                self.data_id = id_res[0][0].decode('latin1')
+                        # Before inserting data, check cached data, verify if there is data there...
+                        check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
+                        ON `stock-id` = stocks.stock.`id` 
+                          AND stocks.stock.`stock` = "%(stock)s"
+                           AND `stocks`.`data`.`date` = DATE(%(date)s)
+                           INNER JOIN stocks.`study-data` ON
+                            stocks.stock.`id` = stocks.`study-data`.`stock-id`
+                            INNER JOIN stocks.`study` ON
+                            stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+                            AND stocks.`study-data`.`study-id` = (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))))
+                            AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`
+                            """
+                            # AND stocks.`study-data`.`id` = (AES_ENCRYPT(%(study-data-id)s, UNHEX(SHA2(%(study-data-id)s,512))))
+
+                        try:
+                            check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
+                                                                                            'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d'),
+                                                                                            'id': 'fibonacci',
+                                                                                            'study-data-id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci'})
+                            __skippable = False
+                            result = self.cnx.fetchone()
+                            # Query new stock, id
+                            if result is None:
+                                print(f'[INFO] No prior fib found for {self.indicator.upper()} on {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}... Creating fib data...!\n',flush=True)
+                            else:
+                                __skippable=True
+                                continue
+                            if __skippable: # continue loop if found cached data
+                                continue
+                        except mysql.connector.errors.IntegrityError: # should not happen
+                            self.cnx.close()
+                            pass
+                        except Exception as e:
+                            print('[ERROR] Failed to check for cached study-data element!\nException:\n',str(e))
+                            self.cnx.close()
+                            raise mysql.connector.errors.DatabaseError()
+
+                        # Insert data if not in db...
+                        insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
+                                                    `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
+                            VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),
+                            %(stock-id)s,%(data-id)s,%(study-id)s,%(val1)s,%(val2)s,
+                            %(val3)s,%(val4)s,%(val5)s,%(val6)s,%(val7)s,%(val8)s,
+                            %(val9)s,%(val10)s,%(val11)s,%(val12)s,%(val13)s,%(val14)s)
+                            """
+                        try:
+                            # print(type(self.stock_id),type(self.data_id),type(self.study_id),row['ema14'])
+                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci',
+                                                                                            'stock-id':self.stock_id,
+                                                                                            'data-id':self.data_id,
+                                                                                            'study-id':self.study_id,
+                                                                                            'val1':self.fibonacci_extension.at[0,"0.202"],
+                                                                                            'val2':self.fibonacci_extension.at[0,"0.236"],
+                                                                                            'val3':self.fibonacci_extension.at[0,"0.241"],
+                                                                                            'val4':self.fibonacci_extension.at[0,"0.273"],
+                                                                                            'val5':self.fibonacci_extension.at[0,"0.283"],
+                                                                                            'val6':self.fibonacci_extension.at[0,"0.316"],
+                                                                                            'val7':self.fibonacci_extension.at[0,"0.382"],
+                                                                                            'val8':self.fibonacci_extension.at[0,"0.5"],
+                                                                                            'val9':self.fibonacci_extension.at[0,"0.618"],
+                                                                                            'val10':self.fibonacci_extension.at[0,"0.796"],
+                                                                                            'val11':self.fibonacci_extension.at[0,"1.556"],
+                                                                                            'val12':self.fibonacci_extension.at[0,"3.43"],
+                                                                                            'val13':self.fibonacci_extension.at[0,"3.83"],
+                                                                                            'val14':self.fibonacci_extension.at[0,"5.44"]
+                                                                                            })
+                            self.db_con.commit()
+                        except mysql.connector.errors.IntegrityError:
+                            self.cnx.close()
+                            pass
+                        except Exception as e:
+                            print('[ERROR] Failed to insert study-data element fibonacci!\nException:\n',str(e))
+                            self.cnx.close()
+                            pass
+
+                                
+        self.cnx.close()
         return 0
     ''' Keltner Channels for display data'''
     def keltner_channels(self,length:int,factor:int=2,displace:int=None):
         with threading.Lock():
             self.data_cp = self.data.copy()
-            self.data_cp=self.data_cp.reset_index()
+            # self.data_cp=self.data_cp.reset_index()
             self.apply_ema(length,length) # apply length ema for middle band
             self.keltner = pd.DataFrame({'middle':[],'upper':[],'lower':[]})
             self.data=self.data_cp
@@ -229,7 +513,98 @@ val1    val3_________________________          vall2
             # now, calculate upper and lower bands given all data
             for index,row in avg_true_range.iterrows():
                 self.keltner=self.keltner.append({'middle':float(self.applied_studies[f'ema14'][index:index+1].astype(float)),'upper':float(self.applied_studies[f'ema14'][index:index+1].astype(float))+float(factor*avg_true_range['AvgTrueRange'][index:index+1].astype(float)),'lower':float(self.applied_studies[f'ema14'][index:index+1].astype(float))-float(factor*avg_true_range['AvgTrueRange'][index:index+1].astype(float))},ignore_index=True)
-            return 0
+            
+            """
+                    MYSQL Portion...
+                    Store Data on DB...
+            """
+            
+        # Retrieve query from database, confirm that stock is in database, else make new query
+        select_stmt = "SELECT stock FROM stocks.stock WHERE stock like %(stock)s"
+        self.cnx = self.db_con.cursor()
+        self.cnx.autocommit = True
+        # print('[INFO] Select stock')
+        resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator.upper()},multi=True)
+        for result in resultado:
+            # Query new stock, id
+            if len(result.fetchall()) == 0:
+                print(f'[ERROR] Failed to query stock named {self.indicator.upper()} from database!\n')
+                raise mysql.connector.Error
+            else:
+                select_study_stmt = "SELECT `study-id` FROM stocks.study WHERE study like %(study)s"
+                # print('[INFO] Select study id')
+                study_result = self.cnx.execute(select_study_stmt, { 'study': f'keltner{length}-{factor}'},multi=True)
+                for s_res in study_result:
+                    # Non existent DB value
+                    study_id_res = s_res.fetchall()
+                    if len(study_id_res) == 0:
+                        print(f'[INFO] Failed to query study named keltner{length}-{factor} from database! Creating new Study...\n')
+                        insert_study_stmt = """REPLACE INTO stocks.study (`study-id`,study) 
+                            VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(keltner)s)"""
+                        # Insert new study into DB
+                        try:
+                            insert_result = self.cnx.execute(insert_study_stmt,{'id':f'keltner{length}{factor}',
+                                                                            'keltner':f'keltner{length}-{factor}'},multi=True)
+                            self.db_con.commit()
+                            
+                            # Now get the id from the db
+                            retrieve_study_id_stmt = """ SELECT `study-id` FROM stocks.study WHERE `study` like %(study)s"""
+                            retrieve_study_id_result = self.cnx.execute(retrieve_study_id_stmt,{'study':f'keltner{length}-{factor}'},multi=True)
+                            for r in retrieve_study_id_result:
+                                id_result = r.fetchall()
+                                self.study_id = id_result[0][0].decode('latin1')
+                        except mysql.connector.errors.IntegrityError:
+                            pass
+                        except Exception as e:
+                            print(f'[ERROR] Failed to Insert study into stocks.study named keltner{length}-{factor}!\nException:\n',str(e))
+                            raise mysql.connector.Error
+                    else:
+                        # Get study_id
+                        self.study_id = study_id_res[0][0].decode('latin1')
+                        
+                    for index,row in self.keltner.iterrows():
+                        self.cnx = self.db_con.cursor()
+                        self.cnx.autocommit = True
+                        # Retrieve the stock-id, and data-point id in a single select statement
+                        retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` 
+                        INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
+                        """
+                        retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
+                                                                                    'date':self.data.loc[index,:]['Date'].strftime('%Y-%m-%d')},multi=True)
+                        # self.data=self.data.drop(['Date'],axis=1)
+                        for retrieve_result in retrieve_data_result:
+                            id_res = retrieve_result.fetchall()
+                            if len(id_res) == 0:
+                                print(f'[ERROR] Failed to locate a data-id for current index {index} with date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")} under {retrieve_data_result}')
+                                continue
+                            else:
+                                self.stock_id = id_res[0][1].decode('latin1')
+                                self.data_id = id_res[0][0].decode('latin1')
+                        # Execute insert for study-data
+                        insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,`val2`,`val3`) 
+                            VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),
+                            %(stock-id)s,%(data-id)s,%(study-id)s,%(val1)s,%(val2)s,%(val3)s)
+                            """
+                        try:
+                            # print(type(self.stock_id),type(self.data_id),type(self.study_id),type(row['middle']))
+                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}',
+                                                                                            'stock-id':self.stock_id,
+                                                                                            'data-id':self.data_id,
+                                                                                            'study-id':self.study_id,
+                                                                                            'val1':row[f'middle'],
+                                                                                            'val2':row[f'upper'],
+                                                                                            'val3':row[f'lower'],
+                                                                                            })
+                            self.db_con.commit()
+                        except mysql.connector.errors.IntegrityError:
+                            self.cnx.close()
+                            pass
+                        except Exception as e:
+                            print(f'[ERROR] Failed to insert study-data element keltner{length}{factor} !\nException:',str(e))
+                            self.cnx.close()
+                            pass
+        self.cnx.close()
+        return 0
     def reset_data(self):
         self.applied_studies = pd.DataFrame()
     def save_data_csv(self,path):
@@ -273,9 +648,84 @@ val1    val3_________________________          vall2
             self.data = pd.read_csv(f'{path}_data.csv')
             self.applied_studies = pd.read_csv(f'{path}_studies.csv')
             self.keltner = pd.read_csv(f'{path}_keltner.csv')
-            self.fibonacci_extension = pd.read_csv(f'{path}_fib.csv')
+    #append to specified struct
+    def append_data(self,struct:pd.DataFrame,label:str,val):
+        struct = struct.append({label:val},ignore_index=True)
+        return struct
+    
+    # Load data from mysql server
+    def load_data_mysql(self,start,end):
+        # print(self.cnx)
+        # print('LOAD\n\n')
+        # Retrieve query from database, confirm that stock is in database, else make new query
+        try:
+            self.set_data_from_range(datetime.datetime.strptime(start,'%Y-%m-%d'), datetime.datetime.strptime(end,'%Y-%m-%d')) # Make sure data is generated in database
+        except:
+            try:
+                self.set_data_from_range(start, end)
+            except Exception as e:
+                print('[Error] Failed to load mysql data!\nException:\n',str(e))
+        '''
+        Fetch stock data per date range
+        '''
+        self.cnx=self.db_con.cursor(buffered=True)
+        date_result = self.cnx.execute("""
+        select * from stocks.`data` where date >= DATE(%s) and date <= DATE(%s) and `stock-id` = (select `id` from stocks.`stock` where stock = %s) ORDER BY stocks.`data`.`date` ASC
+        """, (start, end, self.indicator),multi=True)
+        date_res = self.cnx.fetchall()
+        # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
+        for set in date_res:
+            if len(set) == 0:
+                try:
+                    print('\n\n[INFO] Please rerun current function in order to store studies!\n\n')
+                    exit(1)
+                except Exception as e:
+                    print(f'[ERROR] Failed to retrieve data for {self.indicator} from range {start}--{end}\nException:\n',str(e))
+                    exit(1)
+            try:
+                # Iterate through each element to retrieve values
+                for index,row in enumerate(set):
+                    append_lambda = lambda i: '' if i>=0 and i <=1 else self.append_data(self.Date, 'Date', row) if i==2 else self.append_data(self.Open,'Open',row) if i==3 else self.append_data(self.High,'High',row) if i==4 else self.append_data(self.Low,'Low',row) if i==5 else self.append_data(self.Close,'Close',row) if i==6 else self.append_data(self.AdjClose,'Adj Close',row) if i==7 else print('[ERROR] Could not map lambda!')
+                    val = append_lambda(index)
+                    if index == 2:
+                        self.Date = val
+                    elif index == 3:
+                        self.Open = val
+                    elif index == 4:
+                        self.High = val
+                    elif index == 5:
+                        self.Low = val
+                    elif index == 6:
+                        self.Close = val
+                    elif index == 7:
+                        self.AdjClose = val
+                # print(self.Open)
+                    # print(index, row,'\n')
+                # print('________________________________')
+            except Exception as e:
+                print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
+            
+        # After retrieving data, Store to self.data
+        # print(self.Open)
+        self.Open.reset_index(drop=True, inplace=True)
+        self.Date.reset_index(drop=True, inplace=True)
+        self.High.reset_index(drop=True, inplace=True)
+        self.Low.reset_index(drop=True, inplace=True)
+        self.Close.reset_index(drop=True, inplace=True)
+        self.AdjClose.reset_index(drop=True, inplace=True)
+        self.data = pd.concat([self.Date,self.Open,self.High,self.Low,self.Close,self.AdjClose],names=['Date','Open','High','Low','Close','Adj Close'],ignore_index=True,axis=1)
+        self.data = self.data.rename(columns={0: "Date", 1: "Open", 2: "High",3: "Low",4: "Close",5: "Adj Close"})
+
+
 # s = Studies("RBLX")
-# s.load_data_csv("C:\\users\\i-pod\\git\\Intro--Machine-Learning-Stock\\data\\stock_no_tweets\\rblx/2021-06-23--2021-08-13")
+# s.load_data_mysql('2019-03-03','2021-04-22')
+# s.apply_ema("14",'14')
+# s.apply_ema("30",'14') 
+
+
 # s.applied_studies = pd.DataFrame()
 # s.keltner_channels(20)
 # print(s.keltner)
