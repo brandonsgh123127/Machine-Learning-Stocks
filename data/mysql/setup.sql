@@ -2,12 +2,11 @@
 -- SHOW TABLES;
 
 -- FLUSH PRIVILEGES;
--- CREATE USER 'admin-stock' IDENTIFIED BY 'Mgh8@091)21jKl14t';
-#CREATE TABLE IF NOT EXISTS `Stocks`.`Stocks` (
-#  `id` VARBINARY(128) NOT NULL,
-#  `stock_id` VARBINARY(128) NOT NULL,
-#  PRIMARY KEY (`id`))
-#ENGINE = InnoDB;
+CREATE TABLE IF NOT EXISTS `Stocks`.`Stocks` (
+  `id` VARBINARY(128) NOT NULL,
+  `stock_id` VARBINARY(128) NOT NULL,
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `Stocks`.`Stock` (
   `id` VARBINARY(128) NOT NULL,
   `stock` VARCHAR(5) NULL,
@@ -41,6 +40,30 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Study-Data` (
   `val4` VARCHAR(45) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`Options` (
+  `option-id` VARBINARY(128) NOT NULL,
+  `option` VARCHAR(16) NULL,
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`Options-Expiry` (
+  `opt-expiry-id` VARBINARY(128) NOT NULL,
+  `option-id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `expiry` DATE NOT NULL,
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`Options-Data` (
+  `opt-data-id` VARBINARY(128) NOT NULL,
+  `opt-expiry-id` VARBINARY(128) NOT NULL,
+  `date` DATE NOT NULL,
+  `bid` VARCHAR(45) NULL,
+  `ask` VARCHAR(45) NULL,  
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+
 -- GRANT ALL ON `Stocks`.* TO 'admin-stock';
 -- GRANT SELECT ON TABLE `Stocks`.* TO 'admin-stock';
 -- GRANT SELECT, INSERT, TRIGGER ON TABLE `Stocks`.* TO 'admin-stock';
@@ -61,6 +84,7 @@ DELETE FROM `study-data`;
 
 SHOW TABLES FROM stocks;
 select * from stocks.`data`;
+select stocks.`data`.`date` from stocks.`data` where `data-id`='' or '1'='1'--'';
 select * from stocks.study;
 select * from stocks.`study-data`;
 -- ALTER TABLE stocks.`study-data` 
@@ -109,5 +133,4 @@ SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock
                             INNER JOIN stocks.`study` ON
                             stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
                             AND stocks.`study-data`.`study-id` = (AES_ENCRYPT("fibonacci", UNHEX(SHA2("fibonacci",512))))
-                            AND stocks.`study-data`.`id` = (AES_ENCRYPT("2021-10-01spyfibonacci", UNHEX(SHA2("2021-10-01spyfibonacci",512))))
                             AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`;
