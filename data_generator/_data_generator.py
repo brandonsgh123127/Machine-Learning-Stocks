@@ -12,11 +12,12 @@ import datetime
     data formatting 
 '''
 class Generator():
-    def __init__(self,ticker,path=None):
+    def __init__(self,ticker=None,path=None):
         # print(ticker)
         self.studies = Studies(ticker)
         self.news=News_Scraper(ticker)
-        self.ticker=ticker
+        if ticker is not None:
+            self.ticker=ticker
         if path is not None:
             self.path = path
         else:
@@ -62,20 +63,23 @@ class Generator():
         del studies
         
         # Generates the P/L and percent of current day
-    def generate_quick_data(self):
+    def generate_quick_data(self,ticker:str=None):
+        self.studies.set_indicator(ticker)
+        if ticker is not None:
+            self.ticker=ticker
         if datetime.date.today().weekday() == 5:
             self.studies.set_data_from_range(datetime.datetime.today() - datetime.timedelta(days=2) , datetime.datetime.today()- datetime.timedelta(days=1))
         elif datetime.date.today().weekday() == 6:
             self.studies.set_data_from_range(datetime.datetime.today() - datetime.timedelta(days=3) , datetime.datetime.today()- datetime.timedelta(days=2))
         else:
             self.studies.set_data_from_range(datetime.datetime.today() - datetime.timedelta(days=1) , datetime.datetime.today())
-        return [self.studies.data[['Close']].diff().iloc[1].to_list()[0],f'{round(self.studies.data[["Close"]].pct_change().iloc[1].to_list()[0]*100,3)}%']
+        return [round(self.studies.data[['Close']].diff().iloc[1].to_list()[0],3),f'{round(self.studies.data[["Close"]].pct_change().iloc[1].to_list()[0]*100,3)}%']
     def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,vals:tuple=None):
         self.studies.date_set = (date1,date2)
         # Loop until valid data populates
         try:
             # self.studies.get_data(date1,date2)
-            self.studies.get_data(self.studies.date_set[0],self.studies.date_set[1])
+            self.studies.set_data_from_range(self.studies.date_set[0],self.studies.date_set[1])
             self.studies.data = self.studies.data.reset_index()
             # self.studies.data = self.studies.data.drop(['Date'],axis=1)
         except Exception as e:

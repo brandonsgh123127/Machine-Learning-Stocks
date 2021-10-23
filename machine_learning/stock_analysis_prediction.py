@@ -26,6 +26,7 @@ _type = None
 dis_queue = queue.Queue()
 data_queue = queue.Queue()
 thread_pool = Thread_Pool(amount_of_threads=3)
+data_gen = Generator()
 
 
 def display_model(dis:Display,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",dates:list=[],color:str="blue",is_predict=False,unnormalized_data = False):
@@ -206,8 +207,7 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
     return (ticker,data_queue)#Return Data from machine learning models
 
 def get_preview_prices(ticker:str):
-    data_gen = Generator()
-    return data_gen.generate_quick_data()
+    return data_gen.generate_quick_data(ticker)
 if __name__ == "__main__":
     _type = sys.argv[1]
     _has_actuals = sys.argv[3] == 'True'

@@ -20,6 +20,7 @@ from threading_impl.Thread_Pool import Thread_Pool
 import gc
 import concurrent.futures
 from machine_learning.stock_analysis_prediction import main as analyze_stock
+from machine_learning.stock_analysis_prediction import get_preview_prices
 from tkinter import StringVar
          
 class GUI(Thread_Pool):
@@ -40,17 +41,9 @@ class GUI(Thread_Pool):
         self.force_bool = tk.BooleanVar()
 
         self.watchlist = []
-        self.watchlist_file = open(f'{self.path}/data/watchlist/default.csv','r')
-        lines = self.watchlist_file.readlines()
-        for line in lines:
-            try:
-                self.watchlist.append(f'{line[0:line.find(",")].strip().upper()} {}')
-            except:
-                self.watchlist.append(line.strip().upper())
         self.quick_select= StringVar(self.content)
         self.quick_select.set('SPY') # default value
         self.stock_input = tk.Entry(self.content)
-        self.stock_dropdown = tk.OptionMenu(self.content,self.quick_select,*self.watchlist)
         self.quick_select.trace('w',self.quick_gen)
         self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
         self.output_image = tk.Canvas(self.window,width=1400,height=1400,bg='white')
@@ -80,11 +73,22 @@ class GUI(Thread_Pool):
         self.lock = threading.Lock()
         self.is_retrieving = True
         s.configure('.', background='white')
-
+    def load_dropdown(self):
+        self.watchlist_file = open(f'{self.path}/data/watchlist/default.csv','r')
+        lines = self.watchlist_file.readlines()
+        for line in lines:
+            try:
+                ticker=line[0:line.find(",")].strip().upper()
+            except:
+                ticker=line.strip().upper()
+            pnl_percent=get_preview_prices(ticker)
+            self.watchlist.append(f'{ticker}     {pnl_percent[0]}     {pnl_percent[1]}')
+        self.stock_dropdown = tk.OptionMenu(self.content,self.quick_select,*self.watchlist)
+        self.stock_dropdown.grid(column=4,row=0)
 
     def quick_gen(self,event,*args,**vargs):
         self.stock_input.delete(0,tk.END)
-        self.stock_input.insert(0,self.quick_select.get())
+        self.stock_input.insert(0,self.quick_select.get().split(' ')[0])
         self.generate_callback(event)
         
     def generate_callback(self,event=None):
@@ -316,7 +320,6 @@ class GUI(Thread_Pool):
         self.stock_label.grid(column=2,row=0)
         self.stock_input.insert(0,'SPY')
         self.stock_input.grid(column=3,row=0)
-        self.stock_dropdown.grid(column=4,row=0)
         self.boolean1 = tk.BooleanVar()
         self.boolean1.set(False)
         self.boolean2 = tk.BooleanVar()
@@ -332,6 +335,7 @@ class GUI(Thread_Pool):
         self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
         self.generate_button.grid(column=3, row=2)
         # self.next_page_button.pack(side='bottom')
+        self.cache_queue.put(threading.Thread(target=self.load_dropdown,args=()))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True,False)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True,False)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True,False)))
