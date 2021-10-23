@@ -44,7 +44,7 @@ class GUI(Thread_Pool):
         lines = self.watchlist_file.readlines()
         for line in lines:
             try:
-                self.watchlist.append(line[0:line.find(',')].strip().upper())
+                self.watchlist.append(f'{line[0:line.find(",")].strip().upper()} {}')
             except:
                 self.watchlist.append(line.strip().upper())
         self.quick_select= StringVar(self.content)

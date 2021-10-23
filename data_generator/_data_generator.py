@@ -6,17 +6,21 @@ import random
 from threading_impl.Thread_Pool import Thread_Pool
 import threading
 import time
+import datetime
 '''
     This class allows for unification of data, studies and news for future machine learning training.
     data formatting 
 '''
 class Generator():
-    def __init__(self,ticker,path):
+    def __init__(self,ticker,path=None):
         # print(ticker)
         self.studies = Studies(ticker)
         self.news=News_Scraper(ticker)
         self.ticker=ticker
-        self.path = path
+        if path is not None:
+            self.path = path
+        else:
+            self.path = Path(os.getcwd()).parent.absolute()
 
         
     def generate_data(self):
@@ -57,6 +61,15 @@ class Generator():
         studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{studies.get_indicator()}/{studies.date_set[0]}--{studies.date_set[1]}')
         del studies
         
+        # Generates the P/L and percent of current day
+    def generate_quick_data(self):
+        if datetime.date.today().weekday() == 5:
+            self.studies.set_data_from_range(datetime.datetime.today() - datetime.timedelta(days=2) , datetime.datetime.today()- datetime.timedelta(days=1))
+        elif datetime.date.today().weekday() == 6:
+            self.studies.set_data_from_range(datetime.datetime.today() - datetime.timedelta(days=3) , datetime.datetime.today()- datetime.timedelta(days=2))
+        else:
+            self.studies.set_data_from_range(datetime.datetime.today() - datetime.timedelta(days=1) , datetime.datetime.today())
+        return [self.studies.data[['Close']].diff().iloc[1].to_list()[0],f'{round(self.studies.data[["Close"]].pct_change().iloc[1].to_list()[0]*100,3)}%']
     def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,vals:tuple=None):
         self.studies.date_set = (date1,date2)
         # Loop until valid data populates
@@ -133,3 +146,5 @@ def main():
     
 if __name__ == '__main__':
     main()
+    # generator = Generator("SPY",None)
+    # print(generator.generate_quick_data())

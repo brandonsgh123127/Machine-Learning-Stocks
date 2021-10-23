@@ -2,6 +2,7 @@ import keras
 import tensorflow as tf
 import numpy as np
 from data_generator.generate_sample import Sample
+from data_generator._data_generator import Generator
 from pathlib import Path
 import os
 import matplotlib.pyplot as plt
@@ -25,6 +26,7 @@ _type = None
 dis_queue = queue.Queue()
 data_queue = queue.Queue()
 thread_pool = Thread_Pool(amount_of_threads=3)
+
 
 def display_model(dis:Display,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",dates:list=[],color:str="blue",is_predict=False,unnormalized_data = False):
     global dis_queue
@@ -202,6 +204,10 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
         del dis12
         gc.collect()
     return (ticker,data_queue)#Return Data from machine learning models
+
+def get_preview_prices(ticker:str):
+    data_gen = Generator()
+    return data_gen.generate_quick_data()
 if __name__ == "__main__":
     _type = sys.argv[1]
     _has_actuals = sys.argv[3] == 'True'
