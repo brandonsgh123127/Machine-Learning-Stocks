@@ -104,35 +104,35 @@ class Gather():
                 if self.data.empty:
                     return 1
                 uuid_gen = uuid.uuid4()
-                # Retrieve query from database, confirm that stock is in database, else make new query
-    
-                select_stmt = "SELECT `id` FROM stocks.stock WHERE stock like %(stock)s"
-                resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
-                for result in resultado:
-                    # print(len(result.fetchall()))
-                    # Query new stock, id
-                    res = result.fetchall()
-                    if len(res) == 0:
-                        insert_stmt = """INSERT INTO stocks.stock (id, stock) 
-                                    VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2(%(stock)s,512))),%(stock)s)"""
-                        try:
-                            # print('[INFO] inserting')
-                            insert_resultado = self.cnx.execute(insert_stmt, { 'stock': f'{self.indicator.upper()}'},multi=True)
-                            self.db_con.commit()
-                            # print('[INFO] Success')
-                        except mysql.connector.errors.IntegrityError as e:
-                            pass
-                        except Exception as e:
-                            print(f'[ERROR] Failed to insert stock named {self.indicator.upper()} into database!\nException:\n',str(e))
-                            exc_type, exc_obj, exc_tb = sys.exc_info()
-                            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                            print(exc_type, fname, exc_tb.tb_lineno)
-    
-                    else:
-                        for r in res:
-                            # print(f'{r[0]}\n')
-                            # print(repr(binascii.b2a_hex(str.encode(r[0]))))
-                            self.new_uuid_gen = binascii.b2a_hex(str.encode(str(r[0]),"utf8"))
+                # # Retrieve query from database, confirm that stock is in database, else make new query
+                #
+                # select_stmt = "SELECT `id` FROM stocks.stock WHERE stock like %(stock)s"
+                # resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
+                # for result in resultado:
+                    # # print(len(result.fetchall()))
+                    # # Query new stock, id
+                    # res = result.fetchall()
+                    # if len(res) == 0:
+                        # insert_stmt = """INSERT INTO stocks.stock (id, stock) 
+                                    # VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2(%(stock)s,512))),%(stock)s)"""
+                        # try:
+                            # # print('[INFO] inserting')
+                            # insert_resultado = self.cnx.execute(insert_stmt, { 'stock': f'{self.indicator.upper()}'},multi=True)
+                            # self.db_con.commit()
+                            # # print('[INFO] Success')
+                        # except mysql.connector.errors.IntegrityError as e:
+                            # pass
+                        # except Exception as e:
+                            # print(f'[ERROR] Failed to insert stock named {self.indicator.upper()} into database!\nException:\n',str(e))
+                            # exc_type, exc_obj, exc_tb = sys.exc_info()
+                            # fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                            # print(exc_type, fname, exc_tb.tb_lineno)
+                            #
+                    # else:
+                        # for r in res:
+                            # # print(f'{r[0]}\n')
+                            # # print(repr(binascii.b2a_hex(str.encode(r[0]))))
+                            # self.new_uuid_gen = binascii.b2a_hex(str.encode(str(r[0]),"utf8"))
                 try:
                     self.data['Date']
                 except:

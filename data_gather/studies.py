@@ -156,7 +156,7 @@ class Studies(Gather):
                             raise mysql.connector.errors.DatabaseError()
                         
                         # Execute insert for study-data
-                        insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) 
+                        insert_studies_db_stmt = """INSERT INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) 
                             VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),
                             %(stock-id)s,%(data-id)s,%(study-id)s,%(val)s)
                             """

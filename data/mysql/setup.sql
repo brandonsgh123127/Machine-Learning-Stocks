@@ -74,17 +74,21 @@ use stocks;
 
 # drop table stocks;
 drop table stock;
-DELETE FROM stock;
 drop table study;
-DELETE FROM study;
 drop table `data`;
-DELETE FROM data;
 drop table `study-data`;
-DELETE FROM `study-data`;
 
+DELETE FROM stock;
+DELETE FROM data;
+DELETE FROM `study-data`;
+DELETE FROM study;
+
+
+SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
+                        ON `stocks`.`data`.`stock-id` = `stocks`.`stock`.`id` 
+                          AND `stocks`.`stock`.`stock` = "SPY" ;
 SHOW TABLES FROM stocks;
 select * from stocks.`data`;
-select stocks.`data`.`date` from stocks.`data` where `data-id`='' or '1'='1'--'';
 select * from stocks.study;
 select * from stocks.`study-data`;
 -- ALTER TABLE stocks.`study-data` 
