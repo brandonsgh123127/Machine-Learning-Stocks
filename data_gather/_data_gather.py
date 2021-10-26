@@ -114,7 +114,7 @@ class Gather():
                     res = result.fetchall()
                     if len(res) == 0:
                         insert_stmt = """INSERT INTO stocks.stock (id, stock) 
-                                    VALUES (AES_ENCRYPT(%(stock)s, UNHEX(SHA2(%(stock)s,512))),%(stock)s)"""
+                                    VALUES (AES_ENCRYPT(%(stock)s, %(stock)s),%(stock)s)"""
                         try:
                             # print('[INFO] inserting')
                             insert_resultado = self.cnx.execute(insert_stmt, { 'stock': f'{self.indicator.upper()}'},multi=True)

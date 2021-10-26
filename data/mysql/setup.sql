@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Stocks` (
   `id` VARBINARY(128) NOT NULL,
   `stock_id` VARBINARY(128) NOT NULL,
   PRIMARY KEY (`id`))
-ENGINE = InnoDB;
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE TABLE IF NOT EXISTS `Stocks`.`Stock` (
   `id` VARBINARY(128) NOT NULL,
   `stock` VARCHAR(5) NULL,
@@ -87,8 +87,17 @@ DELETE FROM study;
 SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
                         ON `stocks`.`data`.`stock-id` = `stocks`.`stock`.`id` 
                           AND `stocks`.`stock`.`stock` = "SPY" ;
+SELECT `stocks`.`data`.`date`,stocks.`study-data`.`study-id` FROM stocks.`data` INNER JOIN stocks.stock 
+                        ON `stock-id` = stocks.stock.`id` 
+                          AND stocks.stock.`stock` = "SPY"
+                           AND `stocks`.`data`.`date` = DATE("2021-10-22")
+                           INNER JOIN stocks.`study-data` ON
+                            stocks.stock.`id` = stocks.`study-data`.`stock-id`
+                            AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`
+                            ;
 SHOW TABLES FROM stocks;
 select * from stocks.`data`;
+select * from stocks.`stock`;
 select * from stocks.study;
 select * from stocks.`study-data`;
 -- ALTER TABLE stocks.`study-data` 
@@ -105,7 +114,7 @@ select * from stocks.`study-data`;
 
 
 SELECT `stocks`.`data`.`date` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE('2021-09-01');
-SELECT `stock` FROM stocks.stock where `id` like 'SPY';
+SELECT `stock`,`id` FROM stocks.stock where `id` like 'SPY';
 SELECT * FROM stocks.`data` INNER JOIN stocks.stock WHERE `stock-id` = stocks.stock.`id` and stocks.stock.`stock` = "ULTA" AND stocks.`data`.`date` = "2021-09-01";
 ALTER TABLE stocks.stock ADD UNIQUE `stock-id` (id);
 select * from stocks.`study-data`;
