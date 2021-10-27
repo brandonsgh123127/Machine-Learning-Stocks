@@ -44,18 +44,6 @@ class Studies(Gather):
         return self.timeframe
     # Save EMA to self defined applied_studies
     def apply_ema(self, length,span=None,half=None):
-        # Calculate locally, then push to database
-        # data = self.data.drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Date':'Date','Close':f'ema{length}'})
-        # data = data.drop(['Date'],axis=1)
-        with threading.Lock():
-            try:
-                data = self.data.drop(['Date'],axis=1)
-            except:
-                pass
-            data = data.copy().drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Close':f'ema{length}'}).ewm(alpha=2/(int(length)+1),adjust=True).mean()
-            self.applied_studies= pd.concat([self.applied_studies,data],axis=1)
-            del data
-            gc.collect()
         # Retrieve query from database, confirm that stock is in database, else make new query
         select_stmt = "SELECT stock FROM stocks.stock WHERE stock like %(stock)s"
         self.cnx = self.db_con.cursor()
@@ -101,80 +89,127 @@ class Studies(Gather):
                         self.study_id = study_id_res[0][0].decode('latin1')
                     
                     
-                    # Calculate and store data to DB ...    
-                    for index,row in self.applied_studies.iterrows():
+                    # Now, Start the process for inserting ema data...
+                    date_range =[d.strftime('%Y-%m-%d') for d in pd.date_range(self.data.iloc[0]['Date'], self.data.iloc[-1]['Date'])] #start/end date list
+                    holidays=USFederalHolidayCalendar().holidays(start=f'{datetime.datetime.now().year}-01-01',end=f'{datetime.datetime.now().year}-12-31').to_pydatetime()
+                    # For each date, verify data is in the specified range by removing any unnecessary dates first
+                    for date in date_range:
+                        datetime_date=datetime.datetime.strptime(date,'%Y-%m-%d')
+                        if datetime_date.weekday() == 5 or datetime_date in holidays:
+                            date_range.remove(date)
+                    # Second iteration needed to delete Sunday dates for some unknown reason...
+                    for d in date_range:
+                        datetime_date=datetime.datetime.strptime(d,'%Y-%m-%d')
+                        if datetime_date.weekday() == 6:
+                            date_range.remove(d)
+                            
+                    # iterate through each data row and verify data is in place before continuing...
+                    study_data=pd.DataFrame(columns=[f'ema{length}'])
+                    for index,row in self.data.iterrows():
                         self.cnx = self.db_con.cursor()
                         self.cnx.autocommit = True
-                        # Retrieve the stock-id, and data-point id in a single select statement
-                        retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` 
-                        INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
-                        """
-                        retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
-                                                                                    'date':self.data.loc[index,:]['Date'].strftime("%Y-%m-%d")},multi=True)
-                        # self.data=self.data.drop(['Date'],axis=1)
-                        for retrieve_result in retrieve_data_result:
-                            id_res = retrieve_result.fetchall()
-                            if len(id_res) == 0:
-                                print(f'[ERROR] Failed to locate a data id for current index {index} with date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")} under {retrieve_data_result}')
-                                continue
-                            else:
-                                self.stock_id = id_res[0][1].decode('latin1')
-                                self.data_id = id_res[0][0].decode('latin1')
-                        
+   
                         # Before inserting data, check cached data, verify if there is data there...
-                        check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
-                        ON `stocks`.`data`.`stock-id` = `stocks`.`stock`.`id` 
-                          AND `stocks`.`stock`.`stock` = "%(stock)s"
+                        check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date`,`stocks`.`data`.`open`,
+                        `stocks`.`data`.`high`,`stocks`.`data`.`low`,
+                        `stocks`.`data`.`close`,`stocks`.`data`.`adj-close`,
+                        `stocks`.`study-data`.`val1` 
+                         FROM stocks.`data` INNER JOIN stocks.stock 
+                        ON `stock-id` = stocks.stock.`id` 
+                          AND stocks.stock.`stock` = %(stock)s
                            AND `stocks`.`data`.`date` = DATE(%(date)s)
-                            INNER JOIN stocks.`study-data` ON
+                           INNER JOIN stocks.`study-data` ON
                             stocks.stock.`id` = stocks.`study-data`.`stock-id`
-                            INNER JOIN stocks.`study` ON
-                            stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
-                            AND stocks.`study-data`.`id` = (AES_ENCRYPT(%(study-data-id)s, UNHEX(SHA2(%(study-data-id)s,512))))
-                            AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`
+                            AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`
+                            AND stocks.`study-data`.`study-id` = %(id)s
                             """
+
                         try:
-                            result = self.cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
+                            check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
                                                                                             'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d'),
-                                                                                            'id':length,
-                                                                                            'study-data-id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator}{length}'},
-                                                                                            multi=True)
-                            for res in result:
-                                res = res.fetchall()
-                                # Query new stock, id
-                                if res is None:
-                                    print(f'[INFO] No prior study ema data found for {self.indicator.upper()} on {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}... Creating ema {length} data...!\n',flush=True)
-                                else:
+                                                                                            'id': self.study_id},multi=True)
+                            # Retrieve date, verify it is in date range, remove from date range
+                            for res in check_cache_studies_db_result:
+                                res= res.fetchall()
+                                # Convert datetime to str
+                                try:
+                                    date=datetime.date.strftime(res[0][0],"%Y-%m-%d")
+                                except:
                                     continue
+                                if date is None:
+                                    print(f'[INFO] No prior ema{length} found for {self.indicator.upper()} on {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}... Generating ema{length} data...!\n',flush=True)
+                                else:
+                                    # check if date is there, if not fail this
+                                    if date in date_range:
+                                        study_data = study_data.append({f'ema{length}':res[0][6]},
+                                                                        ignore_index=True)
+                                        date_range.remove(date)                                 
+                                    else:
+                                        continue
                         except mysql.connector.errors.IntegrityError: # should not happen
                             self.cnx.close()
                             pass
                         except Exception as e:
-                            print('[ERROR] Failed to check for cached study-data element!\nException:\n',str(e))
+                            print('[ERROR] Failed to check for cached ema-data element!\nException:\n',str(e))
                             self.cnx.close()
                             raise mysql.connector.errors.DatabaseError()
+                    if len(date_range) == 0: # continue loop if found cached data
+                        self.applied_studies=pd.concat([self.applied_studies,study_data])
+                        continue
+                    # Insert data into db if query above is not met
+                    else:
+                        print(f'[INFO] Did not query all specified dates within range for ema!  Remaining {date_range}')
                         
-                        # Execute insert for study-data
-                        insert_studies_db_stmt = """INSERT INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) 
-                            VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),
-                            %(stock-id)s,%(data-id)s,%(study-id)s,%(val)s)
+                        # Calculate locally, then push to database
+                        with threading.Lock():
+                            try:
+                                data = self.data.drop(['Date'],axis=1)
+                            except:
+                                pass
+                            data = data.copy().drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Close':f'ema{length}'}).ewm(alpha=2/(int(length)+1),adjust=True).mean()
+                            self.applied_studies= pd.concat([self.applied_studies,data],axis=1)
+                            del data
+                            gc.collect()
+
+                        # Calculate and store data to DB ...    
+                        for index,row in self.applied_studies.iterrows():
+                            self.cnx = self.db_con.cursor()
+                            self.cnx.autocommit = True
+                            # Retrieve the stock-id, and data-point id in a single select statement
+                            retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` 
+                            INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
                             """
-                        try:
-                            # print(f'[INFO] INSERTING values for {self.indicator.upper()} for date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}...',flush=True)
-                            # print(type(self.stock_id),type(self.data_id),type(self.study_id),row['ema14'])
-                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}',
-                                                                                            'stock-id':self.stock_id.encode('latin1'),
-                                                                                            'data-id':self.data_id,
-                                                                                            'study-id':self.study_id,
-                                                                                            'val':row[f'ema{length}']})
-                            self.db_con.commit()
-                        except mysql.connector.errors.IntegrityError:
-                            self.cnx.close()
-                            pass
-                        except Exception as e:
-                            print('[ERROR] Failed to insert study-data element!\nException:\n',str(e))
-                            self.cnx.close()
-                            pass
+                            retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
+                                                                                        'date':self.data.loc[index,:]['Date'].strftime("%Y-%m-%d")},multi=True)
+                            # self.data=self.data.drop(['Date'],axis=1)
+                            for retrieve_result in retrieve_data_result:
+                                id_res = retrieve_result.fetchall()
+                                if len(id_res) == 0:
+                                    print(f'[ERROR] Failed to locate a data id for current index {index} with date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")} under {retrieve_data_result}')
+                                    continue
+                                else:
+                                    self.stock_id = id_res[0][1].decode('latin1')
+                                    self.data_id = id_res[0][0].decode('latin1')
+                            
+                            # Execute insert for study-data
+                            insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) 
+                                VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),
+                                %(stock-id)s,%(data-id)s,%(study-id)s,%(val)s)
+                                """
+                            try:
+                                insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}',
+                                                                                                'stock-id':self.stock_id.encode('latin1'),
+                                                                                                'data-id':self.data_id,
+                                                                                                'study-id':self.study_id,
+                                                                                                'val':row[f'ema{length}']})
+                                self.db_con.commit()
+                            except mysql.connector.errors.IntegrityError:
+                                self.cnx.close()
+                                pass
+                            except Exception as e:
+                                print('[ERROR] Failed to insert ema-data element!\nException:\n',str(e))
+                                self.cnx.close()
+                                pass
         self.cnx.close()
         return 0
     '''
@@ -284,11 +319,16 @@ val1    val3_________________________          vall2
                                 
                                 
                         # Before inserting data, check cached data, verify if there is data there...
-                        check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date`,`stocks`.`data`.`open`,
-                        `stocks`.`data`.`high`,`stocks`.`data`.`low`,
-                        `stocks`.`data`.`close`,`stocks`.`data`.`adj-close`
+                        check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date`,
+                        `stocks`.`study-data`.`val1`,`stocks`.`study-data`.`val2`,
+                        `stocks`.`study-data`.`val3`,`stocks`.`study-data`.`val4`,
+                        `stocks`.`study-data`.`val5`,`stocks`.`study-data`.`val6`,
+                        `stocks`.`study-data`.`val7`,`stocks`.`study-data`.`val8`,
+                        `stocks`.`study-data`.`val9`,`stocks`.`study-data`.`val10`,
+                        `stocks`.`study-data`.`val11`,`stocks`.`study-data`.`val12`,
+                        `stocks`.`study-data`.`val13`,`stocks`.`study-data`.`val14` 
                          FROM stocks.`data` INNER JOIN stocks.stock 
-                        ON `stock-id` = stocks.stock.`id` 
+                        ON `stocks`.`data`.`stock-id` = stocks.stock.`id` 
                           AND stocks.stock.`stock` = %(stock)s
                            AND `stocks`.`data`.`date` = DATE(%(date)s)
                            INNER JOIN stocks.`study-data` ON
@@ -297,31 +337,35 @@ val1    val3_________________________          vall2
                             AND stocks.`study-data`.`study-id` = %(id)s
                             """
 
-                            # AND stocks.`study-data`.`id` = (AES_ENCRYPT(%(study-data-id)s, UNHEX(SHA2(%(study-data-id)s,512))))
 
                         try:
                             check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
                                                                                             'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d'),
-                                                                                            'id': self.study_id,
-                                                                                            'study-data-id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci'},multi=True)
+                                                                                            'id': self.study_id},multi=True)
                             # Retrieve date, verify it is in date range, remove from date range
                             for res in check_cache_studies_db_result:
                                 # print(str(res.statement))
 
                                 res= res.fetchall()
-                                # print(type(res),res,res[0][0],type(res[0][0]))
                                 # Convert datetime to str
-                                date=datetime.date.strftime(res[0][0],"%Y-%m-%d")
-
+                                try:
+                                    date=datetime.date.strftime(res[0][0],"%Y-%m-%d")
+                                except:
+                                    continue
                                 if date is None:
                                     print(f'[INFO] No prior fib found for {self.indicator.upper()} on {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}... Creating fib data...!\n',flush=True)
                                 else:
                                     # check if date is there, if not fail this
                                     if date in date_range:
                                         date_range.remove(date)
-                                        new_data = new_data.append({'Date':date,'Open':res[0][1],'High':res[0][2],
-                                                         'Low':res[0][3],'Close':res[0][4],
-                                                         'Adj. Close':res[0][5]},ignore_index=True)
+                                        fib_data = fib_data.append({'0.202':res[0][1],'0.236':res[0][2],
+                                                                    '0.241':res[0][3],'0.273':res[0][4],
+                                                                    '0.283':res[0][5],'0.316':res[0][6],
+                                                                    '0.382':res[0][7],'0.5':res[0][8],
+                                                                    '0.618':res[0][9],'0.796':res[0][10],
+                                                                    '1.556':res[0][11],'3.43':res[0][12],
+                                                                    '3.83':res[0][13],'5.44':res[0][14]},
+                                                                    ignore_index=True)
                                         
                                     else:
                                         continue
@@ -329,14 +373,14 @@ val1    val3_________________________          vall2
                             self.cnx.close()
                             pass
                         except Exception as e:
-                            print('[ERROR] Failed to check for cached study-data element!\nException:\n',str(e))
+                            print('[ERROR] Failed to check for cached fib-data element!\nException:\n',str(e))
                             self.cnx.close()
                             raise mysql.connector.errors.DatabaseError()
                     if len(date_range) == 0: # continue loop if found cached data
-                        self.data=new_data
+                        self.fibonacci_extension=fib_data
                         continue
                     else:
-                        print(f'[INFO] Did not query all specified dates within range!  Remaining {date_range}')
+                        print(f'[INFO] Did not query all specified dates within range for fibonacci!  Remaining {date_range}')
                         
                         """
                         Do Calculations, then Insert new data to mysql...
@@ -472,13 +516,26 @@ val1    val3_________________________          vall2
                                                                           '0.796':[self.fib_help(val1,val2,val3,0.796)],'1.556':[self.fib_help(val1,val2,val3,1.556)],'3.43':[self.fib_help(val1,val2,val3,3.43)],
                                                                           '3.83':[self.fib_help(val1,val2,val3,3.83)],'5.44':[self.fib_help(val1,val2,val3,5.44)]})
 
-                        
                         for index,row in self.data.iterrows():
                             self.cnx = self.db_con.cursor()
                             self.cnx.autocommit = True
-    
+                            # Retrieve the stock-id, and data-point id in a single select statement
+                            retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` 
+                            INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
+                            """
+                            retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
+                                                                                        'date':self.data.loc[index,:]['Date'].strftime("%Y-%m-%d")},multi=True)
+                            # self.data=self.data.drop(['Date'],axis=1)
+                            for retrieve_result in retrieve_data_result:
+                                id_res = retrieve_result.fetchall()
+                                if len(id_res) == 0:
+                                    print(f'[INFO] Failed to locate a data-id for current index {index} with date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")} under {retrieve_data_result}')
+                                    break
+                                else:
+                                    self.stock_id = id_res[0][1].decode('latin1')
+                                    self.data_id = id_res[0][0].decode('latin1')
                             # Insert data if not in db...
-                            insert_studies_db_stmt = """INSERT INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
+                            insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
                                                         `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
                                 VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),
                                 %(stock-id)s,%(data-id)s,%(study-id)s,%(val1)s,%(val2)s,
@@ -519,7 +576,7 @@ val1    val3_________________________          vall2
                             self.cnx.close()
                             pass
                         except Exception as e:
-                            print('[ERROR] Failed to insert study-data element fibonacci!\nException:\n',str(e))
+                            print('[ERROR] Failed to insert fib-data element fibonacci!\nException:\n',str(e))
                             self.cnx.close()
                             pass
 
@@ -532,10 +589,10 @@ val1    val3_________________________          vall2
             self.data_cp = self.data.copy()
             # self.data_cp=self.data_cp.reset_index()
             self.apply_ema(length,length) # apply length ema for middle band
-            self.keltner = pd.DataFrame({'middle':[],'upper':[],'lower':[]})
+            self.keltner = pd.DataFrame({'middle':[],'upper':[],'lower':[]},dtype=float)
             self.data=self.data_cp
-            true_range = pd.DataFrame(columns=['trueRange'])
-            avg_true_range = pd.DataFrame(columns=['AvgTrueRange'])
+            true_range = pd.DataFrame(columns=['trueRange'],dtype=float)
+            avg_true_range = pd.DataFrame(columns=['AvgTrueRange'],dtype=float)
             prev_row = None
             for index,row in self.data_cp.iterrows():
                 # CALCULATE TR ---MAX of ( H – L ; H – C.1 ; C.1 – L )
@@ -548,27 +605,40 @@ val1    val3_________________________          vall2
                     
             # iterate through keltner and calculate ATR
             for index,row in self.data.iterrows():
-                if index == 0 or index <= length:
+                if index == 0 or index <= length or index == len(self.data.index)-1:
                     avg_true_range=avg_true_range.append({'AvgTrueRange':1},ignore_index=True) #add blank values
                 else:
                     end_atr = None
                     for i in range(index-length-1,index): # go to range from index - length to index
                         if end_atr is None:
-                            end_atr = true_range['trueRange'][i:i+1].to_numpy()
+                            end_atr = int(true_range['trueRange'][i:i+1].to_numpy())
                         else:
                             # summation of all values
                             end_atr = int(end_atr + true_range['trueRange'][i:i+1].to_numpy())
-                    end_atr = end_atr /length
+                    end_atr = end_atr / length
                     avg_true_range=avg_true_range.append({'AvgTrueRange':end_atr},ignore_index=True)
             # now, calculate upper and lower bands given all data
             for index,row in avg_true_range.iterrows():
-                self.keltner=self.keltner.append({'middle':float(self.applied_studies[f'ema14'][index:index+1].astype(float)),'upper':float(self.applied_studies[f'ema14'][index:index+1].astype(float))+float(factor*avg_true_range['AvgTrueRange'][index:index+1].astype(float)),'lower':float(self.applied_studies[f'ema14'][index:index+1].astype(float))-float(factor*avg_true_range['AvgTrueRange'][index:index+1].astype(float))},ignore_index=True)
+                if index == len(self.data.index) - 1: # if last element
+                    self.keltner=self.keltner.append({'middle':float(self.applied_studies[f'ema14'][index-1:index].astype(float)),
+                                  'upper':float(self.applied_studies[f'ema14'][index-1:index].astype(float))
+                                  +float(factor*avg_true_range['AvgTrueRange'][index-1:index].astype(float)),
+                                  'lower':float(self.applied_studies[f'ema14'][index-1:index].astype(float))
+                                  -float(factor*avg_true_range['AvgTrueRange'][index-1:index].astype(float))}
+                                  ,ignore_index=True)
+
+                else: #else
+                    self.keltner=self.keltner.append({'middle':float(self.applied_studies[f'ema14'][index:index+1].astype(float)),
+                                                      'upper':float(self.applied_studies[f'ema14'][index:index+1].astype(float))
+                                                      +float(factor*avg_true_range['AvgTrueRange'][index:index+1].astype(float)),
+                                                      'lower':float(self.applied_studies[f'ema14'][index:index+1].astype(float))
+                                                      -float(factor*avg_true_range['AvgTrueRange'][index:index+1].astype(float))}
+                                                      ,ignore_index=True)
             
             """
                     MYSQL Portion...
                     Store Data on DB...
             """
-            
         # Retrieve query from database, confirm that stock is in database, else make new query
         select_stmt = "SELECT stock FROM stocks.stock WHERE stock like %(stock)s"
         self.cnx = self.db_con.cursor()
@@ -606,7 +676,7 @@ val1    val3_________________________          vall2
                         except mysql.connector.errors.IntegrityError:
                             pass
                         except Exception as e:
-                            print(f'[ERROR] Failed to Insert study into stocks.study named keltner{length}-{factor}!\nException:\n',str(e))
+                            print(f'[ERROR] Failed to Insert study named keltner{length}-{factor}!\nException:\n',str(e))
                             raise mysql.connector.Error
                     else:
                         # Get study_id
