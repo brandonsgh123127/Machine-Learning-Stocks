@@ -45,6 +45,7 @@ class Display():
         plt.cla()
         plt.close()
         plt.figure()
+        indices_dict = {0:'Open',1:'Close',2:'Range'}
 
         c = 'blue'
         if data is None:
@@ -66,13 +67,15 @@ class Display():
             self.fib_display['3.83'].transpose().plot.line()
             self.fib_display['5.44'].transpose().plot.line()
 
-            self.data_display.drop(['Date'],axis=1).iloc[int(len(data.index)/2+1):].transpose().boxplot(patch_artist=True,
+            ax=self.data_display.drop(['Date'],axis=1).iloc[int(len(data.index)/2+1):].transpose().boxplot(patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
-                                                    capprops=dict(color=c),
-                                                    whiskerprops=dict(color=c),
-                                                    flierprops=dict(color=c, markeredgecolor=c),
-                                                    medianprops=dict(color=c),
-                                                    autorange=True).set_alpha(0.3)
+                                                    capprops=dict(color='red' if float(self.data_display.iloc[-1:]['Close']) < float(self.data_display.iloc[-1:]['Open']) else 'green'),
+                                                    whiskerprops=dict(color='red' if float(self.data_display.iloc[-1:]['Close']) < float(self.data_display.iloc[-1:]['Open']) else 'green'),
+                                                    flierprops=dict(color='red' if float(self.data_display.iloc[-1:]['Close']) < float(self.data_display.iloc[-1:]['Open']) else 'green', markeredgecolor='red' if float(self.data_display.iloc[-1:]['Close']) < float(self.data_display.iloc[-1:]['Open']) else 'green'),
+                                                    medianprops=dict(color='red' if float(self.data_display.iloc[-1:]['Close']) < float(self.data_display.iloc[-1:]['Open']) else 'green'),
+                                                    autorange=True)
+                                              
+      
             # print(self.keltner_display)
             # self.keltner_display = pd.DataFrame([self.keltner_display.reset_index().to_numpy()],columns={'middle','upper','lower'})
             self.keltner_display = self.keltner_display.iloc[int(len(self.keltner_display.index)/2+1):].reset_index().astype('float').set_axis(['middle','upper','lower'], 1)
@@ -100,14 +103,15 @@ class Display():
             self.fib_display['3.43'].transpose().plot.line()
             self.fib_display['3.83'].transpose().plot.line()
             self.fib_display['5.44'].transpose().plot.line()
-            data.iloc[int(len(data.index)/2+1):].transpose().boxplot(patch_artist=True,
+            ax=data.iloc[int(len(data.index)/2+1):].transpose().boxplot(patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
-                                                    capprops=dict(color=c),
+                                                    capprops=dict(color='red' if float(data.iloc[-1:]['Close']) < float(data.iloc[-1:]['Open']) else 'green' ),
                                                     showfliers=False,
                                                     showcaps=False,
-                                                    flierprops=dict(color=c, markeredgecolor=c),
-                                                    medianprops=dict(color=c),
-                                                    autorange=True).set_alpha(0.3)
+                                                    flierprops=dict(color='red' if float(data.iloc[-1:]['Close']) < float(data.iloc[-1:]['Open']) else 'green', markeredgecolor='red' if float(data.iloc[-1:]['Close']) < float(data.iloc[-1:]['Open']) else 'green'),
+                                                    medianprops=dict(color='red' if float(data.iloc[-1:]['Close']) < float(data.iloc[-1:]['Open']) else 'green'),
+                                                    autorange=True)
+ 
             self.keltner_display = self.keltner_display.iloc[int(len(self.keltner_display.index)/2+1):].reset_index().astype('float')
             self.keltner_display['middle'].transpose().plot.line()
             self.keltner_display['upper'].transpose().plot.line()

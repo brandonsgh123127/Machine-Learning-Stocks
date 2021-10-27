@@ -606,7 +606,7 @@ val1    val3_________________________          vall2
             # iterate through keltner and calculate ATR
             for index,row in self.data.iterrows():
                 if index == 0 or index <= length or index == len(self.data.index)-1:
-                    avg_true_range=avg_true_range.append({'AvgTrueRange':1},ignore_index=True) #add blank values
+                    avg_true_range=avg_true_range.append({'AvgTrueRange':1.33},ignore_index=True) #add blank values
                 else:
                     end_atr = None
                     for i in range(index-length-1,index): # go to range from index - length to index
