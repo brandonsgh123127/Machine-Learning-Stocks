@@ -134,13 +134,13 @@ class GUI(Thread_Pool):
             if is_not_closed:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
             else:
-                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today()) #month worth of data
             if not force_generation and (Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart.png').exists() and not has_actuals and not is_not_closed):
                 skippable = True
             elif not force_generation and (Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart_actual.png').exists()  and has_actuals and not is_not_closed):
                 skippable = True
             if not skippable:
-                self.machine_learning_data.put(analyze_stock(ticker, has_actuals, is_not_closed, type='chart'))
+                self.machine_learning_data.put(analyze_stock(ticker, has_actuals, is_not_closed, tpe='chart'))
                 gc.collect()
                 time.sleep(5)
             self.dates = dates
