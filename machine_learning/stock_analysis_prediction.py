@@ -78,9 +78,9 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
     # if current trading day, set prediction for tomorrow in date name
     dates = []
     if is_not_closed: #predict next day
-        dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today()) #month worth of data
-    else:
         dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+    else:
+        dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() ) #month worth of data
     
     _has_actuals = has_actuals
     try:

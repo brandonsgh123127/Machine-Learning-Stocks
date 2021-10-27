@@ -173,13 +173,8 @@ class GUI(Thread_Pool):
             if is_not_closed:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
             else:
-                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
-            
-            if is_not_closed: #predict next day
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today()) #month worth of data
-            else:
-                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
-
+            
             if is_not_closed:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'predict')

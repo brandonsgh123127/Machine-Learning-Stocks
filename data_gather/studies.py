@@ -25,7 +25,7 @@ class Studies(Gather):
         with threading.Lock():
             Gather.__init__(self)
             Gather.set_indicator(self, indicator)
-        self.applied_studies= pd.DataFrame()
+        self.applied_studies= pd.DataFrame(dtype=float)
         self.fibonacci_extension = pd.DataFrame()
         self.keltner = pd.DataFrame()
         self.timeframe="1d"
@@ -126,7 +126,7 @@ class Studies(Gather):
 
                         try:
                             check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
-                                                                                            'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d'),
+                                                                                            'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d') if isinstance(self.data.loc[index,:]["Date"],datetime.datetime) else self.data.loc[index,:]["Date"],
                                                                                             'id': self.study_id},multi=True)
                             # Retrieve date, verify it is in date range, remove from date range
                             for res in check_cache_studies_db_result:
@@ -306,7 +306,7 @@ val1    val3_________________________          vall2
                         INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
                         """
                         retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
-                                                                                    'date':self.data.loc[index,:]['Date'].strftime("%Y-%m-%d")},multi=True)
+                                                                                    'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d') if isinstance(self.data.loc[index,:]["Date"],datetime.datetime) else self.data.loc[index,:]["Date"]},multi=True)
                         # self.data=self.data.drop(['Date'],axis=1)
                         for retrieve_result in retrieve_data_result:
                             id_res = retrieve_result.fetchall()
@@ -340,7 +340,7 @@ val1    val3_________________________          vall2
 
                         try:
                             check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
-                                                                                            'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d'),
+                                                                                            'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d') if isinstance(self.data.loc[index,:]["Date"],datetime.datetime) else self.data.loc[index,:]["Date"],
                                                                                             'id': self.study_id},multi=True)
                             # Retrieve date, verify it is in date range, remove from date range
                             for res in check_cache_studies_db_result:
@@ -620,19 +620,19 @@ val1    val3_________________________          vall2
             # now, calculate upper and lower bands given all data
             for index,row in avg_true_range.iterrows():
                 if index == len(self.data.index) - 1: # if last element
-                    self.keltner=self.keltner.append({'middle':float(self.applied_studies[f'ema14'][index-1:index].astype(float)),
-                                  'upper':float(self.applied_studies[f'ema14'][index-1:index].astype(float))
-                                  +float(factor*avg_true_range['AvgTrueRange'][index-1:index].astype(float)),
-                                  'lower':float(self.applied_studies[f'ema14'][index-1:index].astype(float))
-                                  -float(factor*avg_true_range['AvgTrueRange'][index-1:index].astype(float))}
+                    self.keltner=self.keltner.append({'middle':(self.applied_studies[f'ema14'][index-1:index]),
+                                  'upper':float(self.applied_studies[f'ema14'][index-1:index])
+                                  +(factor*avg_true_range['AvgTrueRange'][index-1:index]),
+                                  'lower':float(self.applied_studies[f'ema14'][index-1:index])
+                                  -(factor*avg_true_range['AvgTrueRange'][index-1:index])}
                                   ,ignore_index=True)
 
                 else: #else
-                    self.keltner=self.keltner.append({'middle':float(self.applied_studies[f'ema14'][index:index+1].astype(float)),
-                                                      'upper':float(self.applied_studies[f'ema14'][index:index+1].astype(float))
-                                                      +float(factor*avg_true_range['AvgTrueRange'][index:index+1].astype(float)),
-                                                      'lower':float(self.applied_studies[f'ema14'][index:index+1].astype(float))
-                                                      -float(factor*avg_true_range['AvgTrueRange'][index:index+1].astype(float))}
+                    self.keltner=self.keltner.append({'middle':self.applied_studies[f'ema14'][index:index+1],
+                                                      'upper':float(self.applied_studies[f'ema14'][index:index+1])
+                                                      +float(factor*avg_true_range['AvgTrueRange'][index:index+1]),
+                                                      'lower':float(self.applied_studies[f'ema14'][index:index+1])
+                                                      -(factor*avg_true_range['AvgTrueRange'][index:index+1])}
                                                       ,ignore_index=True)
             
             """
@@ -690,7 +690,7 @@ val1    val3_________________________          vall2
                         INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
                         """
                         retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
-                                                                                    'date':self.data.loc[index,:]['Date'].strftime('%Y-%m-%d')},multi=True)
+                                                                                    'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d') if isinstance(self.data.loc[index,:]["Date"],datetime.datetime) else self.data.loc[index,:]["Date"]},multi=True)
                         # self.data=self.data.drop(['Date'],axis=1)
                         for retrieve_result in retrieve_data_result:
                             id_res = retrieve_result.fetchall()
@@ -711,9 +711,9 @@ val1    val3_________________________          vall2
                                                                                             'stock-id':self.stock_id.encode('latin1'),
                                                                                             'data-id':self.data_id,
                                                                                             'study-id':self.study_id,
-                                                                                            'val1':row[f'middle'],
-                                                                                            'val2':row[f'upper'],
-                                                                                            'val3':row[f'lower'],
+                                                                                            'val1':float(row[f'middle']),
+                                                                                            'val2':float(row[f'upper']),
+                                                                                            'val3':float(row[f'lower']),
                                                                                             })
                             self.db_con.commit()
                         except mysql.connector.errors.IntegrityError:

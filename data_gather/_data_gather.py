@@ -98,7 +98,7 @@ class Gather():
     def set_data_from_range(self,start_date,end_date):
         # Date range utilized for query...
         date_range =[d.strftime('%Y-%m-%d') for d in pd.date_range(start_date, end_date)] #start/end date list
-        holidays=USFederalHolidayCalendar().holidays(start=f'{datetime.datetime.now().year}-01-01',end=f'{datetime.datetime.now().year}-12-31').to_pydatetime()
+        holidays=USFederalHolidayCalendar().holidays(start=f'{start_date.year}-01-01',end=f'{end_date.year}-12-31').to_pydatetime()
         # For each date, verify data is in the specified range by removing any unnecessary dates first
         for date in date_range:
             datetime_date=datetime.datetime.strptime(date,'%Y-%m-%d')
@@ -129,7 +129,7 @@ class Gather():
         try:
             check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
                                                                             'sdate':start_date.strftime('%Y-%m-%d'),
-                                                                            'edate':start_date.strftime('%Y-%m-%d')},
+                                                                            'edate':end_date.strftime('%Y-%m-%d')},
                                                                             multi=True)
             # Retrieve date, verify it is in date range, remove from date range
             for result in check_cache_studies_db_result:   
@@ -144,9 +144,9 @@ class Gather():
                         # check if date is there, if not fail this
                         if date in date_range:
                             date_range.remove(date)
-                            new_data = new_data.append({'Date':date,'Open':res[1],'High':res[2],
-                                             'Low':res[3],'Close':res[4],
-                                             'Adj. Close':res[5]},ignore_index=True) 
+                            new_data = new_data.append({'Date':date,'Open':float(res[1]),'High':float(res[2]),
+                                             'Low':float(res[3]),'Close':float(res[4]),
+                                             'Adj. Close':float(res[5])},ignore_index=True) 
                         else:
                             continue
         except mysql.connector.errors.IntegrityError: # should not happen

@@ -88,7 +88,7 @@ class Generator():
             print(f'[ERROR] Failed to generate data!',str(e))
             raise Exception
         if is_not_closed:
-            self.studies.data = self.studies.data.append({'Open': f'{vals[0]}','High': f'{vals[1]}','Low': f'{vals[2]}','Close': f'{vals[3]}','Adj Close': f'{vals[3]}'}, ignore_index=True)
+            self.studies.data = self.studies.data.append({'Open': vals[0],'High': vals[1],'Low': vals[2],'Close': vals[3],'Adj Close': vals[3]}, ignore_index=True)
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
         query_param1 = {"query": "{}".format(self.ticker)}
         query_param2 = {"maxResults":"500"}
@@ -97,7 +97,10 @@ class Generator():
         query_params = {}
         query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
 
-        self.studies.data = self.studies.data.drop(['Volume'],axis=1)
+        try:
+            self.studies.data = self.studies.data.drop(['Volume'],axis=1)
+        except:
+            pass
         # print(self.studies.data)
         
         self.studies.apply_ema("14",self.studies.get_date_difference())
