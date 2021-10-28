@@ -41,6 +41,18 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Study-Data` (
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 
+CREATE TABLE IF NOT EXISTS `Stocks`.`NN-Data` (
+  `nn-id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `from-date-id` VARBINARY(128) NOT NULL,
+  `to-date-id` VARBINARY(128) NOT NULL,
+  `open` VARCHAR(45) NULL,
+  `close` VARCHAR(45) NULL,
+  `range` VARCHAR(45) NULL,
+  `adj-close` VARCHAR(45) NULL,
+  PRIMARY KEY (`nn-id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+
 CREATE TABLE IF NOT EXISTS `Stocks`.`Options` (
   `option-id` VARBINARY(128) NOT NULL,
   `option` VARCHAR(16) NULL,
@@ -87,14 +99,28 @@ DELETE FROM study;
 SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
                         ON `stocks`.`data`.`stock-id` = `stocks`.`stock`.`id` 
                           AND `stocks`.`stock`.`stock` = "SPY" ;
-SELECT `stocks`.`data`.`date`,stocks.`study-data`.`study-id` FROM stocks.`data` INNER JOIN stocks.stock 
+SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
                         ON `stock-id` = stocks.stock.`id` 
-                          AND stocks.stock.`stock` = "SPY"
-                           AND `stocks`.`data`.`date` = DATE("2021-10-22")
+                          AND stocks.stock.`stock` = "'SPY'"
+                           AND `stocks`.`data`.`date` = DATE('2021-10-25')
                            INNER JOIN stocks.`study-data` ON
                             stocks.stock.`id` = stocks.`study-data`.`stock-id`
-                            AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`
-                            ;
+                            AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`;
+SELECT `stocks`.`data`.`date`,
+                        `stocks`.`study-data`.`val1`,`stocks`.`study-data`.`val2`,
+                        `stocks`.`study-data`.`val3`,`stocks`.`study-data`.`val4`,
+                        `stocks`.`study-data`.`val5`,`stocks`.`study-data`.`val6`,
+                        `stocks`.`study-data`.`val7`,`stocks`.`study-data`.`val8`,
+                        `stocks`.`study-data`.`val9`,`stocks`.`study-data`.`val10`,
+                        `stocks`.`study-data`.`val11`,`stocks`.`study-data`.`val12`,
+                        `stocks`.`study-data`.`val13`,`stocks`.`study-data`.`val14` 
+                         FROM stocks.`data` INNER JOIN stocks.stock 
+                        ON `stocks`.`data`.`stock-id` = stocks.stock.`id` 
+                          AND stocks.stock.`stock` = "SPY" 
+                           AND `stocks`.`data`.`date` = DATE("2021-10-25")
+                           INNER JOIN stocks.`study-data` ON
+                            stocks.stock.`id` = stocks.`study-data`.`stock-id`
+                            AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`;
 SHOW TABLES FROM stocks;
 select * from stocks.`data`;
 select * from stocks.`stock`;
