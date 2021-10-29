@@ -619,22 +619,38 @@ val1    val3_________________________          vall2
                     avg_true_range=avg_true_range.append({'AvgTrueRange':end_atr},ignore_index=True)
             # now, calculate upper and lower bands given all data
             for index,row in avg_true_range.iterrows():
-                if index == len(self.data.index) - 1: # if last element
-                    self.keltner=self.keltner.append({'middle':(self.applied_studies[f'ema14'][index-1:index]),
-                                  'upper':float(self.applied_studies[f'ema14'][index-1:index])
-                                  +(factor*avg_true_range['AvgTrueRange'][index-1:index]),
-                                  'lower':float(self.applied_studies[f'ema14'][index-1:index])
-                                  -(factor*avg_true_range['AvgTrueRange'][index-1:index])}
-                                  ,ignore_index=True)
+                try:
+                    if index == len(self.data.index) - 1: # if last element
+                        self.keltner=self.keltner.append({'middle':(self.applied_studies[f'ema14'][index-1:index]),
+                                      'upper':self.applied_studies[f'ema14'][index-1:index]
+                                      +(factor*avg_true_range['AvgTrueRange'][index-1:index]),
+                                      'lower':self.applied_studies[f'ema14'][index-1:index]
+                                      -(factor*avg_true_range['AvgTrueRange'][index-1:index])}
+                                      ,ignore_index=True)
+    
+                    else: #else
+                        self.keltner=self.keltner.append({'middle':self.applied_studies[f'ema14'][index:index+1],
+                                                          'upper':self.applied_studies[f'ema14'][index:index+1]
+                                                          +float(factor*avg_true_range['AvgTrueRange'][index:index+1]),
+                                                          'lower':self.applied_studies[f'ema14'][index:index+1]
+                                                          -(factor*avg_true_range['AvgTrueRange'][index:index+1])}
+                                                          ,ignore_index=True)
+                except:
+                    if index == len(self.data.index) - 1: # if last element
+                        self.keltner=self.keltner.append({'middle':(self.applied_studies[f'ema14'][index-1:index]),
+                                      'upper':float(self.applied_studies[f'ema14'][index-1:index])
+                                      +(factor*avg_true_range['AvgTrueRange'][index-1:index]),
+                                      'lower':float(self.applied_studies[f'ema14'][index-1:index])
+                                      -(factor*avg_true_range['AvgTrueRange'][index-1:index])}
+                                      ,ignore_index=True)
 
-                else: #else
-                    self.keltner=self.keltner.append({'middle':self.applied_studies[f'ema14'][index:index+1],
-                                                      'upper':float(self.applied_studies[f'ema14'][index:index+1])
-                                                      +float(factor*avg_true_range['AvgTrueRange'][index:index+1]),
-                                                      'lower':float(self.applied_studies[f'ema14'][index:index+1])
-                                                      -(factor*avg_true_range['AvgTrueRange'][index:index+1])}
-                                                      ,ignore_index=True)
-            
+                    else: #else
+                        self.keltner=self.keltner.append({'middle':self.applied_studies[f'ema14'][index:index+1],
+                                                          'upper':float(self.applied_studies[f'ema14'][index:index+1])
+                                                          +float(factor*avg_true_range['AvgTrueRange'][index:index+1]),
+                                                          'lower':float(self.applied_studies[f'ema14'][index:index+1])
+                                                          -(factor*avg_true_range['AvgTrueRange'][index:index+1])}
+                                                          ,ignore_index=True)
             """
                     MYSQL Portion...
                     Store Data on DB...
