@@ -38,7 +38,7 @@ class Sample(Normalizer):
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
             raise Exception("AttributeError:\n",str(e))
-    def generate_sample(self,is_predict=False,out=8):
+    def generate_sample(self,is_predict=False,out=8,_has_actuals=False):
         tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(self.path))
         root = tree.getroot()
         self.normalizer.cnx = self.normalizer.db_con.cursor(buffered=True)
@@ -46,6 +46,8 @@ class Sample(Normalizer):
             # print("Predict Mode")
             self.DAYS_SAMPLED = 14
             self.to_date = datetime.date.today() + datetime.timedelta(days = 1)
+        elif _has_actuals:
+            self.to_date = datetime.date.today() - datetime.timedelta(days = 1)
         else:
             self.to_date = datetime.date.today()
         self.normalizer.read_data(self.to_date,self.ticker) # Get ticker and date from path

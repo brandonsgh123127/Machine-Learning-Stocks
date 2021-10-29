@@ -289,7 +289,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
     neural_net = Network(0,0)
     neural_net.load_model(name=name)
     train = []
-    sampler.generate_sample(is_predict=_is_predict)
+    sampler.generate_sample(is_predict=_is_predict,_has_actuals=has_actuals)
     try: # verify there is no extra 'index' column
         sampler.normalizer.data = sampler.normalizer.data.drop(['index'],axis=1)
     except Exception as e:

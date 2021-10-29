@@ -723,14 +723,24 @@ val1    val3_________________________          vall2
                             """
                         try:
                             # print(type(self.stock_id),type(self.data_id),type(self.study_id),type(row['middle']))
-                            insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}',
-                                                                                            'stock-id':self.stock_id.encode('latin1'),
-                                                                                            'data-id':self.data_id,
-                                                                                            'study-id':self.study_id,
-                                                                                            'val1':float(row[f'middle']),
-                                                                                            'val2':float(row[f'upper']),
-                                                                                            'val3':float(row[f'lower']),
-                                                                                            })
+                            if isinstance(self.data.loc[index,:]["Date"],datetime.datetime):
+                                insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}',
+                                                                                                'stock-id':self.stock_id.encode('latin1'),
+                                                                                                'data-id':self.data_id,
+                                                                                                'study-id':self.study_id,
+                                                                                                'val1':float(row[f'middle']),
+                                                                                                'val2':float(row[f'upper']),
+                                                                                                'val3':float(row[f'lower']),
+                                                                                                })
+                            else:
+                                insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"]}{self.indicator}keltner{length}{factor}',
+                                                                                                'stock-id':self.stock_id.encode('latin1'),
+                                                                                                'data-id':self.data_id,
+                                                                                                'study-id':self.study_id,
+                                                                                                'val1':float(row[f'middle']),
+                                                                                                'val2':float(row[f'upper']),
+                                                                                                'val3':float(row[f'lower']),
+                                                                                                })
                             self.db_con.commit()
                         except mysql.connector.errors.IntegrityError:
                             self.cnx.close()
