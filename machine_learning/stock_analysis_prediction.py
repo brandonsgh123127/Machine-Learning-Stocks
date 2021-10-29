@@ -34,7 +34,7 @@ def display_model(dis:Display,name:str= "model_relu",_has_actuals:bool=False,tic
     global data_queue
     # Load machine learning model either based on divergence or not
     if 'divergence' not in name:
-        data = load(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}',_is_predict=is_predict,device_opt='/device:CPU:0')
+        data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',_is_predict=is_predict,device_opt='/device:CPU:0')
     else:
         data = load_divergence(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}',device_opt='/device:CPU:0')
     # read data for loading into display portion

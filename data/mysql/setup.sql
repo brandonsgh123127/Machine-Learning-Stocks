@@ -46,10 +46,10 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`NN-Data` (
   `stock-id` VARBINARY(128) NOT NULL,
   `from-date-id` VARBINARY(128) NOT NULL,
   `to-date-id` VARBINARY(128) NOT NULL,
+  `model` VARCHAR(45) NULL,
   `open` VARCHAR(45) NULL,
   `close` VARCHAR(45) NULL,
   `range` VARCHAR(45) NULL,
-  `adj-close` VARCHAR(45) NULL,
   PRIMARY KEY (`nn-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 
@@ -89,11 +89,13 @@ drop table stock;
 drop table study;
 drop table `data`;
 drop table `study-data`;
+drop table `nn-data`;
 
 DELETE FROM stock;
 DELETE FROM data;
 DELETE FROM `study-data`;
 DELETE FROM study;
+DELETE FROM `nn-data`;
 
 
 SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
@@ -126,6 +128,8 @@ select * from stocks.`data`;
 select * from stocks.`stock`;
 select * from stocks.study;
 select * from stocks.`study-data`;
+select * from stocks.`nn-data`;
+
 -- ALTER TABLE stocks.`study-data` 
 -- ADD COLUMN `val5` VARCHAR(45) NULL AFTER `val4`,
 -- ADD COLUMN `val6` VARCHAR(45) NULL AFTER `val5`,

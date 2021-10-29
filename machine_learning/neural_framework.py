@@ -15,6 +15,7 @@ class Neural_Framework():
         # tf.debugging.set_log_device_placement(True)
         # print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
         # print(device_lib.list_local_devices())
+        
     def create_model(self,model_choice=None):
         pass
     def run_model(self):

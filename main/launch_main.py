@@ -1,8 +1,8 @@
 import sys
 import subprocess
 # import machine_learning.stock_analysis_prediction as sp
-import tensorflow
-import keras
+# import tensorflow
+# import keras
 import tkinter as tk
 from multiprocessing import Process
 import os
