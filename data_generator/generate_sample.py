@@ -46,8 +46,8 @@ class Sample(Normalizer):
             # print("Predict Mode")
             self.DAYS_SAMPLED = 14
             self.to_date = datetime.date.today() + datetime.timedelta(days = 1)
-        elif _has_actuals:
-            self.to_date = datetime.date.today() - datetime.timedelta(days = 1)
+        # elif _has_actuals:
+            # self.to_date = datetime.date.today() - datetime.timedelta(days = 1)
         else:
             self.to_date = datetime.date.today()
         self.normalizer.read_data(self.to_date,self.ticker) # Get ticker and date from path

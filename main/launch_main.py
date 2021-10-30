@@ -6,6 +6,7 @@ import subprocess
 import tkinter as tk
 from multiprocessing import Process
 import os
+from dns.rdataclass import NONE
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from pathlib import Path
 from tkinter import ttk
@@ -33,6 +34,8 @@ class GUI(Thread_Pool):
         self.threads = []
         self.machine_learning_data= queue.Queue()
         self.load_thread:threading.Thread = None
+        self.img=None
+        self.image=None
         
         self.window = tk.Tk(screenName='Stock Analysis')
         self.content = ttk.Frame(self.window,width=100,height=100)
@@ -130,32 +133,22 @@ class GUI(Thread_Pool):
             self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
             if not is_caching:
                 self.generate_button.grid_forget()
-            skippable = False
             if is_not_closed:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
-            else:
+            elif has_actuals:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today()) #month worth of data
-            if not force_generation and (Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart.png').exists() and not has_actuals and not is_not_closed):
-                skippable = True
-            elif not force_generation and (Path(f'{self.path}/data/stock_no_tweets/{ticker}/{dates[0]}--{dates[1]}_predict_chart_actual.png').exists()  and has_actuals and not is_not_closed):
-                skippable = True
-            if not skippable:
-                self.machine_learning_data.put(analyze_stock(ticker, has_actuals, is_not_closed, tpe='chart'))
-                gc.collect()
-                time.sleep(5)
+            else:
+                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+            self.img=analyze_stock(ticker, has_actuals, is_not_closed)
+            self.image = ImageTk.PhotoImage(self.img)
+            gc.collect()
+            time.sleep(5)
             self.dates = dates
             # print(self.dates)
             if not is_caching:
-                if not has_actuals:
-                    if not is_not_closed:
-                        self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_chart.png'))
-                    else:
-                        self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_chart-pred.png'))
-                else:
-                    self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_chart_actual.png'))
                 self.output_image.delete('all')
                 # self.output_image.pack(side='top')
-                self.output_image.create_image(640,720,image=self.img)
+                self.output_image.create_image(800,500,image=self.image)
                 # self.output_image.pack(side='bottom')
             self.background_tasks_label.config(text=f'Currently pre-loading a few stocks, this may take a bit...')
             # self.generate_button.grid(column=3, row=2)
@@ -174,68 +167,21 @@ class GUI(Thread_Pool):
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
             else:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today()) #month worth of data
-            
             if is_not_closed:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'predict')
-                    self.machine_learning_data.put(thread.result())
-                    gc.collect()
-                    thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'model_out_2')
-                    self.machine_learning_data.put(thread.result())
-                    gc.collect()
-                    thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'chart')
-                    self.machine_learning_data.put(thread.result())
-                    gc.collect()
-                    thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get(),'divergence')
-                    self.machine_learning_data.put(thread.result())
+                    thread = executor.submit(analyze_stock,ticker, has_actuals, True,self.open_input.get(),self.high_input.get(),self.low_input.get(),self.close_input.get())                    
             else:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None,'predict')
-                    self.machine_learning_data.put(thread.result())
-                    gc.collect()
-                    thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None,'model_out_2')
-                    self.machine_learning_data.put(thread.result())
-                    gc.collect()
-                    thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None,'chart')
-                    self.machine_learning_data.put(thread.result())
-                    gc.collect()
-                    thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None,'divergence')
-                    self.machine_learning_data.put(thread.result())
-                    gc.collect()
+                    thread = executor.submit(analyze_stock,ticker, has_actuals, False,None,None,None,None,None)
+                    
+            self.img=thread.result()
+            self.image = ImageTk.PhotoImage(self.img)
 
-                # for idx,thread in enumerate(self.threads):
-                    # thread.start()
-                    # time.sleep(3)
-                # for idx,thread in enumerate(self.threads):
-                    # self.threads.pop(idx)
+            gc.collect()
             self.dates = dates
             # print(self.dates)
-            if not is_caching:
-                if not has_actuals:
-                    if not is_not_closed:
-                        self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict.png'))
-                        self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_chart.png'))
-                        self.img4 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_2.png'))
-                        self.img3 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence.png').resize((480,360),Image.ANTIALIAS))
-                    else:
-                        self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict-pred.png'))
-                        self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_chart-pred.png'))
-                        self.img4 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_2-pred.png'))
-                        self.img3 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence-i.png').resize((480,360),Image.ANTIALIAS))
-                else:
-                    self.img = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_actual.png'))
-                    self.img2 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_chart_actual.png'))
-                    self.img4 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_predict_2_actual.png'))
-                    self.img3 = ImageTk.PhotoImage(Image.open(f'{self.path}/data/stock_no_tweets/{ticker}/{self.dates[0]}--{self.dates[1]}_divergence_actual.png').resize((480,360),Image.ANTIALIAS))
-                # self.output_image.pack(side='top')
-                self.output_image.create_image(320,240,image=self.img2)
-                
-                self.output_image.create_image(960,240,image=self.img4)
-        
-                self.output_image.create_image(960,720,image=self.img3)
-                
-                self.output_image.create_image(320,720,image=self.img)
-                # self.output_image.pack(side='bottom')
+            self.output_image.create_image(600,500,image=self.image)
+            # self.output_image.pack(side='bottom')
             for idx,thread in enumerate(self.threads):
                 self.threads.pop(idx)
             self.background_tasks_label.config(text=f'Currently pre-loading a few stocks, this may take a bit...')

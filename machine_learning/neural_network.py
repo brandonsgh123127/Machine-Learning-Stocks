@@ -192,9 +192,6 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
     if datetime.datetime.utcnow().hour < 13: # if current time is before 9:30 AM EST, go back a day
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
-    if _is_predict:
-        valid_datetime = (valid_datetime + datetime.timedelta(days=1))
-        valid_date = (valid_date + datetime.timedelta(days=1))
     if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
@@ -204,8 +201,13 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
     if valid_date.weekday()==6: # if sunday
         valid_datetime = (valid_datetime - datetime.timedelta(days=2))
         valid_date = (valid_date - datetime.timedelta(days=2))
+    if _is_predict:
+        valid_datetime = (valid_datetime + datetime.timedelta(days=1))
+        valid_date = (valid_date + datetime.timedelta(days=1))
+    if valid_date in holidays and _is_predict:
+        valid_datetime = (valid_datetime + datetime.timedelta(days=1))
+        valid_date = (valid_date + datetime.timedelta(days=1))
 
-        
     retrieve_tdata_result = cnx.execute(check_cache_tdata_db_stmt,{'stock':f'{ticker.upper()}',
                                                             'date':valid_datetime.strftime('%Y-%m-%d')},multi=True)
     

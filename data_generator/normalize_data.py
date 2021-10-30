@@ -360,29 +360,32 @@ class Normalizer():
         self.normalized_data["EMA14 EMA30 Diff"] = self.studies["ema14"]
 
         for index,row in self.data.iterrows():
-            if index == 0:
-                self.normalized_data.loc[index,"Open"] = 0
-                self.normalized_data.loc[index,"Close"] = 0
-                self.normalized_data.loc[index,"Range"] = abs(self.data.at[index,"Close"] - self.data.at[index,"Open"])
-                self.normalized_data.loc[index,"Euclidean Open"] = pow(pow(((self.data.at[index,"Open"] - self.studies.at[index,"ema14"])+(self.data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
-                self.normalized_data.loc[index,"Euclidean Close"] = pow(pow(((self.data.at[index,"Close"] - self.studies.at[index,"ema14"])+(self.data.at[index,"Close"] - self.studies.at[index,"ema30"])),2),1/2)       
-                self.normalized_data.loc[index,"Open EMA14 Diff"] = (self.data.at[index,"Open"] - self.studies.at[index,'ema14'])/self.data.at[index,"Open"]
-                self.normalized_data.loc[index,"Open EMA30 Diff"] = (self.data.at[index,"Open"] - self.studies.at[index,'ema30'])/self.data.at[index,"Open"]
-                self.normalized_data.loc[index,"Close EMA14 Diff"] = (self.data.at[index,"Close"] - self.studies.at[index,'ema14'])/self.data.at[index,"Close"]
-                self.normalized_data.loc[index,"Close EMA30 Diff"] = (self.data.at[index,"Close"] - self.studies.at[index,'ema30'])/self.data.at[index,"Close"]
-                self.normalized_data.loc[index,"EMA14 EMA30 Diff"] = (self.studies.at[index,"ema14"] - self.studies.at[index,'ema30'])/self.studies.at[index,"ema14"]
-
-            else:
-                self.normalized_data.loc[index,"Close"] = ((self.data.at[index,"Close"] - self.data.at[index-1,"Close"]))/(1)
-                self.normalized_data.loc[index,"Open"] = ((self.data.at[index,"Open"] - self.data.at[index-1,"Open"]))/(1)
-                self.normalized_data.loc[index,"Range"] = abs(self.data.at[index,"Close"] - self.data.at[index,"Open"])
-                self.normalized_data.loc[index,"Euclidean Open"] = pow(pow(((self.data.at[index,"Open"] - self.studies.at[index,"ema14"])+(self.data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
-                self.normalized_data.loc[index,"Euclidean Close"] = pow(pow(((self.data.at[index,"Close"] - self.studies.at[index,"ema14"])+(self.data.at[index,"Close"] - self.studies.at[index,"ema30"])),2),1/2)       
-                self.normalized_data.loc[index,"Open EMA14 Diff"] = (self.data.at[index,"Open"] - self.studies.at[index,'ema14'])/self.data.at[index,"Open"]
-                self.normalized_data.loc[index,"Open EMA30 Diff"] = (self.data.at[index,"Open"] - self.studies.at[index,'ema30'])/self.data.at[index,"Open"]
-                self.normalized_data.loc[index,"Close EMA14 Diff"] = (self.data.at[index,"Close"] - self.studies.at[index,'ema14'])/self.data.at[index,"Close"]
-                self.normalized_data.loc[index,"Close EMA30 Diff"] = (self.data.at[index,"Close"] - self.studies.at[index,'ema30'])/self.data.at[index,"Close"]
-                self.normalized_data.loc[index,"EMA14 EMA30 Diff"] = (self.studies.at[index,"ema14"] - self.studies.at[index,'ema30'])/self.studies.at[index,"ema14"]
+            try:
+                if index == 0:
+                    self.normalized_data.loc[index,"Open"] = 0
+                    self.normalized_data.loc[index,"Close"] = 0
+                    self.normalized_data.loc[index,"Range"] = abs(self.data.at[index,"Close"] - self.data.at[index,"Open"])
+                    self.normalized_data.loc[index,"Euclidean Open"] = np.power(np.power(((self.data.at[index,"Open"] - self.studies.at[index,"ema14"])+(self.data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
+                    self.normalized_data.loc[index,"Euclidean Close"] = np.power(np.power(((self.data.at[index,"Close"] - self.studies.at[index,"ema14"])+(self.data.at[index,"Close"] - self.studies.at[index,"ema30"])),2),1/2)       
+                    self.normalized_data.loc[index,"Open EMA14 Diff"] = (self.data.at[index,"Open"] - self.studies.at[index,'ema14'])/self.data.at[index,"Open"]
+                    self.normalized_data.loc[index,"Open EMA30 Diff"] = (self.data.at[index,"Open"] - self.studies.at[index,'ema30'])/self.data.at[index,"Open"]
+                    self.normalized_data.loc[index,"Close EMA14 Diff"] = (self.data.at[index,"Close"] - self.studies.at[index,'ema14'])/self.data.at[index,"Close"]
+                    self.normalized_data.loc[index,"Close EMA30 Diff"] = (self.data.at[index,"Close"] - self.studies.at[index,'ema30'])/self.data.at[index,"Close"]
+                    self.normalized_data.loc[index,"EMA14 EMA30 Diff"] = (self.studies.at[index,"ema14"] - self.studies.at[index,'ema30'])/self.studies.at[index,"ema14"]
+    
+                else:
+                    self.normalized_data.loc[index,"Close"] = ((self.data.at[index,"Close"] - self.data.at[index-1,"Close"]))/(1)
+                    self.normalized_data.loc[index,"Open"] = ((self.data.at[index,"Open"] - self.data.at[index-1,"Open"]))/(1)
+                    self.normalized_data.loc[index,"Range"] = abs(self.data.at[index,"Close"] - self.data.at[index,"Open"])
+                    self.normalized_data.loc[index,"Euclidean Open"] = np.power(np.power(((self.data.at[index,"Open"] - self.studies.at[index,"ema14"])+(self.data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
+                    self.normalized_data.loc[index,"Euclidean Close"] = np.power(np.power(((self.data.at[index,"Close"] - self.studies.at[index,"ema14"])+(self.data.at[index,"Close"] - self.studies.at[index,"ema30"])),2),1/2)       
+                    self.normalized_data.loc[index,"Open EMA14 Diff"] = (self.data.at[index,"Open"] - self.studies.at[index,'ema14'])/self.data.at[index,"Open"]
+                    self.normalized_data.loc[index,"Open EMA30 Diff"] = (self.data.at[index,"Open"] - self.studies.at[index,'ema30'])/self.data.at[index,"Open"]
+                    self.normalized_data.loc[index,"Close EMA14 Diff"] = (self.data.at[index,"Close"] - self.studies.at[index,'ema14'])/self.data.at[index,"Close"]
+                    self.normalized_data.loc[index,"Close EMA30 Diff"] = (self.data.at[index,"Close"] - self.studies.at[index,'ema30'])/self.data.at[index,"Close"]
+                    self.normalized_data.loc[index,"EMA14 EMA30 Diff"] = (self.studies.at[index,"ema14"] - self.studies.at[index,'ema30'])/self.studies.at[index,"ema14"]
+            except:
+                pass
         return 0
     def convert_divergence(self):
         self.data = self.data.astype('float')

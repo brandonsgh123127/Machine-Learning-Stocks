@@ -2,11 +2,6 @@
 -- SHOW TABLES;
 
 -- FLUSH PRIVILEGES;
-CREATE TABLE IF NOT EXISTS `Stocks`.`Stocks` (
-  `id` VARBINARY(128) NOT NULL,
-  `stock_id` VARBINARY(128) NOT NULL,
-  PRIMARY KEY (`id`))
-ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE TABLE IF NOT EXISTS `Stocks`.`Stock` (
   `id` VARBINARY(128) NOT NULL,
   `stock` VARCHAR(5) NULL,
@@ -16,16 +11,16 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Data` (
   `data-id` VARBINARY(128) NOT NULL,
   `stock-id` VARBINARY(128) NOT NULL,
   `date` DATE NOT NULL,
-  `open` VARCHAR(45) NULL,
-  `high` VARCHAR(45) NULL,
-  `low` VARCHAR(45) NULL,
-  `close` VARCHAR(45) NULL,
-  `adj-close` VARCHAR(45) NULL,
+  `open` DOUBLE(12, 3) NOT NULL,
+  `high` DOUBLE(12, 3) NOT NULL,
+  `low` DOUBLE(12, 3) NOT NULL,
+  `close` DOUBLE(12, 3) NOT NULL,
+  `adj-close` DOUBLE(12, 3) NOT NULL,
   PRIMARY KEY (`data-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE TABLE IF NOT EXISTS `Stocks`.`Study` (
   `study-id` VARBINARY(128) NOT NULL,
-  `study` VARCHAR(32) NULL,
+  `study` VARCHAR(32) NOT NULL,
   PRIMARY KEY (`study-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 
@@ -34,10 +29,20 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Study-Data` (
   `stock-id` VARBINARY(128) NOT NULL,
   `data-id` VARBINARY(128) NOT NULL,
   `study-id` varbinary(128) NOT NULL,
-  `val1` VARCHAR(45) NULL,
-  `val2` VARCHAR(45) NULL,
-  `val3` VARCHAR(45) NULL,
-  `val4` VARCHAR(45) NULL,
+  `val1` DOUBLE(12, 3) NOT NULL,
+  `val2` DOUBLE(12, 3) NULL,
+  `val3` DOUBLE(12, 3) NULL,
+  `val4` DOUBLE(12, 3) NULL,
+  `val5` DOUBLE(12, 3) NULL,
+  `val6` DOUBLE(12, 3) NULL,
+  `val7` DOUBLE(12, 3) NULL,
+  `val8` DOUBLE(12, 3) NULL,
+  `val9` DOUBLE(12, 3) NULL,
+  `val10` DOUBLE(12, 3) NULL,
+  `val11` DOUBLE(12, 3) NULL,
+  `val12` DOUBLE(12, 3) NULL,
+  `val13` DOUBLE(12, 3) NULL,
+  `val14` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 
@@ -47,9 +52,9 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`NN-Data` (
   `from-date-id` VARBINARY(128) NOT NULL,
   `to-date-id` VARBINARY(128) NOT NULL,
   `model` VARCHAR(45) NULL,
-  `open` VARCHAR(45) NULL,
-  `close` VARCHAR(45) NULL,
-  `range` VARCHAR(45) NULL,
+  `open` DOUBLE(6, 3) NULL,
+  `close` DOUBLE(6, 3) NULL,
+  `range` DOUBLE(6, 3) NULL,
   PRIMARY KEY (`nn-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 
@@ -71,8 +76,8 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Options-Data` (
   `opt-data-id` VARBINARY(128) NOT NULL,
   `opt-expiry-id` VARBINARY(128) NOT NULL,
   `date` DATE NOT NULL,
-  `bid` VARCHAR(45) NULL,
-  `ask` VARCHAR(45) NULL,  
+  `bid` DOUBLE(12, 3) NOT NULL,
+  `ask` DOUBLE(12, 3) NOT NULL,  
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 

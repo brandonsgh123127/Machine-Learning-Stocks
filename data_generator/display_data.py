@@ -17,6 +17,8 @@ class Display():
         self.data_display = pd.DataFrame()
         self.study_display = pd.DataFrame()
         self.keltner_display = pd.DataFrame()
+        self.fig, self.axes = plt.subplots(2, 2) # plot 4 max
+        self.fig.set_size_inches(10.5, 10.5)
         self.fib_display = pd.DataFrame()
         self.path = Path(os.getcwd()).parent.absolute() 
         self.color_map = {'blue':'b',
@@ -27,13 +29,6 @@ class Display():
                         'yellow':'y',
                         'black':'k',
                         'white':'w'}
-    def read_studies(self,date,ticker):
-        self.data_display = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_data.csv').drop(['Adj Close'],axis=1)
-        self.study_display = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_studies.csv',index_col=0)
-        self.keltner_display = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_keltner.csv',index_col=0)
-        self.fib_display = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_fib.csv',index_col=0)
-        self.ticker = ticker
-        self.date = date
     def read_studies_data(self,predicted=None,actual=None,keltner=None,fib=None):
         self.data_display = actual
         self.data_predict_display = predicted
@@ -42,9 +37,6 @@ class Display():
             self.fib_display = fib
         pd.set_option("display.max.columns", None)
     def display_box(self,data=None):
-        plt.cla()
-        plt.close()
-        plt.figure()
         indices_dict = {0:'Open',1:'Close',2:'Range'}
 
         c = 'blue'
@@ -52,22 +44,22 @@ class Display():
             self.fib_display = pd.DataFrame([self.fib_display.reset_index().to_numpy().reshape(14)],columns={'0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'}).reset_index()
             # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.data_display.index) - len(self.keltner_display.index))]
             self.fib_display = self.fib_display.iloc[:int(len(self.fib_display.index)/2+1)].reset_index().astype('float')
-            self.fib_display['0.202'].transpose().plot.line(color='green',x='0.202',y='0.202')
-            self.fib_display['0.236'].transpose().plot.line()
-            self.fib_display['0.241'].transpose().plot.line()
-            self.fib_display['0.273'].transpose().plot.line()
-            self.fib_display['0.283'].transpose().plot.line()
-            self.fib_display['0.316'].transpose().plot.line()
-            self.fib_display['0.382'].transpose().plot.line()
-            self.fib_display['0.5'].transpose().plot.line()
-            self.fib_display['0.618'].transpose().plot.line()
-            self.fib_display['0.796'].transpose().plot.line()
-            self.fib_display['1.556'].transpose().plot.line()
-            self.fib_display['3.43'].transpose().plot.line()
-            self.fib_display['3.83'].transpose().plot.line()
-            self.fib_display['5.44'].transpose().plot.line()
+            self.fib_display['0.202'].transpose().plot.line(ax=self.axes[0,0],color='green',x='0.202',y='0.202')
+            self.fib_display['0.236'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.241'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.273'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.283'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.316'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.382'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.5'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.618'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.796'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['1.556'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['3.43'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['3.83'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['5.44'].transpose().plot.line(ax=self.axes[0,0])
 
-            ax=self.data_display.drop(['Date'],axis=1).iloc[int(len(data.index)/2+1):].transpose().boxplot(patch_artist=True,
+            self.data_display.drop(['Date'],axis=1).iloc[int(len(data.index)/2+1):].transpose().boxplot(ax=self.axes[0,0],patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
                                                     capprops=dict(color='red' if float(self.data_display.iloc[-1:]['Close']) < float(self.data_display.iloc[-1:]['Open']) else 'green'),
                                                     whiskerprops=dict(color='red' if float(self.data_display.iloc[-1:]['Close']) < float(self.data_display.iloc[-1:]['Open']) else 'green'),
@@ -79,9 +71,9 @@ class Display():
             # print(self.keltner_display)
             # self.keltner_display = pd.DataFrame([self.keltner_display.reset_index().to_numpy()],columns={'middle','upper','lower'})
             self.keltner_display = self.keltner_display.iloc[int(len(self.keltner_display.index)/2+1):].reset_index().astype('float').set_axis(['middle','upper','lower'], 1)
-            self.keltner_display['middle'].transpose().plot.line()
-            self.keltner_display['upper'].transpose().plot.line()
-            self.keltner_display['lower'].transpose().plot.line()
+            self.keltner_display['middle'].transpose().plot.line(ax=self.axes[0,0])
+            self.keltner_display['upper'].transpose().plot.line(ax=self.axes[0,0])
+            self.keltner_display['lower'].transpose().plot.line(ax=self.axes[0,0])
         else:
             # print(data)
             # self.fib_display = pd.DataFrame([self.fib_display.reset_index().to_numpy().reshape(15)],columns={'0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'}).reset_index()
@@ -89,21 +81,21 @@ class Display():
             self.fib_display = self.fib_display.reset_index().set_axis(['index','0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'], 1)
             # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.keltner_display.index) + 2)]
             self.fib_display = self.fib_display.iloc[:int(len(self.fib_display.index)/2+1)].reset_index().astype('float')
-            self.fib_display['0.202'].transpose().plot.line(color='green',x='0.202',y='0.202')
-            self.fib_display['0.236'].transpose().plot.line()
-            self.fib_display['0.241'].transpose().plot.line()
-            self.fib_display['0.273'].transpose().plot.line()
-            self.fib_display['0.283'].transpose().plot.line()
-            self.fib_display['0.316'].transpose().plot.line()
-            self.fib_display['0.382'].transpose().plot.line()
-            self.fib_display['0.5'].transpose().plot.line()
-            self.fib_display['0.618'].transpose().plot.line()
-            self.fib_display['0.796'].transpose().plot.line()
-            self.fib_display['1.556'].transpose().plot.line()
-            self.fib_display['3.43'].transpose().plot.line()
-            self.fib_display['3.83'].transpose().plot.line()
-            self.fib_display['5.44'].transpose().plot.line()
-            ax=data.iloc[int(len(data.index)/2+1):].transpose().boxplot(patch_artist=True,
+            self.fib_display['0.202'].transpose().plot.line(ax=self.axes[0,0],color='green',x='0.202',y='0.202')
+            self.fib_display['0.236'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.241'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.273'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.283'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.316'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.382'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.5'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.618'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['0.796'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['1.556'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['3.43'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['3.83'].transpose().plot.line(ax=self.axes[0,0])
+            self.fib_display['5.44'].transpose().plot.line(ax=self.axes[0,0])
+            data.iloc[int(len(data.index)/2+1):].transpose().boxplot(ax=self.axes[0,0],patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
                                                     capprops=dict(color='red' if float(data.iloc[-1:]['Close']) < float(data.iloc[-1:]['Open']) else 'green' ),
                                                     showfliers=False,
@@ -113,59 +105,54 @@ class Display():
                                                     autorange=True)
  
             self.keltner_display = self.keltner_display.iloc[int(len(self.keltner_display.index)/2+1):].reset_index().astype('float')
-            self.keltner_display['middle'].transpose().plot.line()
-            self.keltner_display['upper'].transpose().plot.line()
-            self.keltner_display['lower'].transpose().plot.line()
-            # self.fib_display.reindex_like(self.data_display).transpose().plot.line()
+            self.keltner_display['middle'].transpose().plot.line(ax=self.axes[0,0])
+            self.keltner_display['upper'].transpose().plot.line(ax=self.axes[0,0])
+            self.keltner_display['lower'].transpose().plot.line(ax=self.axes[0,0])
+            # self.fib_display.reindex_like(self.data_display).transpose().plot(ax=self.axes[0,0]).line()
 
-    def display_divergence(self,ticker=None,dates=None,color=None,has_actuals=False):
-        plt.cla()
-        plt.figure()
+    def display_divergence(self,ticker=None,dates=None,color=None,has_actuals=False,row=1,col=1):
         data = self.data_predict_display.reset_index()
-        data.transpose().plot(kind='line',color=color)
-    def display_line(self,ticker=None,dates=None,color='g'):
+        data.transpose().plot(ax=self.axes[row,col],kind='line',color=color)
+    def display_line(self,ticker=None,dates=None,color='g',row=0,col=1):
         indices_dict = {0:'Open',1:'Close',2:'Range'}
-        self.data_display = pd.concat([self.data_display.reset_index(),self.data_predict_display.reset_index()],ignore_index=False).set_flags(allows_duplicate_labels=True)
-        self.data_display['index'] = [0,0]
-        self.data_display = self.data_display.set_index('index')
-        ax = self.data_display['Open'].plot(x='index',y='Open',style=f'{self.color_map.get(color)}x')
-        self.data_display['index'] = [1,1]
-        self.data_display = self.data_display.set_index('index')
-        ax = self.data_display['Close'].plot(x='index',y='Close',style=f'{self.color_map.get(color)}o', ax=ax)
-        self.data_display['index'] = [2,2]
-        self.data_display = self.data_display.set_index('index')
-        ax = self.data_display['Range'].plot(x='index',y='Range',style='mo', ax=ax)
-        self.data_display['index'] = [3,3]
+        self.data_display2 = pd.concat([self.data_display.reset_index(),self.data_predict_display.reset_index()],ignore_index=False).set_flags(allows_duplicate_labels=True)
+        self.data_display2['index'] = [0,0]
+        self.data_display2 = self.data_display2.set_index('index')
+        self.data_display2['Open'].plot(ax=self.axes[row,col],x='index',y='Open',style=f'{self.color_map.get(color)}x')
+        self.data_display2['index'] = [1,1]
+        self.data_display2 = self.data_display2.set_index('index')
+        self.data_display2['Close'].plot(ax=self.axes[row,col],x='index',y='Close',style=f'{self.color_map.get(color)}o')
+        self.data_display2['index'] = [2,2]
+        self.data_display2 = self.data_display2.set_index('index')
+        self.data_display2['Range'].plot(x='index',y='Range',style='mo', ax=self.axes[row,col])
+        self.data_display2['index'] = [3,3]
 
-        for i,row in enumerate(self.data_display.index):
-            for j,col in enumerate(self.data_display.columns):
-                if j == 8:
-                    continue
+        for i,row2 in enumerate(self.data_display2.index):
+            for j,col2 in enumerate(self.data_display2.columns):
                 if i == 0:
-                    y = round(self.data_display.iloc[i][j],2)
-                    ax.text(j, y, f'{indices_dict.get(j)} - A {y}',size='x-small')
+                    y = round(self.data_display2.iloc[i][j],2)
+                    self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - A {y}',size='x-small')
                 else:
-                    y = round(self.data_display.iloc[i][j],2)
-                    ax.text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
-    def display_predict_only(self,ticker=None,dates=None,color=None):
+                    y = round(self.data_display2.iloc[i][j],2)
+                    self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
+    def display_predict_only(self,ticker=None,dates=None,color=None,row=0,col=1):
         indices_dict = {0:'Open',1:'Close',2:'Range'}
-        self.data_predict_display['index'] = [0]
-        self.data_predict_display = self.data_predict_display.set_index('index')
-        ax = self.data_predict_display['Open'].plot(x='index',y='Open',style=f'{self.color_map.get(color)}x')
-        self.data_predict_display['index'] = [1]
-        self.data_predict_display = self.data_predict_display.set_index('index')
-        ax = self.data_predict_display['Close'].plot(x='index',y='Close',style=f'{self.color_map.get(color)}o', ax=ax)
-        self.data_predict_display['index'] = [2]
-        data = self.data_predict_display.set_index('index')
-        ax = data['Range'].plot(x='index',y='Range',style='mo', ax=ax)
+        self.data_predict_display2 = self.data_predict_display
+        self.data_predict_display2['index'] = [0]
+        self.data_predict_display2 = self.data_predict_display2.set_index('index')
+        self.data_predict_display2['Open'].plot(ax=self.axes[row,col],x='index',y='Open',style=f'{self.color_map.get(color)}x')
+        self.data_predict_display2['index'] = [1]
+        self.data_predict_display2 = self.data_predict_display2.set_index('index')
+        self.data_predict_display2['Close'].plot(ax=self.axes[row,col],x='index',y='Close',style=f'{self.color_map.get(color)}o')
+        self.data_predict_display2['index'] = [2]
+        data = self.data_predict_display2.set_index('index')
+        data['Range'].plot(x='index',y='Range',style='mo', ax=self.axes[row,col])
         data['index'] = [3]
 
-        for i,row in enumerate(self.data_predict_display.index):
-            for j,col in enumerate(self.data_predict_display.columns):
-                if j == 8:
-                    continue
+        for i,row2 in enumerate(self.data_predict_display2.index):
+            for j,col2 in enumerate(self.data_predict_display2.columns):
                 y = round(data.iloc[i][j],2)
-                ax.text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
+                self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
 
 # dis = Display()
 # dis.read_studies("2021-06-22--2021-08-12","SPY")
