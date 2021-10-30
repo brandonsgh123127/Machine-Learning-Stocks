@@ -728,18 +728,18 @@ val1    val3_________________________          vall2
                                                                                                 'stock-id':self.stock_id.encode('latin1'),
                                                                                                 'data-id':self.data_id,
                                                                                                 'study-id':self.study_id,
-                                                                                                'val1':row.at['middle',0],
-                                                                                                'val2':row.at['upper',0],
-                                                                                                'val3':row.at['lower',0],
+                                                                                                'val1':row['middle'].values[0],
+                                                                                                'val2':row['upper'].values[0],
+                                                                                                'val3':row['lower'].values[0],
                                                                                                 })
                             else:
                                 insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"]}{self.indicator}keltner{length}{factor}',
                                                                                                 'stock-id':self.stock_id.encode('latin1'),
                                                                                                 'data-id':self.data_id,
                                                                                                 'study-id':self.study_id,
-                                                                                                'val1':row.at['middle',0],
-                                                                                                'val2':row.at['upper',0],
-                                                                                                'val3':row.at['lower',0],
+                                                                                                'val1':row['middle'].values[0],
+                                                                                                'val2':row['upper'].values[0],
+                                                                                                'val3':row['lower'].values[0],
                                                                                                 })
                             self.db_con.commit()
                         except mysql.connector.errors.IntegrityError:
