@@ -67,7 +67,7 @@ class Sample(Normalizer):
             print('[ERROR] Failed to Normalize data!\nException:\n',str(e))
         try:
             if len(self.normalizer.normalized_data) < self.DAYS_SAMPLED:
-                self.normalizer.read_data(self.ticker[self.ticker.index('--')+2:self.ticker.index('_')],self.ticker[0:self.ticker.index('/')]) # Get ticker and date from path
+                self.normalizer.read_data(self.to_date,self.ticker) # Get ticker and date from path
                 self.normalizer.convert_derivatives()
         except Exception as e:
             print("[ERROR] FAILED to GENERATE SAMPLE\n",str(e))
@@ -77,12 +77,13 @@ class Sample(Normalizer):
             self.normalizer.cnx.close()
             return 1
         return 0
-    def generate_divergence_sample(self,ticker=None,is_predict=False):
-        if ticker is None:
-            self.ticker = random.choice(self.file_list)
+    def generate_divergence_sample(self,is_predict=False,_has_actuals=False):
         if is_predict:
             self.DAYS_SAMPLED = 14
-        self.normalizer.read_data(self.ticker[self.ticker.index('--')+2:self.ticker.index('_')],self.ticker[0:self.ticker.index('/')]) # Get ticker and date from path
+            self.to_date = datetime.date.today() + datetime.timedelta(days = 1)
+        else:
+            self.to_date = datetime.date.today()
+        self.normalizer.read_data(self.to_date,self.ticker) # Get ticker and date from path
         # Iterate through dataframe and retrieve random sample
         self.normalizer.convert_divergence()
         self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
@@ -93,7 +94,7 @@ class Sample(Normalizer):
         if len(self.normalizer.normalized_data) < self.DAYS_SAMPLED:
             self.normalizer.read_data(self.ticker[self.ticker.index('--')+2:self.ticker.index('_')],self.ticker[0:self.ticker.index('/')]) # Get ticker and date from path
             self.normalizer.convert_derivatives()
-        return (self.ticker[0:self.ticker.index('/')],self.ticker[self.ticker.index('/')+1:self.ticker.index('_')])
+        return 0
     def unnormalize(self, data):
         self.normalizer.unnormalize(data)
 # for i in range(1,21000):

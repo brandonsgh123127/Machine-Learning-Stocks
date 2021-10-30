@@ -288,8 +288,6 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
     # Actually gather data and insert if query is not met
     sampler = Sample(ticker)
     # sampler.__init__(ticker)
-    neural_net = Network(0,0)
-    neural_net.load_model(name=name)
     train = []
     sampler.generate_sample(is_predict=_is_predict,_has_actuals=has_actuals)
     try: # verify there is no extra 'index' column
@@ -305,6 +303,9 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
             print('[ERROR] Failed to drop "High" and "Low" from sampler data!',str(e))
 
     if predicted is None:
+        neural_net = Network(0,0)
+        neural_net.load_model(name=name)
+
         print(f'[INFO] Did not query all specified dates within range for nn-data retrieval!')
         with listLock:
             if has_actuals:

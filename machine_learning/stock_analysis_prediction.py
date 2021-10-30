@@ -35,7 +35,7 @@ def display_model(name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy
     if 'divergence' not in name:
         data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',_is_predict=is_predict,device_opt='/device:CPU:0')
     else:
-        data = load_divergence(f'{ticker}/{dates[0]}--{dates[1]}_data.csv',has_actuals=_has_actuals,name=f'{name}',device_opt='/device:CPU:0')
+        data = load_divergence(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',device_opt='/device:CPU:0')
     # read data for loading into display portion
     if 'divergence' not in name:
         dis.read_studies_data(data[0],data[1],data[3],data[4])
