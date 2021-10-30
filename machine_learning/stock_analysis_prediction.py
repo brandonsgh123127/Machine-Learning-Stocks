@@ -120,15 +120,15 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
     #
     # DIVERGENCE LABEL
     with listLock:
-        while thread_pool.start_worker(threading.Thread(target=display_model,args=("divergence_3",_has_actuals,ticker,dates,'magenta',is_not_closed))) == 1:
+        while thread_pool.start_worker(threading.Thread(target=display_model,args=("divergence_3",_has_actuals,ticker,dates,'magenta',is_not_closed,False,1,1))) == 1:
             thread_pool.join_workers()
         thread_pool.join_workers()
-        dis.display_divergence(ticker=ticker,dates=dates,color=f'm',has_actuals=_has_actuals)
+        # dis.display_divergence(ticker=ticker,dates=dates,color=f'm',has_actuals=_has_actuals,row=1,col=1)
     gc.collect()
 
     #
     # CHART LABEL
-    display_model("model_relu",has_actuals,ticker,dates,'green',is_not_closed,True)
+    display_model("model_relu",has_actuals,ticker,dates,'green',is_not_closed,True,0,0)
     gc.collect()
 
     #

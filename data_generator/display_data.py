@@ -36,7 +36,7 @@ class Display():
             self.keltner_display=keltner
             self.fib_display = fib
         pd.set_option("display.max.columns", None)
-    def display_box(self,data=None):
+    def display_box(self,data=None,row=0,col=0):
         indices_dict = {0:'Open',1:'Close',2:'Range'}
 
         c = 'blue'
@@ -44,22 +44,22 @@ class Display():
             self.fib_display = pd.DataFrame([self.fib_display.reset_index().to_numpy().reshape(14)],columns={'0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'}).reset_index()
             # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.data_display.index) - len(self.keltner_display.index))]
             self.fib_display = self.fib_display.iloc[:int(len(self.fib_display.index)/2+1)].reset_index().astype('float')
-            self.fib_display['0.202'].transpose().plot.line(ax=self.axes[0,0],color='green',x='0.202',y='0.202')
-            self.fib_display['0.236'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.241'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.273'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.283'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.316'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.382'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.5'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.618'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.796'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['1.556'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['3.43'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['3.83'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['5.44'].transpose().plot.line(ax=self.axes[0,0])
-
-            self.data_display.drop(['Date'],axis=1).iloc[int(len(data.index)/2+1):].transpose().boxplot(ax=self.axes[0,0],patch_artist=True,
+            self.fib_display['0.202'].transpose().plot.line(ax=self.axes[row,col],color='green',x='0.202',y='0.202')
+            self.fib_display['0.236'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.241'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.273'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.283'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.316'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.382'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.5'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.618'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.796'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['1.556'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['3.43'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['3.83'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['5.44'].transpose().plot.line(ax=self.axes[row,col])
+            
+            self.data_display.drop(['Date'],axis=1).iloc[int(len(data.index)/2+1):].transpose().boxplot(ax=self.axes[row,col],patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
                                                     capprops=dict(color='red' if float(self.data_display.iloc[-1:]['Close']) < float(self.data_display.iloc[-1:]['Open']) else 'green'),
                                                     whiskerprops=dict(color='red' if float(self.data_display.iloc[-1:]['Close']) < float(self.data_display.iloc[-1:]['Open']) else 'green'),
@@ -71,9 +71,9 @@ class Display():
             # print(self.keltner_display)
             # self.keltner_display = pd.DataFrame([self.keltner_display.reset_index().to_numpy()],columns={'middle','upper','lower'})
             self.keltner_display = self.keltner_display.iloc[int(len(self.keltner_display.index)/2+1):].reset_index().astype('float').set_axis(['middle','upper','lower'], 1)
-            self.keltner_display['middle'].transpose().plot.line(ax=self.axes[0,0])
-            self.keltner_display['upper'].transpose().plot.line(ax=self.axes[0,0])
-            self.keltner_display['lower'].transpose().plot.line(ax=self.axes[0,0])
+            self.keltner_display['middle'].transpose().plot.line(ax=self.axes[row,col])
+            self.keltner_display['upper'].transpose().plot.line(ax=self.axes[row,col])
+            self.keltner_display['lower'].transpose().plot.line(ax=self.axes[row,col])
         else:
             # print(data)
             # self.fib_display = pd.DataFrame([self.fib_display.reset_index().to_numpy().reshape(15)],columns={'0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'}).reset_index()
@@ -81,21 +81,21 @@ class Display():
             self.fib_display = self.fib_display.reset_index().set_axis(['index','0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'], 1)
             # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.keltner_display.index) + 2)]
             self.fib_display = self.fib_display.iloc[:int(len(self.fib_display.index)/2+1)].reset_index().astype('float')
-            self.fib_display['0.202'].transpose().plot.line(ax=self.axes[0,0],color='green',x='0.202',y='0.202')
-            self.fib_display['0.236'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.241'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.273'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.283'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.316'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.382'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.5'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.618'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['0.796'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['1.556'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['3.43'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['3.83'].transpose().plot.line(ax=self.axes[0,0])
-            self.fib_display['5.44'].transpose().plot.line(ax=self.axes[0,0])
-            data.iloc[int(len(data.index)/2+1):].transpose().boxplot(ax=self.axes[0,0],patch_artist=True,
+            self.fib_display['0.202'].transpose().plot.line(ax=self.axes[row,col],color='green',x='0.202',y='0.202')
+            self.fib_display['0.236'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.241'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.273'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.283'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.316'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.382'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.5'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.618'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['0.796'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['1.556'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['3.43'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['3.83'].transpose().plot.line(ax=self.axes[row,col])
+            self.fib_display['5.44'].transpose().plot.line(ax=self.axes[row,col])
+            data.iloc[int(len(data.index)/2+1):].transpose().boxplot(ax=self.axes[row,col],patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
                                                     capprops=dict(color='red' if float(data.iloc[-1:]['Close']) < float(data.iloc[-1:]['Open']) else 'green' ),
                                                     showfliers=False,
@@ -105,9 +105,9 @@ class Display():
                                                     autorange=True)
  
             self.keltner_display = self.keltner_display.iloc[int(len(self.keltner_display.index)/2+1):].reset_index().astype('float')
-            self.keltner_display['middle'].transpose().plot.line(ax=self.axes[0,0])
-            self.keltner_display['upper'].transpose().plot.line(ax=self.axes[0,0])
-            self.keltner_display['lower'].transpose().plot.line(ax=self.axes[0,0])
+            self.keltner_display['middle'].transpose().plot.line(ax=self.axes[row,col])
+            self.keltner_display['upper'].transpose().plot.line(ax=self.axes[row,col])
+            self.keltner_display['lower'].transpose().plot.line(ax=self.axes[row,col])
             # self.fib_display.reindex_like(self.data_display).transpose().plot(ax=self.axes[0,0]).line()
 
     def display_divergence(self,ticker=None,dates=None,color=None,has_actuals=False,row=1,col=1):
