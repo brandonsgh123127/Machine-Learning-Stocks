@@ -47,6 +47,7 @@ class Sample(Normalizer):
             self.DAYS_SAMPLED = 14
             self.to_date = datetime.date.today() + datetime.timedelta(days = 1)
         else:
+            self.DAYS_SAMPLED = 15
             self.to_date = datetime.date.today()
         self.normalizer.read_data(self.to_date,self.ticker) # Get ticker and date from path
         # Iterate through dataframe and retrieve random sample

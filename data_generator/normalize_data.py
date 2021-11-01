@@ -11,6 +11,8 @@ import uuid
 import xml.etree.ElementTree as ET
 import datetime
 import sys
+from pandas.tseries.holiday import USFederalHolidayCalendar
+
 
 '''
 Class that takes in studies and stock data, then transforms the data into a new dataframe.
@@ -72,23 +74,43 @@ class Normalizer():
             # If string, convert to datetime.datetime
             if type(initial_date) is str:
                 initial_date = datetime.datetime.strptime(initial_date,'%Y-%m-%d')
+                
+            valid_datetime=datetime.datetime.now()
+            
+            # Verify date before proceeding 
+            holidays=USFederalHolidayCalendar().holidays(start=valid_datetime - datetime.timedelta(days=40),end=valid_datetime).to_pydatetime()
+            valid_date=valid_datetime.date()
+            if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
+                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                valid_date = (valid_date - datetime.timedelta(days=1))
+            if valid_date.weekday()==5: # if saturday
+                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                valid_date = (valid_date - datetime.timedelta(days=1))
+            if valid_date.weekday()==6: # if sunday
+                valid_datetime = (valid_datetime - datetime.timedelta(days=2))
+                valid_date = (valid_date - datetime.timedelta(days=2))
+            if valid_date in holidays:
+                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                valid_date = (valid_date - datetime.timedelta(days=1))
+            initial_date=valid_datetime
+
             date_result = self.cnx.execute("""
         select * from stocks.`data` where stocks.`data`.`date` >= DATE(%(start)s) and stocks.`data`.`date` <= DATE(%(end)s) and `stock-id` = (select `id` from stocks.`stock` where stock = %(stock)s) ORDER BY stocks.`data`.`date` ASC
         """, ({'end':initial_date.strftime('%Y-%m-%d'),
-               'start':(initial_date - datetime.timedelta(days=45)).strftime('%Y-%m-%d'),
+               'start':(initial_date - datetime.timedelta(days=40)).strftime('%Y-%m-%d'),
                'stock':ticker.upper()}),multi=True)
         except Exception as e:
-            print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d")}!\nException:\n',str(e))
+            print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}!\nException:\n',str(e))
             raise RuntimeError
         # date_res = self.cnx.fetchall()
         # print(date_result,flush=True)
         for res in date_result:
             r_set = res.fetchall()
             if len(r_set) == 0: # empty results 
-                raise RuntimeError("Failed to query any results for statement:",f'select * from stocks.`data` where stocks.`data`.date >= DATE({(initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d")}) and stocks.`data`.date <= DATE({initial_date.strftime("%Y-%m-%d")}) and `stock-id` = (select `id` from stocks.`stock` where stock = {ticker.upper()}) ORDER BY stocks.`data`.`date` ASC')
+                raise RuntimeError("Failed to query any results for statement:",f'select * from stocks.`data` where stocks.`data`.date >= DATE({(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}) and stocks.`data`.date <= DATE({initial_date.strftime("%Y-%m-%d")}) and `stock-id` = (select `id` from stocks.`stock` where stock = {ticker.upper()}) ORDER BY stocks.`data`.`date` ASC')
             for set in r_set:
                 if len(set) == 0: #if somehow a result got returned and no values included, fail
-                    print(f'[ERROR] Failed to retrieve data for {ticker} from range {initial_date}--{initial_date + datetime.timedelta(days=45)}\n')
+                    print(f'[ERROR] Failed to retrieve data for {ticker} from range {initial_date}--{initial_date + datetime.timedelta(days=40)}\n')
                     exit(1)
                 try:
                     # Iterate through each element to retrieve values
@@ -130,6 +152,25 @@ class Normalizer():
         self.cnx.autocommit = True
         if type(initial_date) is str:
             initial_date = datetime.datetime.strptime(initial_date,'%Y-%m-%d')
+        valid_datetime=datetime.datetime.now()
+            
+        # Verify date before proceeding 
+        holidays=USFederalHolidayCalendar().holidays(start=valid_datetime - datetime.timedelta(days=40),end=valid_datetime).to_pydatetime()
+        valid_date=valid_datetime.date()
+        if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+            valid_date = (valid_date - datetime.timedelta(days=1))
+        if valid_date.weekday()==5: # if saturday
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+            valid_date = (valid_date - datetime.timedelta(days=1))
+        if valid_date.weekday()==6: # if sunday
+            valid_datetime = (valid_datetime - datetime.timedelta(days=2))
+            valid_date = (valid_date - datetime.timedelta(days=2))
+        if valid_date in holidays:
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+            valid_date = (valid_date - datetime.timedelta(days=1))
+        initial_date=valid_datetime
+
         if study == 'ema':
             date_result = self.cnx.execute("""
             select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
@@ -140,7 +181,7 @@ class Normalizer():
                 AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
                 AND stocks.`study`.`study` like 'ema%' 
              INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
-            """, ((initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d"),
+            """, ((initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d"),
                   initial_date.strftime('%Y-%m-%d'),
                   ticker),multi=True)
             # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
@@ -152,7 +193,7 @@ class Normalizer():
             for set in date_result:
                 s = set.fetchall()
                 if len(s) == 0:
-                    print(f'[ERROR] Failed to retrieve ema study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d")}')
+                    print(f'[ERROR] Failed to retrieve ema study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}')
                     break
                 try:
                     # Iterate through each element to retrieve values
@@ -196,7 +237,7 @@ class Normalizer():
               AND stocks.`data`.date >= DATE(%s)
                AND stocks.`data`.date <= DATE(%s) 
              INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
-            """, ((initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d"),
+            """, ((initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d"),
                   initial_date.strftime('%Y-%m-%d'),
                   ticker),multi=True)
             # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
@@ -219,7 +260,7 @@ class Normalizer():
             for set in date_result:
                 s = set.fetchall()
                 if len(s) == 0:
-                    print(f'[ERROR] Failed to retrieve fib study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d")}')
+                    print(f'[ERROR] Failed to retrieve fib study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}')
                     break
                 try:
                     # Iterate through each element to retrieve values
@@ -271,7 +312,7 @@ class Normalizer():
                 AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
                 AND stocks.`study`.`study` = 'keltner20-1.3' 
              INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
-            """, ((initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d"),
+            """, ((initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d"),
                   initial_date.strftime('%Y-%m-%d'),
                   ticker),multi=True)
             # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
@@ -284,7 +325,7 @@ class Normalizer():
                 s = set.fetchall()
                 # print(s)
                 if len(s) == 0:
-                    print(f'[ERROR] Failed to retrieve keltner study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=45)).strftime("%Y-%m-%d")}')
+                    print(f'[ERROR] Failed to retrieve keltner study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}')
                     break
                 try:
                     # Iterate through each element to retrieve values

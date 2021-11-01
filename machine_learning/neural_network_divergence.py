@@ -156,7 +156,8 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,name:str="divergence"
     for retrieve_result in retrieve_tdata_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
-            print(f'[INFO] Failed to locate a to data-id and stock-id for {ticker} on {valid_datetime.strftime("%Y-%m-%d")}')
+            if not force_generation:
+                print(f'[INFO] Failed to locate a to data-id and stock-id for {ticker} on {valid_datetime.strftime("%Y-%m-%d")}')
             break
         else:
             stock_id = id_res[0][1].decode('latin1')
@@ -192,7 +193,8 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,name:str="divergence"
     for retrieve_result in retrieve_data_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
-            print(f'[INFO] Failed to locate a from data-id  for {ticker} on {valid_datetime.strftime("%Y-%m-%d")}')
+            if not force_generation:
+                print(f'[INFO] Failed to locate a from data-id  for {ticker} on {valid_datetime.strftime("%Y-%m-%d")}')
             break
         else:
             from_date_id = id_res[0][0].decode('latin1')

@@ -99,33 +99,6 @@ class GUI(Thread_Pool):
             self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),False,self.force_bool.get())))
         elif self.page_loc == 2:
             self.job_queue.put(threading.Thread(target=self.analyze_model,args=(self.stock_input.get(),self.boolean1.get(),False,self.force_bool.get())))
-    def get_current_price(self):
-        if self.boolean2.get() == True:
-            self.open = tk.Label(self.content,text="Open:")
-            self.open.grid(column=1,row=3)
-            self.open_input = tk.Entry(self.content)
-            self.open_input.grid(column=2,row=3)
-            self.high = tk.Label(self.content,text="High:")
-            self.high.grid(column=1,row=4)
-            self.high_input = tk.Entry(self.content)
-            self.high_input.grid(column=2,row=4)
-            self.low = tk.Label(self.content,text="Low:")
-            self.low.grid(column=3,row=3)
-            self.low_input = tk.Entry(self.content)
-            self.low_input.grid(column=4,row=3)  
-            self.close = tk.Label(self.content,text="Close:")
-            self.close.grid(column=3,row=4)
-            self.close_input = tk.Entry(self.content)
-            self.close_input.grid(column=4,row=4)  
-        else:
-            self.open.grid_forget()
-            self.open_input.grid_forget()
-            self.high.grid_forget()
-            self.high_input.grid_forget()
-            self.low.grid_forget()
-            self.low_input.grid_forget()
-            self.close.grid_forget()
-            self.close_input.grid_forget()
     
     """Analyze stock through charting"""
     def analyze_model(self,ticker,has_actuals,is_not_closed,is_caching=False,force_generation=False):

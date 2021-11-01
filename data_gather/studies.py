@@ -639,22 +639,8 @@ val1    val3_________________________          vall2
                                                           'lower':self.applied_studies[f'ema14'][index:index+1]
                                                           -(factor*avg_true_range['AvgTrueRange'][index:index+1])}
                                                           ,ignore_index=True)
-                except:
-                    if index == len(self.data_cp.index) - 1: # if last element
-                        self.keltner=self.keltner.append({'middle':(self.applied_studies[f'ema14'][index-1:index]),
-                                      'upper':float(self.applied_studies[f'ema14'][index-1:index])
-                                      +(factor*avg_true_range['AvgTrueRange'][index-1:index]),
-                                      'lower':float(self.applied_studies[f'ema14'][index-1:index])
-                                      -(factor*avg_true_range['AvgTrueRange'][index-1:index])}
-                                      ,ignore_index=True)
-
-                    else: #else
-                        self.keltner=self.keltner.append({'middle':self.applied_studies[f'ema14'][index:index+1],
-                                                          'upper':float(self.applied_studies[f'ema14'][index:index+1])
-                                                          +float(factor*avg_true_range['AvgTrueRange'][index:index+1]),
-                                                          'lower':float(self.applied_studies[f'ema14'][index:index+1])
-                                                          -(factor*avg_true_range['AvgTrueRange'][index:index+1])}
-                                                          ,ignore_index=True)
+                except Exception as e:
+                    raise Exception("[Error] Failed to calculate Keltner...\n",str(e))
             """
                     MYSQL Portion...
                     Store Data on DB...

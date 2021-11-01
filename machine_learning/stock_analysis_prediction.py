@@ -22,6 +22,9 @@ import queue
 import gc
 from threading_impl.Thread_Pool import Thread_Pool
 import PIL
+from pandas.tseries.holiday import USFederalHolidayCalendar
+
+
 class launcher():
     def __init__(self):
         self._type = None
@@ -30,7 +33,7 @@ class launcher():
         self.dis:Display = Display()
         self.listLock=threading.Lock()
     
-    def display_model(self,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",dates:list=[],color:str="blue",force_generation=False,unnormalized_data = False,row=0,col=1):
+    def display_model(self,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",color:str="blue",force_generation=False,unnormalized_data = False,row=0,col=1):
         # Load machine learning model either based on divergence or not
         if 'divergence' not in name:
             data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:CPU:0')
@@ -48,24 +51,24 @@ class launcher():
             if not unnormalized_data:
                 if 'divergence' in name:
                     with self.listLock:
-                        self.dis.display_divergence(ticker=ticker,dates=dates,color=f'{color}',row=1,col=1)
+                        self.dis.display_divergence(color=f'{color}',row=1,col=1)
                 else:
                     with self.listLock:
-                        self.dis.display_predict_only(ticker=ticker,dates=dates,color=f'{color}',row=row,col=col)
+                        self.dis.display_predict_only(color=f'{color}',row=row,col=col)
             else:
                 with self.listLock:
-                    self.dis.display_box(data[2])
+                    self.dis.display_box(data[2],has_actuals=_has_actuals)
         else:
             if unnormalized_data:
                 with self.listLock:
-                    self.dis.display_box(data[2])
+                    self.dis.display_box(data[2],has_actuals=_has_actuals)
             else:
                 if 'divergence' in name:
                     with self.listLock:
-                        self.dis.display_divergence(ticker=ticker,dates=dates,color=f'{color}',row=1,col=1)
+                        self.dis.display_divergence(color=f'{color}',row=1,col=1)
                 else:
                     with self.listLock:
-                        self.dis.display_line(ticker=ticker,dates=dates,color=f'{color}',row=row,col=col)
+                        self.dis.display_line(color=f'{color}',row=row,col=col)
     
 
 data_gen = Generator()
@@ -89,7 +92,23 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
     if not has_actuals: #predict next day
         dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
     else:
-        dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() ) #month worth of data
+        valid_datetime=datetime.datetime.now()
+        
+        # Confirm end date is valid 
+        holidays=USFederalHolidayCalendar().holidays(start=valid_datetime - datetime.timedelta(days=75),end=valid_datetime).to_pydatetime()
+        valid_date=valid_datetime.date()
+        if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
+            valid_date = (valid_date - datetime.timedelta(days=1))
+        if valid_date.weekday()==5: # if saturday
+            valid_date = (valid_date - datetime.timedelta(days=1))
+        if valid_date.weekday()==6: # if sunday
+            valid_date = (valid_date - datetime.timedelta(days=2))
+        if valid_date in holidays:
+            valid_date = (valid_date - datetime.timedelta(days=1))
+        e_date=valid_date
+        
+        
+        dates = (datetime.date.today() - datetime.timedelta(days = 75), e_date ) #month worth of data
     
     _has_actuals = has_actuals
     try:
@@ -104,63 +123,63 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
     # Call display line on first result, rest display predict only
     if _has_actuals:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu",_has_actuals,ticker,dates,'green',force_generate,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu",_has_actuals,ticker,'green',force_generate,False,1,0))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky",False,ticker,dates,'black',force_generate,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky",_has_actuals,ticker,'black',force_generate,False,1,0))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid",False,ticker,dates,'magenta',force_generate,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid",_has_actuals,ticker,'magenta',force_generate,False,1,0))) == 1:
                 thread_pool.join_workers()
 
     # Call solely display predict only
     else:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu",_has_actuals,ticker,dates,'green',force_generate,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu",_has_actuals,ticker,'green',force_generate,False,1,0))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky",_has_actuals,ticker,dates,'black',force_generate,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky",_has_actuals,ticker,'black',force_generate,False,1,0))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid",_has_actuals,ticker,dates,'magenta',force_generate,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid",_has_actuals,ticker,'magenta',force_generate,False,1,0))) == 1:
                 thread_pool.join_workers()
     gc.collect()
     thread_pool.join_workers()
     #
     # DIVERGENCE LABEL
     with listLock:
-        while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("divergence_3",_has_actuals,ticker,dates,'magenta',force_generate,False,1,1))) == 1:
+        while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("divergence_3",_has_actuals,ticker,'magenta',force_generate,False,1,1))) == 1:
             thread_pool.join_workers()
         thread_pool.join_workers()
-        # dis.display_divergence(ticker=ticker,dates=dates,color=f'm',has_actuals=_has_actuals,row=1,col=1)
+        # dis.display_divergence(color=f'm',has_actuals=_has_actuals,row=1,col=1)
     gc.collect()
 
     #
     # CHART LABEL
-    launch.display_model("model_relu",has_actuals,ticker,dates,'green',force_generate,True,0,0)
+    launch.display_model("model_relu",has_actuals,ticker,'green',force_generate,True,0,0)
     gc.collect()
 
     #
     # Model_Out_2 LABEL
     if _has_actuals:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,dates,'green',force_generate,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,'green',force_generate,False,0,1))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",False,ticker,dates,'black',force_generate,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",_has_actuals,ticker,'black',force_generate,False,0,1))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",False,ticker,dates,'magenta',force_generate,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",_has_actuals,ticker,'magenta',force_generate,False,0,1))) == 1:
                 thread_pool.join_workers()
     else:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,dates,'green',force_generate,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,'green',force_generate,False,0,1))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",_has_actuals,ticker,dates,'black',force_generate,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",_has_actuals,ticker,'black',force_generate,False,0,1))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",_has_actuals,ticker,dates,'magenta',force_generate,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",_has_actuals,ticker,'magenta',force_generate,False,0,1))) == 1:
                 thread_pool.join_workers()
 
     gc.collect()
