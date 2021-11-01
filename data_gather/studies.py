@@ -595,7 +595,6 @@ val1    val3_________________________          vall2
             # self.data_cp=self.data_cp.reset_index()
             self.apply_ema(length,length) # apply length ema for middle band
             self.keltner = pd.DataFrame({'middle':[],'upper':[],'lower':[]},dtype=float)
-            self.data=self.data_cp
             true_range = pd.DataFrame(columns=['trueRange'],dtype=float)
             avg_true_range = pd.DataFrame(columns=['AvgTrueRange'],dtype=float)
             prev_row = None
@@ -609,8 +608,8 @@ val1    val3_________________________          vall2
                     prev_row=row  
                     
             # iterate through keltner and calculate ATR
-            for index,row in self.data.iterrows():
-                if index == 0 or index <= length or index == len(self.data.index)-1:
+            for index,row in self.data_cp.iterrows():
+                if index == 0 or index <= length or index == len(self.data_cp.index)-1:
                     avg_true_range=avg_true_range.append({'AvgTrueRange':1.33},ignore_index=True) #add blank values
                 else:
                     end_atr = None
@@ -625,7 +624,7 @@ val1    val3_________________________          vall2
             # now, calculate upper and lower bands given all data
             for index,row in avg_true_range.iterrows():
                 try:
-                    if index == len(self.data.index) - 1: # if last element
+                    if index == len(self.data_cp.index) - 1: # if last element
                         self.keltner=self.keltner.append({'middle':(self.applied_studies[f'ema14'][index-1:index]),
                                       'upper':self.applied_studies[f'ema14'][index-1:index]
                                       +(factor*avg_true_range['AvgTrueRange'][index-1:index]),
@@ -641,7 +640,7 @@ val1    val3_________________________          vall2
                                                           -(factor*avg_true_range['AvgTrueRange'][index:index+1])}
                                                           ,ignore_index=True)
                 except:
-                    if index == len(self.data.index) - 1: # if last element
+                    if index == len(self.data_cp.index) - 1: # if last element
                         self.keltner=self.keltner.append({'middle':(self.applied_studies[f'ema14'][index-1:index]),
                                       'upper':float(self.applied_studies[f'ema14'][index-1:index])
                                       +(factor*avg_true_range['AvgTrueRange'][index-1:index]),
@@ -711,12 +710,12 @@ val1    val3_________________________          vall2
                         INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
                         """
                         retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
-                                                                                    'date':self.data.loc[index,:]["Date"].strftime('%Y-%m-%d') if isinstance(self.data.loc[index,:]["Date"],datetime.datetime) else self.data.loc[index,:]["Date"]},multi=True)
+                                                                                    'date':self.data_cp.loc[index,:]["Date"].strftime('%Y-%m-%d') if isinstance(self.data_cp.loc[index,:]["Date"],datetime.datetime) else self.data_cp.loc[index,:]["Date"]},multi=True)
                         # self.data=self.data.drop(['Date'],axis=1)
                         for retrieve_result in retrieve_data_result:
                             id_res = retrieve_result.fetchall()
                             if len(id_res) == 0:
-                                print(f'[ERROR] Failed to locate a data-id for current index {index} with date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")} under {retrieve_data_result}')
+                                print(f'[ERROR] Failed to locate a data-id for current index {index} with date {self.data_cp.loc[index,:]["Date"].strftime("%Y-%m-%d")} under {retrieve_data_result}')
                                 continue
                             else:
                                 self.stock_id = id_res[0][1].decode('latin1')
@@ -728,8 +727,8 @@ val1    val3_________________________          vall2
                             """
                         try:
                             # print(type(self.stock_id),type(self.data_id),type(self.study_id),type(row['middle']))
-                            if isinstance(self.data.loc[index,:]["Date"],datetime.datetime):
-                                insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}',
+                            if isinstance(self.data_cp.loc[index,:]["Date"],datetime.datetime):
+                                insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data_cp.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}',
                                                                                                 'stock-id':self.stock_id.encode('latin1'),
                                                                                                 'data-id':self.data_id,
                                                                                                 'study-id':self.study_id,
@@ -738,7 +737,7 @@ val1    val3_________________________          vall2
                                                                                                 'val3':row['lower'].values[0],
                                                                                                 })
                             else:
-                                insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"]}{self.indicator}keltner{length}{factor}',
+                                insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data_cp.loc[index,:]["Date"]}{self.indicator}keltner{length}{factor}',
                                                                                                 'stock-id':self.stock_id.encode('latin1'),
                                                                                                 'data-id':self.data_id,
                                                                                                 'study-id':self.study_id,

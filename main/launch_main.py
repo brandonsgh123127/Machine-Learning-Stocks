@@ -96,9 +96,9 @@ class GUI(Thread_Pool):
         
     def generate_callback(self,event=None):
         if self.page_loc == 1:
-            self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get())))
+            self.job_queue.put(threading.Thread(target=self.load_model,args=(self.stock_input.get(),self.boolean1.get(),False,self.force_bool.get())))
         elif self.page_loc == 2:
-            self.job_queue.put(threading.Thread(target=self.analyze_model,args=(self.stock_input.get(),self.boolean1.get(),self.boolean2.get(),False,self.force_bool.get())))
+            self.job_queue.put(threading.Thread(target=self.analyze_model,args=(self.stock_input.get(),self.boolean1.get(),False,self.force_bool.get())))
     def get_current_price(self):
         if self.boolean2.get() == True:
             self.open = tk.Label(self.content,text="Open:")
@@ -133,13 +133,11 @@ class GUI(Thread_Pool):
             self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
             if not is_caching:
                 self.generate_button.grid_forget()
-            if is_not_closed:
+            if not has_actuals:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
             elif has_actuals:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today()) #month worth of data
-            else:
-                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
-            self.img=analyze_stock(ticker, has_actuals, is_not_closed,_is_predict=self.force_bool)
+            self.img=analyze_stock(ticker, has_actuals,force_generate=force_generation)
             self.image = ImageTk.PhotoImage(self.img)
             gc.collect()
             time.sleep(5)
@@ -156,23 +154,23 @@ class GUI(Thread_Pool):
         self.stock_input.select_range(0, tk.END)
         return 0
     """Load a Analysis/Predict model for predicting values"""
-    def load_model(self,ticker,has_actuals,is_predict,is_caching=False,force_generation=False):
+    def load_model(self,ticker,has_actuals=False,is_caching=False,force_generation=False):
         if self.page_loc == 1: # Prediction page only...
             self.output_image.delete('all')
             self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
             if not is_caching:
                 self.generate_button.grid_forget()
             # When predicting next day, set day to +1
-            if is_predict:
+            if not has_actuals:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
             else:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today()) #month worth of data
-            if is_predict:
+            if not has_actuals:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    thread = executor.submit(analyze_stock,ticker, has_actuals, True,force_generation)                    
+                    thread = executor.submit(analyze_stock,ticker, has_actuals,force_generation)                    
             else:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    thread = executor.submit(analyze_stock,ticker, has_actuals, False)
+                    thread = executor.submit(analyze_stock,ticker, has_actuals,force_generation)
                     
             self.img=thread.result()
             self.image = ImageTk.PhotoImage(self.img)
@@ -263,8 +261,7 @@ class GUI(Thread_Pool):
         self.stock_input.grid(column=3,row=0)
         self.boolean1 = tk.BooleanVar()
         self.boolean1.set(False)
-        self.boolean2 = tk.BooleanVar()
-        self.boolean2.set(False)
+
         self.force_bool = tk.BooleanVar()
         self.force_bool.set(False)
         self.force_refresh = ttk.Checkbutton(self.content, text="Force Regeneration", variable=self.force_bool)

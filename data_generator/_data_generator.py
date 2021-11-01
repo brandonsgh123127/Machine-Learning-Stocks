@@ -76,7 +76,7 @@ class Generator():
         else:
             self.studies.set_data_from_range(datetime.datetime.today()- datetime.timedelta(days=1), datetime.datetime.today() + datetime.timedelta(days=1))
         return [round(self.studies.data[['Close']].diff().iloc[1].to_list()[0],3),f'{round(self.studies.data[["Close"]].pct_change().iloc[1].to_list()[0]*100,3)}%']
-    def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,vals:tuple=None,force_generate=False):
+    def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,force_generate=False):
         self.studies.date_set = (date1,date2)
         # Loop until valid data populates
         try:
@@ -87,8 +87,6 @@ class Generator():
         except Exception as e:
             print(f'[ERROR] Failed to generate data!',str(e))
             raise Exception
-        if is_not_closed:
-            self.studies.data = self.studies.data.append({'Open': vals[0],'High': vals[1],'Low': vals[2],'Close': vals[3],'Adj Close': vals[3]}, ignore_index=True)
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
         query_param1 = {"query": "{}".format(self.ticker)}
         query_param2 = {"maxResults":"500"}

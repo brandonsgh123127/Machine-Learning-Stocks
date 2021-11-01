@@ -147,7 +147,7 @@ listLock = threading.Lock()
 
 
 """Load Specified Model"""
-def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predict=False,force_generation=False,device_opt:str='/device:GPU:0'):        
+def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_generation=False,device_opt:str='/device:GPU:0'):        
     # Connect to local DB
     path=Path(os.getcwd()).parent.absolute()
     tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
@@ -201,10 +201,10 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
     if valid_date.weekday()==6: # if sunday
         valid_datetime = (valid_datetime - datetime.timedelta(days=2))
         valid_date = (valid_date - datetime.timedelta(days=2))
-    if _is_predict:
+    if not has_actuals:
         valid_datetime = (valid_datetime + datetime.timedelta(days=1))
         valid_date = (valid_date + datetime.timedelta(days=1))
-    if valid_date in holidays and _is_predict:
+    if valid_date in holidays and not has_actuals:
         valid_datetime = (valid_datetime + datetime.timedelta(days=1))
         valid_date = (valid_date + datetime.timedelta(days=1))
 
@@ -214,7 +214,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
     for retrieve_result in retrieve_tdata_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
-            print(f'[INFO] Failed to locate a to data-id and stock-id for {ticker} on {valid_datetime.strftime("%Y-%m-%d")} with option is_predict: {_is_predict}')
+            print(f'[INFO] Failed to locate a to data-id and stock-id for {ticker} on {valid_datetime.strftime("%Y-%m-%d")} with has_actuals: {has_actuals}')
             break
         else:
             stock_id = id_res[0][1].decode('latin1')
@@ -250,7 +250,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
     for retrieve_result in retrieve_data_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
-            print(f'[INFO] Failed to locate a from data-id  for {ticker} on {valid_datetime.strftime("%Y-%m-%d")} with option is_predict: {_is_predict}')
+            print(f'[INFO] Failed to locate a from data-id  for {ticker} on {valid_datetime.strftime("%Y-%m-%d")} with has_actuals: {has_actuals}')
             break
         else:
             from_date_id = id_res[0][0].decode('latin1')
@@ -289,7 +289,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
     sampler = Sample(ticker)
     # sampler.__init__(ticker)
     train = []
-    sampler.generate_sample(is_predict=_is_predict,_has_actuals=has_actuals)
+    sampler.generate_sample(_has_actuals=has_actuals)
     try: # verify there is no extra 'index' column
         sampler.normalizer.data = sampler.normalizer.data.drop(['index'],axis=1)
     except Exception as e:
