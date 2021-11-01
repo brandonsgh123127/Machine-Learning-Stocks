@@ -95,7 +95,7 @@ class Neural_Divergence(Neural_Framework):
         except:
             print("No model exists, creating new model...")
 listLock = threading.Lock()
-def load_divergence(ticker:str=None,has_actuals:bool=False,name:str="divergence",device_opt='/device:CPU:0'):        
+def load_divergence(ticker:str=None,has_actuals:bool=False,name:str="divergence",force_generation=False,device_opt='/device:CPU:0'):        
     # Connect to local DB
     path=Path(os.getcwd()).parent.absolute()
     tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))

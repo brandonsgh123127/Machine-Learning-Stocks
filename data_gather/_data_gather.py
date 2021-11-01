@@ -95,7 +95,7 @@ class Gather():
         with threading.Lock():
             return self.indicator    
     # retrieve pandas_datareader object of datetime
-    def set_data_from_range(self,start_date,end_date):
+    def set_data_from_range(self,start_date,end_date,_force_generate=False):
         # Date range utilized for query...
         if datetime.datetime.utcnow().hour < 13: # if current time is before 9:30 AM EST, go back a day for end-date
             end_date = end_date - datetime.timedelta(days=1)
@@ -158,11 +158,12 @@ class Gather():
             print('[ERROR] Failed to check cached data!\nException:\n',str(e))
             self.cnx.close()
             raise mysql.connector.errors.DatabaseError()
-        if len(date_range) == 0: # If all dates are satisfied, set data
+        if len(date_range) == 0 and not _force_generate: # If all dates are satisfied, set data
             self.data=new_data
         # Actually gather data if query is not met
         else:
-            print(f'[INFO] Did not query all specified dates within range for data retrieval!  Remaining {date_range}')
+            if not _force_generate:
+                print(f'[INFO] Did not query all specified dates within range for data retrieval!  Remaining {date_range}')
             with threading.Lock():
                 try:
                     self.cnx = self.db_con.cursor(buffered=True)

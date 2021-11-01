@@ -21,7 +21,7 @@ class Studies(Gather):
     def __repr__(self):
         return 'stock_data.studies object <%s>' % ",".join(self.indicator)
     
-    def __init__(self,indicator):
+    def __init__(self,indicator,force_generate=False):
         with threading.Lock():
             Gather.__init__(self)
             Gather.set_indicator(self, indicator)
@@ -38,6 +38,9 @@ class Studies(Gather):
         self.Low = pd.DataFrame(columns=['Low'],dtype='float')
         self.Close = pd.DataFrame(columns=['Close'],dtype='float')
         self.AdjClose = pd.DataFrame(columns=['Adj Close'],dtype='float')
+        
+        self._force_generate=force_generate
+        
     def set_timeframe(self,new_timeframe):
         self.timeframe = new_timeframe
     def get_timeframe(self):
@@ -153,12 +156,13 @@ class Studies(Gather):
                             print('[ERROR] Failed to check for cached ema-data element!\nException:\n',str(e))
                             self.cnx.close()
                             raise mysql.connector.errors.DatabaseError()
-                    if len(date_range) == 0: # continue loop if found cached data
+                    if len(date_range) == 0 and not self._force_generate: # continue loop if found cached data
                         self.applied_studies=pd.concat([self.applied_studies,study_data])
                         continue
                     # Insert data into db if query above is not met
                     else:
-                        print(f'[INFO] Did not query all specified dates within range for ema!  Remaining {date_range}')
+                        if not self._force_generate:
+                            print(f'[INFO] Did not query all specified dates within range for ema!  Remaining {date_range}')
                         
                         # Calculate locally, then push to database
                         with threading.Lock():
@@ -376,11 +380,12 @@ val1    val3_________________________          vall2
                             print('[ERROR] Failed to check for cached fib-data element!\nException:\n',str(e))
                             self.cnx.close()
                             raise mysql.connector.errors.DatabaseError()
-                    if len(date_range) == 0: # continue loop if found cached data
+                    if len(date_range) == 0 and not self._force_generate: # continue loop if found cached data
                         self.fibonacci_extension=fib_data
                         continue
                     else:
-                        print(f'[INFO] Did not query all specified dates within range for fibonacci!  Remaining {date_range}')
+                        if not self._force_generate:
+                            print(f'[INFO] Did not query all specified dates within range for fibonacci!  Remaining {date_range}')
                         
                         """
                         Do Calculations, then Insert new data to mysql...
@@ -753,47 +758,6 @@ val1    val3_________________________          vall2
         return 0
     def reset_data(self):
         self.applied_studies = pd.DataFrame()
-    def save_data_csv(self,path):
-        files_present = glob.glob(f'{path}_data.csv')
-        if files_present:
-            with self.listLock:
-                try:
-                    os.remove("{0}_data.csv".format(path))
-                except:
-                    pass
-        files_present = glob.glob(f'{path}_studies.csv')
-        if files_present:
-            with self.listLock:
-                try:
-                    os.remove("{0}_studies.csv".format(path))
-                except:
-                    pass
-        files_present = glob.glob(f'{path}_keltner.csv')
-        if files_present:
-            with self.listLock:
-                try:
-                    os.remove("{0}_keltner.csv".format(path))
-                except:
-                    pass
-        files_present = glob.glob(f'{path}_fib.csv')
-        if files_present:
-            with self.listLock:
-                try:
-                    os.remove("{0}_fib.csv".format(path))
-                except:
-                    pass
-        with self.listLock:
-            with threading.Lock():
-                self.data.to_csv("{0}_data.csv".format(path),index=False,sep=',',encoding='utf-8')
-                self.applied_studies.to_csv("{0}_studies.csv".format(path),index=False,sep=',',encoding='utf-8')
-                self.keltner.to_csv("{0}_keltner.csv".format(path),index=False,sep=',',encoding='utf-8')
-                self.fibonacci_extension.to_csv("{0}_fib.csv".format(path),index=False,sep=',',encoding='utf-8')
-        return 0
-    def load_data_csv(self,path):
-        with threading.Lock():
-            self.data = pd.read_csv(f'{path}_data.csv')
-            self.applied_studies = pd.read_csv(f'{path}_studies.csv')
-            self.keltner = pd.read_csv(f'{path}_keltner.csv')
     #append to specified struct
     def append_data(self,struct:pd.DataFrame,label:str,val):
         struct = struct.append({label:val},ignore_index=True)

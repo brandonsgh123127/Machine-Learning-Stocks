@@ -147,7 +147,7 @@ listLock = threading.Lock()
 
 
 """Load Specified Model"""
-def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predict=False,device_opt:str='/device:GPU:0'):        
+def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predict=False,force_generation=False,device_opt:str='/device:GPU:0'):        
     # Connect to local DB
     path=Path(os.getcwd()).parent.absolute()
     tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
@@ -293,7 +293,8 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
     try: # verify there is no extra 'index' column
         sampler.normalizer.data = sampler.normalizer.data.drop(['index'],axis=1)
     except Exception as e:
-        print('[ERROR] Failed to drop "index" from sampler data',str(e))
+        # print('[ERROR] Failed to drop "index" from sampler data',str(e))
+        pass
     try:
         sampler.normalizer.data = sampler.normalizer.data.drop(['Date','High','Low'],axis=1)
     except:
@@ -302,11 +303,12 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",_is_predic
         except Exception as e:
             print('[ERROR] Failed to drop "High" and "Low" from sampler data!',str(e))
 
-    if predicted is None:
+    if predicted is None or force_generation:
         neural_net = Network(0,0)
         neural_net.load_model(name=name)
 
-        print(f'[INFO] Did not query all specified dates within range for nn-data retrieval!')
+        if not force_generation:
+            print(f'[INFO] Did not query all specified dates within range for nn-data retrieval!')
         with listLock:
             if has_actuals:
                 train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,140)))

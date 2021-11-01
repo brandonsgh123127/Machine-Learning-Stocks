@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 import gc
 import numpy as np
+import threading
 
 '''
 Easily display unfiltered data given the ticker and date range specified on the file
@@ -16,6 +17,7 @@ class Display():
         # print("Display instance initialized!")
         self.data_display = pd.DataFrame()
         self.study_display = pd.DataFrame()
+        self.listLock = threading.Lock()
         self.keltner_display = pd.DataFrame()
         self.fig, self.axes = plt.subplots(2, 2) # plot 4 max
         self.fig.set_size_inches(10.5, 10.5)
@@ -37,7 +39,6 @@ class Display():
             self.fib_display = fib
         pd.set_option("display.max.columns", None)
     def display_box(self,data=None,row=0,col=0):
-        indices_dict = {0:'Open',1:'Close',2:'Range'}
 
         c = 'blue'
         if data is None:

@@ -22,50 +22,60 @@ import queue
 import gc
 from threading_impl.Thread_Pool import Thread_Pool
 import PIL
-
-listLock = threading.Lock()
-_type = None
-thread_pool = Thread_Pool(amount_of_threads=4)
-data_gen = Generator()
-dis:Display = Display()
-
-def display_model(name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",dates:list=[],color:str="blue",is_predict=False,unnormalized_data = False,row=0,col=1):
-    global dis
-    # Load machine learning model either based on divergence or not
-    if 'divergence' not in name:
-        data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',_is_predict=is_predict,device_opt='/device:CPU:0')
-    else:
-        data = load_divergence(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',device_opt='/device:CPU:0')
-    # read data for loading into display portion
-    if 'divergence' not in name:
-        dis.read_studies_data(data[0],data[1],data[3],data[4])
-    else:
-        dis.read_studies_data(data[0],data[1],data[2],data[3])
-    # display data
-    if not _has_actuals: #if prediction, proceed
-        if not unnormalized_data:
-            if 'divergence' in name:
-                dis.display_divergence(ticker=ticker,dates=dates,color=f'{color}',row=1,col=1)
-            else:
-                dis.display_predict_only(ticker=ticker,dates=dates,color=f'{color}',row=row,col=col)
-        else:
-            dis.display_box(data[2])
-    else:
-        if unnormalized_data:
-            dis.display_box(data[2])
-        else:
-            if 'divergence' in name:
-                dis.display_divergence(ticker=ticker,dates=dates,color=f'{color}',row=1,col=1)
-            else:
-                dis.display_line(ticker=ticker,dates=dates,color=f'{color}',row=row,col=col)
-
-def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,vals:tuple=None,opn:str=None,high:str=None,low:str=None,close:str=None):
-    global _type
-    global dis
-    global thread_pool
+class launcher():
+    def __init__(self):
+        self._type = None
+        plt.cla()
+        plt.clf()
+        self.dis:Display = Display()
+        self.listLock=threading.Lock()
     
-    if vals is None and opn is not None: # passed from launch_main
-        vals = (opn,high,low,close)
+    def display_model(self,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",dates:list=[],color:str="blue",is_predict=False,force_generation=False,unnormalized_data = False,row=0,col=1):
+        # Load machine learning model either based on divergence or not
+        if 'divergence' not in name:
+            data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',_is_predict=is_predict,force_generation=force_generation,device_opt='/device:CPU:0')
+        else:
+            data = load_divergence(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:CPU:0')
+        # read data for loading into display portion
+        if 'divergence' not in name:
+            with self.listLock:
+                self.dis.read_studies_data(data[0],data[1],data[3],data[4])
+        else:
+            with self.listLock:
+                self.dis.read_studies_data(data[0],data[1],data[2],data[3])
+        # display data
+        if not _has_actuals: #if prediction, proceed
+            if not unnormalized_data:
+                if 'divergence' in name:
+                    with self.listLock:
+                        self.dis.display_divergence(ticker=ticker,dates=dates,color=f'{color}',row=1,col=1)
+                else:
+                    with self.listLock:
+                        self.dis.display_predict_only(ticker=ticker,dates=dates,color=f'{color}',row=row,col=col)
+            else:
+                with self.listLock:
+                    self.dis.display_box(data[2])
+        else:
+            if unnormalized_data:
+                with self.listLock:
+                    self.dis.display_box(data[2])
+            else:
+                if 'divergence' in name:
+                    with self.listLock:
+                        self.dis.display_divergence(ticker=ticker,dates=dates,color=f'{color}',row=1,col=1)
+                else:
+                    with self.listLock:
+                        self.dis.display_line(ticker=ticker,dates=dates,color=f'{color}',row=row,col=col)
+    
+
+data_gen = Generator()
+
+def main(ticker:str = "SPY",has_actuals:bool = True, is_predict:bool = False,vals:tuple=None,_is_predict=False,force_generate=False):
+    thread_pool = Thread_Pool(amount_of_threads=4)
+    listLock = threading.Lock()
+
+
+    launch = launcher()
     if ticker is not None:
         ticker = ticker
     else:
@@ -73,11 +83,11 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
     path = Path(os.getcwd()).parent.absolute()
     
     
-    gen = Generator(ticker.upper(),path)
+    gen = Generator(ticker.upper(),path,force_generate)
     gen.studies.set_indicator(f'{ticker.upper()}')
     # if current trading day, set prediction for tomorrow in date name
     dates = []
-    if is_not_closed: #predict next day
+    if is_predict: #predict next day
         dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
     else:
         dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() ) #month worth of data
@@ -85,7 +95,7 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
     _has_actuals = has_actuals
     try:
         # print(f'{dates[0]} to {dates[1]}')
-        gen.generate_data_with_dates(dates[0],dates[1],is_not_closed=is_not_closed,vals=vals)
+        gen.generate_data_with_dates(dates[0],dates[1],vals=vals,force_generate=force_generate)
     except Exception as e:
         print(f'[ERROR] Failed to generate data for dates ranging from {dates[0]} to {dates[1]}!\nException:\n',str(e),flush=True)
         raise Exception(str(e))
@@ -95,32 +105,32 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
     # Call display line on first result, rest display predict only
     if _has_actuals:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=display_model,args=("model_relu",_has_actuals,ticker,dates,'green',is_not_closed,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu",_has_actuals,ticker,dates,'green',is_predict,force_generate,False,1,0))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=display_model,args=("model_leaky",False,ticker,dates,'black',is_not_closed,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky",False,ticker,dates,'black',is_predict,force_generate,False,1,0))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=display_model,args=("model_sigmoid",False,ticker,dates,'magenta',is_not_closed,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid",False,ticker,dates,'magenta',is_predict,force_generate,False,1,0))) == 1:
                 thread_pool.join_workers()
 
     # Call solely display predict only
     else:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=display_model,args=("model_relu",_has_actuals,ticker,dates,'green',is_not_closed,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu",_has_actuals,ticker,dates,'green',is_predict,force_generate,False,1,0))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=display_model,args=("model_leaky",_has_actuals,ticker,dates,'black',is_not_closed,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky",_has_actuals,ticker,dates,'black',is_predict,force_generate,False,1,0))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=display_model,args=("model_sigmoid",_has_actuals,ticker,dates,'magenta',is_not_closed,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid",_has_actuals,ticker,dates,'magenta',is_predict,force_generate,False,1,0))) == 1:
                 thread_pool.join_workers()
     gc.collect()
     thread_pool.join_workers()
     #
     # DIVERGENCE LABEL
     with listLock:
-        while thread_pool.start_worker(threading.Thread(target=display_model,args=("divergence_3",_has_actuals,ticker,dates,'magenta',is_not_closed,False,1,1))) == 1:
+        while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("divergence_3",_has_actuals,ticker,dates,'magenta',is_predict,force_generate,False,1,1))) == 1:
             thread_pool.join_workers()
         thread_pool.join_workers()
         # dis.display_divergence(ticker=ticker,dates=dates,color=f'm',has_actuals=_has_actuals,row=1,col=1)
@@ -128,37 +138,37 @@ def main(ticker:str = "SPY",has_actuals:bool = True, is_not_closed:bool = False,
 
     #
     # CHART LABEL
-    display_model("model_relu",has_actuals,ticker,dates,'green',is_not_closed,True,0,0)
+    launch.display_model("model_relu",has_actuals,ticker,dates,'green',is_predict,force_generate,True,0,0)
     gc.collect()
 
     #
     # Model_Out_2 LABEL
     if _has_actuals:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=display_model,args=("model_relu2",_has_actuals,ticker,dates,'green',is_not_closed,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,dates,'green',is_predict,force_generate,False,0,1))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=display_model,args=("model_leaky2",False,ticker,dates,'black',is_not_closed,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",False,ticker,dates,'black',is_predict,force_generate,False,0,1))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=display_model,args=("model_sigmoid2",False,ticker,dates,'magenta',is_not_closed,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",False,ticker,dates,'magenta',is_predict,force_generate,False,0,1))) == 1:
                 thread_pool.join_workers()
     else:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=display_model,args=("model_relu2",_has_actuals,ticker,dates,'green',is_not_closed,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,dates,'green',is_predict,force_generate,False,0,1))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=display_model,args=("model_leaky2",_has_actuals,ticker,dates,'black',is_not_closed,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",_has_actuals,ticker,dates,'black',is_predict,force_generate,False,0,1))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=display_model,args=("model_sigmoid2",_has_actuals,ticker,dates,'magenta',is_not_closed,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",_has_actuals,ticker,dates,'magenta',is_predict,force_generate,False,0,1))) == 1:
                 thread_pool.join_workers()
 
     gc.collect()
     thread_pool.join_workers()
     
-    dis.fig.canvas.draw() # draw image before returning
-    return PIL.Image.frombytes('RGB',dis.fig.canvas.get_width_height(),dis.fig.canvas.tostring_rgb()) #Return Canvas as image in output
+    launch.dis.fig.canvas.draw() # draw image before returning
+    return PIL.Image.frombytes('RGB',launch.dis.fig.canvas.get_width_height(),launch.dis.fig.canvas.tostring_rgb()) #Return Canvas as image in output
 
 def get_preview_prices(ticker:str):
     return data_gen.generate_quick_data(ticker)
