@@ -188,8 +188,8 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
     launch.dis.fig.canvas.draw() # draw image before returning
     return PIL.Image.frombytes('RGB',launch.dis.fig.canvas.get_width_height(),launch.dis.fig.canvas.tostring_rgb()) #Return Canvas as image in output
 
-def get_preview_prices(ticker:str):
-    return data_gen.generate_quick_data(ticker)
+def get_preview_prices(ticker:str,force_generation=False):
+    return data_gen.generate_quick_data(ticker,force_generation)
 if __name__ == "__main__":
     _type = sys.argv[1]
     _has_actuals = sys.argv[3] == 'True'

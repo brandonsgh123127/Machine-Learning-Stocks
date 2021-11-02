@@ -54,6 +54,7 @@ class GUI(Thread_Pool):
         self.load_layout = tk.Canvas(self.content,width=200,height=200,bg='white')
 
         self.window.bind('<Return>',self.generate_callback)
+        self.window.bind('<F5>',self.dropdown_callback)
         s = ttk.Style(self.window)
         self.page_loc = 1 # Map page number to location
         try: # if image exists, don't recreate
@@ -77,10 +78,14 @@ class GUI(Thread_Pool):
         self.lock = threading.Lock()
         self.is_retrieving = True
         s.configure('.', background='white')
+    
+    def dropdown_callback(self,event=None):
+        if isinstance(event, tk.Event):
+            self.cache_queue.put(threading.Thread(target=self.load_dropdown,args=(type(event),)))
     """
         Loads the dropdown bar with current prices for all stocks located under 'default.csv'.
     """
-    def load_dropdown(self):
+    def load_dropdown(self,event=None):
         self.watchlist_file = open(f'{self.path}/data/watchlist/default.csv','r')
         lines = self.watchlist_file.readlines()
         for line in lines:
@@ -88,10 +93,20 @@ class GUI(Thread_Pool):
                 ticker=line[0:line.find(",")].strip().upper()
             except:
                 ticker=line.strip().upper()
-            pnl_percent=get_preview_prices(ticker)
+            if event is not None:
+                pnl_percent=get_preview_prices(ticker,force_generation=True)
+            else:
+                pnl_percent=get_preview_prices(ticker,force_generation=False)
             self.watchlist.append(f'{ticker}     {pnl_percent[0]}     {pnl_percent[1]}')
+        # destroy object before proceeding
+        try:
+            self.stock_dropdown.destroy()
+        except:
+            pass
+
         self.stock_dropdown = tk.OptionMenu(self.content,self.quick_select,*self.watchlist)
         self.stock_dropdown.grid(column=4,row=0)
+        self.watchlist_file.close()
 
     def quick_gen(self,event,*args,**vargs):
         self.stock_input.delete(0,tk.END)
