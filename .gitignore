@@ -132,4 +132,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Internal directories:
 data/mysql/mysql_config.xml
+data/stock/
+data/tweets/
