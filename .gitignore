@@ -68,6 +68,10 @@ instance/
 # Scrapy stuff:
 .scrapy
 
+# pyProject eclipse stuff:
+.pydevproject
+.project
+
 # Sphinx documentation
 docs/_build/
 
