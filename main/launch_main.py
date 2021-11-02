@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
          
 class GUI(Thread_Pool):
 
+    # Initialize necessary data for GUI
     def __init__(self):
         super().__init__(amount_of_threads=1)
         self.path = Path(os.getcwd()).parent.absolute()
@@ -76,6 +77,9 @@ class GUI(Thread_Pool):
         self.lock = threading.Lock()
         self.is_retrieving = True
         s.configure('.', background='white')
+    """
+        Loads the dropdown bar with current prices for all stocks located under 'default.csv'.
+    """
     def load_dropdown(self):
         self.watchlist_file = open(f'{self.path}/data/watchlist/default.csv','r')
         lines = self.watchlist_file.readlines()
@@ -244,7 +248,7 @@ class GUI(Thread_Pool):
         self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
         self.generate_button.grid(column=3, row=2)
         # self.next_page_button.pack(side='bottom')
-        # self.cache_queue.put(threading.Thread(target=self.load_dropdown,args=()))
+        self.cache_queue.put(threading.Thread(target=self.load_dropdown,args=()))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True,False)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True,False)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True,False)))

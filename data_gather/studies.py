@@ -391,200 +391,200 @@ val1    val3_________________________          vall2
                         Do Calculations, then Insert new data to mysql...
                         """
                         '''
-                    Fibonacci values:
-                    0.236
-                    0.382
-                    0.5
-                    0.618
-                    0.796
-                    0.316
-                    0.202
-                    0.241
-                    0.283
-                    1.556
-                    2.73
-                    5.44
-                    3.83
-                    3.43
-                    '''
-                    # Find greatest/least 3 points for pattern
-                    
-                    with threading.Lock():
-                        # val1=None;val2=None;val3=None
-                        # iterate through data to find all min and max
-                        try:
-                            # self.data = self.data.set
-                            self.data = self.data.reset_index()
-                            # self.data=self.data.drop(['Date'],axis=1)
-                            # print(self.data)
-                        except Exception as e:
-                            pass
-                        local_max_high = self.data.High[(self.data.High.shift(1) < self.data.High) & (self.data.High.shift(-1) < self.data.High)]
-                        local_min_high = self.data.High[(self.data.High.shift(1) > self.data.High) & (self.data.High.shift(-1) > self.data.High)]
-                        # local_max_high = local_max_high.reset_index()
-                        local_min_high = local_min_high.rename({"High":'min_high'},axis='columns')
-                        local_max_low = self.data.Low[(self.data.Low.shift(1) < self.data.Low) & (self.data.Low.shift(-1) < self.data.Low)]
-                        local_min_low = self.data.Low[(self.data.Low.shift(1) > self.data.Low) & (self.data.Low.shift(-1) > self.data.Low)]
-                        local_min_low = local_min_low.rename({"Low":'min_low'},axis='columns')
-            
-                        local_max_low = local_max_low.rename({"Low":'max_low'},axis='columns')
-                        # local_min_low = local_min_low.reset_index()
-                        local_max_high = local_max_high.rename({"High":'max_high'},axis='columns')
+                        Fibonacci values:
+                        0.236
+                        0.382
+                        0.5
+                        0.618
+                        0.796
+                        0.316
+                        0.202
+                        0.241
+                        0.283
+                        1.556
+                        2.73
+                        5.44
+                        3.83
+                        3.43
+                        '''
+                        # Find greatest/least 3 points for pattern
                         
-                        # After finding min and max values, we can look for local mins and maxes by iterating
-                        new_set = pd.concat([local_max_low,local_max_high,local_min_low,local_min_high]).sort_index().reset_index()
-                        new_set.columns=['Index','Vals']
-                        new_set = new_set.drop(['Index'],axis=1)
-                        
-                        
-                        # After this, iterate new list and find which direction stock may go
-                        val1=None;val2=None;val3=None
-                        for i,row in new_set['Vals'].iteritems(): # val 1 
-                            if i != 0:
-                                # if the first value is lower than the close , do upwards fib, else downwards
-                                if new_set.at[0,'Vals'] < new_set.at[len(new_set.index)-1,'Vals']:
-                                    # attempt upwards fib
-                                    try:
-                                        if row < float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) < row : # if low is found, jump to this value
-                                            val1 =  row
-                                            # find val2 by finding next local high
-                                            for j,sub in new_set['Vals'].iteritems():
-                                                if j < i:
-                                                    continue
-                                                else: # find val2 by making sure next local high is valid
-                                                    if sub > float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) > sub:
-                                                        val2 = sub
-                                                        # find val3 by getting next low
-                                                        for k,low in new_set['Vals'].iteritems():
-                                                            if k < j:
-                                                                continue
-                                                            else:
-                                                                if low < float(new_set.at[k - 1,'Vals']) and not float(new_set.at[k + 1,'Vals']) < low:
-                                                                    val3 = low
-                                                                    break 
-                                                                else:
-                                                                    continue
-                                                        break
-                                                    else:
-                                                        continue
-                                            break
-                                        else:
-                                            continue
-                                                    
-                                    except Exception as e:
-                                        exc_type, exc_obj, exc_tb = sys.exc_info()
-                                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                                        print(exc_type, fname, exc_tb.tb_lineno)
-                                        print("[ERROR] Failed upwards fib!  This could be due to not finding a higher low...",flush=True)  
-                                else:
-                                    # attempt downwards fib
-                                    try:
-                                        if row > float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) > row : # if low is found, jump to this value
-                                            val1 =  row
-                                            # find val2 by finding next local high
-                                            for j,sub in new_set['Vals'].iteritems():
-                                                if j < i:
-                                                    continue
-                                                else: # find val2 by making sure next local low is valid
-                                                    if sub < float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) < sub:
-                                                        val2 = sub
-                                                        # find val3 by getting next high
-                                                        for k,low in new_set['Vals'].iteritems():
-                                                            if k < j:
-                                                                continue
-                                                            else:
-                                                                if low > float(new_set.at[k - 1,'Vals']) and not float(new_set.at[k + 1,'Vals']) > low:
-                                                                    val3 = low
-                                                                    break 
-                                                                else:
-                                                                    continue
-                                                        break
-                                                    else:
-                                                        continue
-                                            break
-                                        else:
-                                            continue
-                                                    
-                                    except Exception as e:
-                                        exc_type, exc_obj, exc_tb = sys.exc_info()
-                                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                                        print(exc_type, fname, exc_tb.tb_lineno)
-                                        print("[ERROR] Failed downwards fib!  This could be due to not finding a lower high...",flush=True)  
-                            else:
-                                val1=float(row)
-                                continue
-            
-                        # calculate values  -- 14 vals
-                        self.fibonacci_extension= pd.DataFrame({'0.202':[self.fib_help(val1,val2,val3,0.202)],'0.236':[self.fib_help(val1,val2,val3,0.236)],'0.241':[self.fib_help(val1,val2,val3,0.241)],
-                                                                          '0.273':[self.fib_help(val1,val2,val3,0.273)],'0.283':[self.fib_help(val1,val2,val3,0.283)],'0.316':[self.fib_help(val1,val2,val3,0.316)],
-                                                                          '0.382':[self.fib_help(val1,val2,val3,0.382)],'0.5':[self.fib_help(val1,val2,val3,0.5)],'0.618':[self.fib_help(val1,val2,val3,0.618)],
-                                                                          '0.796':[self.fib_help(val1,val2,val3,0.796)],'1.556':[self.fib_help(val1,val2,val3,1.556)],'3.43':[self.fib_help(val1,val2,val3,3.43)],
-                                                                          '3.83':[self.fib_help(val1,val2,val3,3.83)],'5.44':[self.fib_help(val1,val2,val3,5.44)]})
-
-                        for index,row in self.data.iterrows():
-                            self.cnx = self.db_con.cursor()
-                            self.cnx.autocommit = True
-                            # Retrieve the stock-id, and data-point id in a single select statement
-                            retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` 
-                            INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
-                            """
-                            retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
-                                                                                        'date':self.data.loc[index,:]['Date'].strftime("%Y-%m-%d")},multi=True)
-                            # self.data=self.data.drop(['Date'],axis=1)
-                            for retrieve_result in retrieve_data_result:
-                                id_res = retrieve_result.fetchall()
-                                if len(id_res) == 0:
-                                    print(f'[INFO] Failed to locate a data-id for current index {index} with date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")} under {retrieve_data_result}')
-                                    break
-                                else:
-                                    self.stock_id = id_res[0][1].decode('latin1')
-                                    self.data_id = id_res[0][0].decode('latin1')
-                            # Insert data if not in db...
-                            insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                                        `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
-                                VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),
-                                %(stock-id)s,%(data-id)s,%(study-id)s,%(val1)s,%(val2)s,
-                                %(val3)s,%(val4)s,%(val5)s,%(val6)s,%(val7)s,%(val8)s,
-                                %(val9)s,%(val10)s,%(val11)s,%(val12)s,%(val13)s,%(val14)s)
-                                """
+                        with threading.Lock():
+                            # val1=None;val2=None;val3=None
+                            # iterate through data to find all min and max
                             try:
-                                # print(type(self.stock_id),type(self.data_id),type(self.study_id),row['ema14'])
-                                insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci',
-                                                                                                'stock-id':self.stock_id.encode('latin1'),
-                                                                                                'data-id':self.data_id,
-                                                                                                'study-id':self.study_id,
-                                                                                                'val1':self.fibonacci_extension.at[0,"0.202"],
-                                                                                                'val2':self.fibonacci_extension.at[0,"0.236"],
-                                                                                                'val3':self.fibonacci_extension.at[0,"0.241"],
-                                                                                                'val4':self.fibonacci_extension.at[0,"0.273"],
-                                                                                                'val5':self.fibonacci_extension.at[0,"0.283"],
-                                                                                                'val6':self.fibonacci_extension.at[0,"0.316"],
-                                                                                                'val7':self.fibonacci_extension.at[0,"0.382"],
-                                                                                                'val8':self.fibonacci_extension.at[0,"0.5"],
-                                                                                                'val9':self.fibonacci_extension.at[0,"0.618"],
-                                                                                                'val10':self.fibonacci_extension.at[0,"0.796"],
-                                                                                                'val11':self.fibonacci_extension.at[0,"1.556"],
-                                                                                                'val12':self.fibonacci_extension.at[0,"3.43"],
-                                                                                                'val13':self.fibonacci_extension.at[0,"3.83"],
-                                                                                                'val14':self.fibonacci_extension.at[0,"5.44"]
-                                                                                                })
+                                # self.data = self.data.set
+                                self.data = self.data.reset_index()
+                                # self.data=self.data.drop(['Date'],axis=1)
+                                # print(self.data)
+                            except Exception as e:
+                                pass
+                            local_max_high = self.data.High[(self.data.High.shift(1) < self.data.High) & (self.data.High.shift(-1) < self.data.High)]
+                            local_min_high = self.data.High[(self.data.High.shift(1) > self.data.High) & (self.data.High.shift(-1) > self.data.High)]
+                            # local_max_high = local_max_high.reset_index()
+                            local_min_high = local_min_high.rename({"High":'min_high'},axis='columns')
+                            local_max_low = self.data.Low[(self.data.Low.shift(1) < self.data.Low) & (self.data.Low.shift(-1) < self.data.Low)]
+                            local_min_low = self.data.Low[(self.data.Low.shift(1) > self.data.Low) & (self.data.Low.shift(-1) > self.data.Low)]
+                            local_min_low = local_min_low.rename({"Low":'min_low'},axis='columns')
+                
+                            local_max_low = local_max_low.rename({"Low":'max_low'},axis='columns')
+                            # local_min_low = local_min_low.reset_index()
+                            local_max_high = local_max_high.rename({"High":'max_high'},axis='columns')
+                            
+                            # After finding min and max values, we can look for local mins and maxes by iterating
+                            new_set = pd.concat([local_max_low,local_max_high,local_min_low,local_min_high]).sort_index().reset_index()
+                            new_set.columns=['Index','Vals']
+                            new_set = new_set.drop(['Index'],axis=1)
+                            
+                            
+                            # After this, iterate new list and find which direction stock may go
+                            val1=None;val2=None;val3=None
+                            for i,row in new_set['Vals'].iloc[int(len(new_set.index)/2):].iteritems(): # val 1 
+                                if i != 0:
+                                    # if the first value is lower than the close , do upwards fib, else downwards
+                                    if new_set.at[0,'Vals'] < new_set.at[len(new_set.index)-1,'Vals']:
+                                        # attempt upwards fib
+                                        try:
+                                            if row < float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) < row : # if low is found, jump to this value
+                                                val1 =  row
+                                                # find val2 by finding next local high
+                                                for j,sub in new_set['Vals'].iloc[int(len(new_set.index)/2):].iteritems():
+                                                    if j < i:
+                                                        continue
+                                                    else: # find val2 by making sure next local high is valid
+                                                        if sub > float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) > sub:
+                                                            val2 = sub
+                                                            # find val3 by getting next low
+                                                            for k,low in new_set['Vals'].iloc[int(len(new_set.index)/2):].iteritems():
+                                                                if k < j:
+                                                                    continue
+                                                                else:
+                                                                    if low < float(new_set.at[k - 1,'Vals']) and not float(new_set.at[k + 1,'Vals']) < low:
+                                                                        val3 = low
+                                                                        break 
+                                                                    else:
+                                                                        continue
+                                                            break
+                                                        else:
+                                                            continue
+                                                break
+                                            else:
+                                                continue
+                                                        
+                                        except Exception as e:
+                                            exc_type, exc_obj, exc_tb = sys.exc_info()
+                                            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                                            print(exc_type, fname, exc_tb.tb_lineno)
+                                            print("[ERROR] Failed upwards fib!  This could be due to not finding a higher low...",flush=True)  
+                                    else:
+                                        # attempt downwards fib
+                                        try:
+                                            if row > float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) > row : # if low is found, jump to this value
+                                                val1 =  row
+                                                # find val2 by finding next local high
+                                                for j,sub in new_set['Vals'].iloc[int(len(new_set.index)/2):].iteritems():
+                                                    if j < i:
+                                                        continue
+                                                    else: # find val2 by making sure next local low is valid
+                                                        if sub < float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) < sub:
+                                                            val2 = sub
+                                                            # find val3 by getting next high
+                                                            for k,low in new_set['Vals'].iloc[int(len(new_set.index)/2):].iteritems():
+                                                                if k < j:
+                                                                    continue
+                                                                else:
+                                                                    if low > float(new_set.at[k - 1,'Vals']) and not float(new_set.at[k + 1,'Vals']) > low:
+                                                                        val3 = low
+                                                                        break 
+                                                                    else:
+                                                                        continue
+                                                            break
+                                                        else:
+                                                            continue
+                                                break
+                                            else:
+                                                continue
+                                                        
+                                        except Exception as e:
+                                            exc_type, exc_obj, exc_tb = sys.exc_info()
+                                            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                                            print(exc_type, fname, exc_tb.tb_lineno)
+                                            print("[ERROR] Failed downwards fib!  This could be due to not finding a lower high...",flush=True)  
+                                else:
+                                    val1=float(row)
+                                    continue
+                
+                            # calculate values  -- 14 vals
+                            self.fibonacci_extension= pd.DataFrame({'0.202':[self.fib_help(val1,val2,val3,0.202)],'0.236':[self.fib_help(val1,val2,val3,0.236)],'0.241':[self.fib_help(val1,val2,val3,0.241)],
+                                                                              '0.273':[self.fib_help(val1,val2,val3,0.273)],'0.283':[self.fib_help(val1,val2,val3,0.283)],'0.316':[self.fib_help(val1,val2,val3,0.316)],
+                                                                              '0.382':[self.fib_help(val1,val2,val3,0.382)],'0.5':[self.fib_help(val1,val2,val3,0.5)],'0.618':[self.fib_help(val1,val2,val3,0.618)],
+                                                                              '0.796':[self.fib_help(val1,val2,val3,0.796)],'1.556':[self.fib_help(val1,val2,val3,1.556)],'3.43':[self.fib_help(val1,val2,val3,3.43)],
+                                                                              '3.83':[self.fib_help(val1,val2,val3,3.83)],'5.44':[self.fib_help(val1,val2,val3,5.44)]})
+    
+                            for index,row in self.data.iterrows():
+                                self.cnx = self.db_con.cursor()
+                                self.cnx.autocommit = True
+                                # Retrieve the stock-id, and data-point id in a single select statement
+                                retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` 
+                                INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE(%(date)s) 
+                                """
+                                retrieve_data_result = self.cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
+                                                                                            'date':self.data.loc[index,:]['Date'].strftime("%Y-%m-%d")},multi=True)
+                                # self.data=self.data.drop(['Date'],axis=1)
+                                for retrieve_result in retrieve_data_result:
+                                    id_res = retrieve_result.fetchall()
+                                    if len(id_res) == 0:
+                                        print(f'[INFO] Failed to locate a data-id for current index {index} with date {self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")} under {retrieve_data_result}')
+                                        break
+                                    else:
+                                        self.stock_id = id_res[0][1].decode('latin1')
+                                        self.data_id = id_res[0][0].decode('latin1')
+                                # Insert data if not in db...
+                                insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
+                                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
+                                    VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),
+                                    %(stock-id)s,%(data-id)s,%(study-id)s,%(val1)s,%(val2)s,
+                                    %(val3)s,%(val4)s,%(val5)s,%(val6)s,%(val7)s,%(val8)s,
+                                    %(val9)s,%(val10)s,%(val11)s,%(val12)s,%(val13)s,%(val14)s)
+                                    """
+                                try:
+                                    # print(type(self.stock_id),type(self.data_id),type(self.study_id),row['ema14'])
+                                    insert_studies_db_result = self.cnx.execute(insert_studies_db_stmt,{'id':f'{self.data.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci',
+                                                                                                    'stock-id':self.stock_id.encode('latin1'),
+                                                                                                    'data-id':self.data_id,
+                                                                                                    'study-id':self.study_id,
+                                                                                                    'val1':self.fibonacci_extension.at[0,"0.202"],
+                                                                                                    'val2':self.fibonacci_extension.at[0,"0.236"],
+                                                                                                    'val3':self.fibonacci_extension.at[0,"0.241"],
+                                                                                                    'val4':self.fibonacci_extension.at[0,"0.273"],
+                                                                                                    'val5':self.fibonacci_extension.at[0,"0.283"],
+                                                                                                    'val6':self.fibonacci_extension.at[0,"0.316"],
+                                                                                                    'val7':self.fibonacci_extension.at[0,"0.382"],
+                                                                                                    'val8':self.fibonacci_extension.at[0,"0.5"],
+                                                                                                    'val9':self.fibonacci_extension.at[0,"0.618"],
+                                                                                                    'val10':self.fibonacci_extension.at[0,"0.796"],
+                                                                                                    'val11':self.fibonacci_extension.at[0,"1.556"],
+                                                                                                    'val12':self.fibonacci_extension.at[0,"3.43"],
+                                                                                                    'val13':self.fibonacci_extension.at[0,"3.83"],
+                                                                                                    'val14':self.fibonacci_extension.at[0,"5.44"]
+                                                                                                    })
+                                except mysql.connector.errors.IntegrityError:
+                                    self.cnx.close()
+                                    pass
+                                except Exception as e:
+                                    print('[ERROR] Failed to insert study-data element fibonacci!\nException:\n',str(e))
+                                    self.cnx.close()
+                                    pass
+                            try:
+                                self.db_con.commit()
                             except mysql.connector.errors.IntegrityError:
                                 self.cnx.close()
                                 pass
                             except Exception as e:
-                                print('[ERROR] Failed to insert study-data element fibonacci!\nException:\n',str(e))
+                                print('[ERROR] Failed to insert fib-data element fibonacci!\nException:\n',str(e))
                                 self.cnx.close()
                                 pass
-                        try:
-                            self.db_con.commit()
-                        except mysql.connector.errors.IntegrityError:
-                            self.cnx.close()
-                            pass
-                        except Exception as e:
-                            print('[ERROR] Failed to insert fib-data element fibonacci!\nException:\n',str(e))
-                            self.cnx.close()
-                            pass
-
+    
                                 
         self.cnx.close()
         return 0
