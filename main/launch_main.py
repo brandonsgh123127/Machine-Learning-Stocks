@@ -88,6 +88,7 @@ class GUI(Thread_Pool):
     def load_dropdown(self,event=None):
         self.watchlist_file = open(f'{self.path}/data/watchlist/default.csv','r')
         lines = self.watchlist_file.readlines()
+        self.watchlist = []
         for line in lines:
             try:
                 ticker=line[0:line.find(",")].strip().upper()
@@ -98,6 +99,7 @@ class GUI(Thread_Pool):
             else:
                 pnl_percent=get_preview_prices(ticker,force_generation=False)
             self.watchlist.append(f'{ticker}     {pnl_percent[0]}     {pnl_percent[1]}')
+        
         # destroy object before proceeding
         try:
             self.stock_dropdown.destroy()
