@@ -75,7 +75,11 @@ class Generator():
             self.studies.set_data_from_range(datetime.datetime.today() - datetime.timedelta(days=3) , datetime.datetime.today(),_force_generate=force_generation)
         else:
             self.studies.set_data_from_range(datetime.datetime.today()- datetime.timedelta(days=1), datetime.datetime.today(),_force_generate=force_generation)
-        return [round(self.studies.data[['Close']].diff().iloc[1].to_list()[0],3),f'{round(self.studies.data[["Close"]].pct_change().iloc[1].to_list()[0]*100,3)}%']
+        try:
+            return [round(self.studies.data[['Close']].diff().iloc[1].to_list()[0],3),f'{round(self.studies.data[["Close"]].pct_change().iloc[1].to_list()[0]*100,3)}%']
+        except Exception as e:
+            print(f'[ERROR] Failed to gather quick data for {ticker}...\nException:\n',str(e))
+            return ['n/a','n/a']
     def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,force_generate=False):
         self.studies.date_set = (date1,date2)
         # Loop until valid data populates

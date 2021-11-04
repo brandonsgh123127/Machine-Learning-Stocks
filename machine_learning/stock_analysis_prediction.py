@@ -36,9 +36,9 @@ class launcher():
     def display_model(self,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",color:str="blue",force_generation=False,unnormalized_data = False,row=0,col=1):
         # Load machine learning model either based on divergence or not
         if 'divergence' not in name:
-            data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:CPU:0')
+            data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:GPU:0')
         else:
-            data = load_divergence(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:CPU:0')
+            data = load_divergence(f'{ticker.upper()}',has_actuals=_has_actuals,force_generation=force_generation,device_opt='/device:GPU:0')
         # read data for loading into display portion
         if 'divergence' not in name:
             with self.listLock:
@@ -148,7 +148,7 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
     #
     # DIVERGENCE LABEL
     with listLock:
-        while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("divergence_3",_has_actuals,ticker,'magenta',force_generate,False,1,1))) == 1:
+        while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("divergence",_has_actuals,ticker,'magenta',force_generate,False,1,1))) == 1:
             thread_pool.join_workers()
         thread_pool.join_workers()
         # dis.display_divergence(color=f'm',has_actuals=_has_actuals,row=1,col=1)
@@ -186,7 +186,8 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
     thread_pool.join_workers()
     
     launch.dis.fig.canvas.draw() # draw image before returning
-    return PIL.Image.frombytes('RGB',launch.dis.fig.canvas.get_width_height(),launch.dis.fig.canvas.tostring_rgb()) #Return Canvas as image in output
+    return (launch.dis.fig,launch.dis.axes)
+    # return PIL.Image.frombytes('RGB',launch.dis.fig.canvas.get_width_height(),launch.dis.fig.canvas.tostring_rgb()) #Return Canvas as image in output
 
 def get_preview_prices(ticker:str,force_generation=False):
     return data_gen.generate_quick_data(ticker,force_generation)

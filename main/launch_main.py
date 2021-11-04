@@ -24,7 +24,8 @@ from machine_learning.stock_analysis_prediction import main as analyze_stock
 from machine_learning.stock_analysis_prediction import get_preview_prices
 from tkinter import StringVar
 import matplotlib.pyplot as plt
-         
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 class GUI(Thread_Pool):
 
     # Initialize necessary data for GUI
@@ -34,12 +35,15 @@ class GUI(Thread_Pool):
         self.job_queue = queue.Queue()
         self.cache_queue = queue.Queue()
         self.threads = []
-        self.machine_learning_data= queue.Queue()
         self.load_thread:threading.Thread = None
         self.img=None
         self.image=None
         
         self.window = tk.Tk(screenName='Stock Analysis')
+        self.window.attributes('-fullscreen', True)
+        w, h = self.window.winfo_screenwidth(), self.window.winfo_screenheight()
+        self.window.geometry("%dx%d+0+0" % (w, h))
+
         self.content = ttk.Frame(self.window,width=100,height=100)
         self.boolean1 = tk.BooleanVar()
         self.force_bool = tk.BooleanVar()
@@ -50,8 +54,8 @@ class GUI(Thread_Pool):
         self.stock_input = tk.Entry(self.content)
         self.quick_select.trace('w',self.quick_gen)
         self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
-        self.output_image = tk.Canvas(self.window,width=1400,height=1400,bg='white')
-        self.load_layout = tk.Canvas(self.content,width=200,height=200,bg='white')
+        # self.output_image = tk.Canvas(self.window,width=1400,height=1400,bg='white')
+        self.load_layout = tk.Canvas(self.content,width=100,height=100,bg='white')
 
         self.window.bind('<Return>',self.generate_callback)
         self.window.bind('<F5>',self.dropdown_callback)
@@ -69,7 +73,7 @@ class GUI(Thread_Pool):
             self.previous_page_button = ttk.Button(self.content, padding='10 10 10 10',image=self.buttonPhoto2,text="",command= lambda: self.job_queue.put(threading.Thread(target=self.predict_page,args=())))
             self.previous_page_button.grid(column=2, row=20)
 
-        self.output_image.pack(expand='yes',side='right')
+        # self.output_image.pack(expand='yes',side='right')
         self.background_tasks_label = tk.Label(self.content,text=f'Currently pre-loading a few stocks, this may take a bit...')
         self.load_image = Image.open(f'{self.path}/data/icons/load.gif')
         self.exited = False
@@ -131,17 +135,20 @@ class GUI(Thread_Pool):
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
             elif has_actuals:
                 dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today()) #month worth of data
-            self.img=analyze_stock(ticker, has_actuals,force_generate=force_generation)
-            self.image = ImageTk.PhotoImage(self.img)
+            self.img=analyze_stock(ticker, has_actuals,force_generate=force_generation)[0]
+            # self.image = ImageTk.PhotoImage(self.img)
+            
             gc.collect()
-            time.sleep(5)
+            # time.sleep(5)
             self.dates = dates
             # print(self.dates)
-            if not is_caching:
-                self.output_image.delete('all')
-                # self.output_image.pack(side='top')
-                self.output_image.create_image(800,500,image=self.image)
-                # self.output_image.pack(side='bottom')
+            # self.output_image.delete('all')
+            # self.output_image.pack(side='top')
+            self.canvas = FigureCanvasTkAgg(self.img,master=self.window)
+            self.canvas.draw()
+            self.canvas.get_tk_widget().pack(side='bottom', fill='both', expand=1)
+            # self.output_image.create_image(800,500,image=self.image)
+            # self.output_image.pack(side='bottom')
             self.background_tasks_label.config(text=f'Currently pre-loading a few stocks, this may take a bit...')
             # self.generate_button.grid(column=3, row=2)
         self.stock_input.focus_set()
@@ -150,7 +157,7 @@ class GUI(Thread_Pool):
     """Load a Analysis/Predict model for predicting values"""
     def load_model(self,ticker,has_actuals=False,is_caching=False,force_generation=False):
         if self.page_loc == 1: # Prediction page only...
-            self.output_image.delete('all')
+            # self.output_image.delete('all')
             self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
             if not is_caching:
                 self.generate_button.grid_forget()
@@ -166,14 +173,17 @@ class GUI(Thread_Pool):
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     thread = executor.submit(analyze_stock,ticker, has_actuals,force_generation)
                     
-            self.img=thread.result()
-            self.image = ImageTk.PhotoImage(self.img)
+            self.img=thread.result()[0]
+            # self.image = ImageTk.PhotoImage(self.img)
 
             gc.collect()
             self.dates = dates
             # print(self.dates)
-            self.output_image.create_image(600,500,image=self.image)
+            # self.output_image.create_image(600,500,image=self.image)
             # self.output_image.pack(side='bottom')
+            self.canvas = FigureCanvasTkAgg(self.img,master=self.window)
+            self.canvas.draw()
+            self.canvas.get_tk_widget().pack(side='bottom', fill='both', expand=1)
             for idx,thread in enumerate(self.threads):
                 self.threads.pop(idx)
             self.background_tasks_label.config(text=f'Currently pre-loading a few stocks, this may take a bit...')
@@ -197,8 +207,8 @@ class GUI(Thread_Pool):
         # new_im = ImageTk.PhotoImage(self.load_image.copy())
         for frame in self.frames:            
             if self.is_retrieving:
-                self.obj = self.load_layout.create_image(100,100,image=frame)
-                time.sleep(0.4)
+                self.obj = self.load_layout.create_image(50,50,image=frame)
+                time.sleep(1)
                 self.load_layout.delete(self.obj)
             else:
                 return
@@ -235,7 +245,7 @@ class GUI(Thread_Pool):
             self.page_loc = 2
             self.generate_button.grid_remove()
             self.generate_button = ttk.Button(self.content, text="Analyze",command= self.generate_callback)
-            self.output_image.delete('all')
+            # self.output_image.delete('all')
 
     """ Swap to Predict page """            
     def predict_page(self):
@@ -243,7 +253,7 @@ class GUI(Thread_Pool):
             self.page_loc = 1
             self.generate_button.grid_remove()
             self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
-            self.output_image.delete('all')
+            # self.output_image.delete('all')
         
     """ Manages GUI-side.  Button actions map to functions"""
     def run(self):
@@ -287,7 +297,7 @@ class GUI(Thread_Pool):
             if self.exited:
                 raise ChildProcessError('[INFO] Application Signal End.')         
             else:
-                time.sleep(3)  
+                time.sleep(2)  
     """ Constant loop that checks for tasks to-be completed.  Manages Computations"""
     def task_loop(self):
         exit_thread = threading.Thread(target=self.exit_check)
