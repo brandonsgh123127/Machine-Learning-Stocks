@@ -439,7 +439,7 @@ val1    val3_________________________          vall2
                             
                             # After this, iterate new list and find which direction stock may go
                             val1=None;val2=None;val3=None
-                            for i,row in new_set['Vals'].iloc[int(len(new_set.index)/2):].iteritems(): # val 1 
+                            for i,row in new_set['Vals'].iloc[int(len(new_set.index)/3):].iteritems(): # val 1 
                                 if i != 0:
                                     # if the first value is lower than the close , do upwards fib, else downwards
                                     if new_set.at[0,'Vals'] < new_set.at[len(new_set.index)-1,'Vals']:
@@ -448,14 +448,14 @@ val1    val3_________________________          vall2
                                             if row < float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) < row : # if low is found, jump to this value
                                                 val1 =  row
                                                 # find val2 by finding next local high
-                                                for j,sub in new_set['Vals'].iloc[int(len(new_set.index)/2):].iteritems():
+                                                for j,sub in new_set['Vals'].iloc[int(len(new_set.index)/3):].iteritems():
                                                     if j < i:
                                                         continue
                                                     else: # find val2 by making sure next local high is valid
                                                         if sub > float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) > sub:
                                                             val2 = sub
                                                             # find val3 by getting next low
-                                                            for k,low in new_set['Vals'].iloc[int(len(new_set.index)/2):].iteritems():
+                                                            for k,low in new_set['Vals'].iloc[int(len(new_set.index)/3):].iteritems():
                                                                 if k < j:
                                                                     continue
                                                                 else:
@@ -482,14 +482,14 @@ val1    val3_________________________          vall2
                                             if row > float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) > row : # if low is found, jump to this value
                                                 val1 =  row
                                                 # find val2 by finding next local high
-                                                for j,sub in new_set['Vals'].iloc[int(len(new_set.index)/2):].iteritems():
+                                                for j,sub in new_set['Vals'].iloc[int(len(new_set.index)/3):].iteritems():
                                                     if j < i:
                                                         continue
                                                     else: # find val2 by making sure next local low is valid
                                                         if sub < float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) < sub:
                                                             val2 = sub
                                                             # find val3 by getting next high
-                                                            for k,low in new_set['Vals'].iloc[int(len(new_set.index)/2):].iteritems():
+                                                            for k,low in new_set['Vals'].iloc[int(len(new_set.index)/3):].iteritems():
                                                                 if k < j:
                                                                     continue
                                                                 else:

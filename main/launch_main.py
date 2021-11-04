@@ -144,6 +144,10 @@ class GUI(Thread_Pool):
             # print(self.dates)
             # self.output_image.delete('all')
             # self.output_image.pack(side='top')
+            try:
+                self.canvas.get_tk_widget().destroy()
+            except:
+                pass
             self.canvas = FigureCanvasTkAgg(self.img,master=self.window)
             self.canvas.draw()
             self.canvas.get_tk_widget().pack(side='bottom', fill='both', expand=1)
@@ -181,6 +185,10 @@ class GUI(Thread_Pool):
             # print(self.dates)
             # self.output_image.create_image(600,500,image=self.image)
             # self.output_image.pack(side='bottom')
+            try:
+                self.canvas.get_tk_widget().destroy()
+            except:
+                pass
             self.canvas = FigureCanvasTkAgg(self.img,master=self.window)
             self.canvas.draw()
             self.canvas.get_tk_widget().pack(side='bottom', fill='both', expand=1)
