@@ -189,7 +189,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
     valid_datetime=datetime.datetime.today()
     holidays=USFederalHolidayCalendar().holidays(start=valid_datetime,end=(valid_datetime + datetime.timedelta(days=7))).to_pydatetime()
     valid_date=valid_datetime.date()
-    if datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30: # if current time is before 9:30 AM EST, go back a day
+    if datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30 and datetime.datetime.utcnow().hour >= 4: # if current time is before 9:30 AM EST, go back a day
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
     if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday

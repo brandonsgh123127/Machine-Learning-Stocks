@@ -97,7 +97,7 @@ class Gather():
     # retrieve pandas_datareader object of datetime
     def set_data_from_range(self,start_date,end_date,_force_generate=False):
         # Date range utilized for query...
-        if datetime.datetime.utcnow().hour < 13: # if current time is before 9:30 AM EST, go back a day for end-date
+        if datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30 and datetime.datetime.utcnow().hour >= 4: # if current time is before 9:30 AM EST, go back a day for end-date
             end_date = end_date - datetime.timedelta(days=1)
         date_range =[d.strftime('%Y-%m-%d') for d in pd.date_range(start_date, end_date)] #start/end date list
         holidays=USFederalHolidayCalendar().holidays(start=f'{start_date.year}-01-01',end=f'{end_date.year}-12-31').to_pydatetime()

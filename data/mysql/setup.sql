@@ -60,8 +60,10 @@ ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 
 CREATE TABLE IF NOT EXISTS `Stocks`.`Options` (
   `option-id` VARBINARY(128) NOT NULL,
-  `option` VARCHAR(16) NULL,
-  PRIMARY KEY (`id`))
+  `stock-id` VARBINARY(128) NOT NULL,
+  `option-name` VARCHAR(64) NOT NULL,
+  `type` VARCHAR(16) NOT NULL,
+  PRIMARY KEY (`option-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 
 CREATE TABLE IF NOT EXISTS `Stocks`.`Options-Expiry` (
@@ -69,7 +71,7 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Options-Expiry` (
   `option-id` VARBINARY(128) NOT NULL,
   `stock-id` VARBINARY(128) NOT NULL,
   `expiry` DATE NOT NULL,
-  PRIMARY KEY (`id`))
+  PRIMARY KEY (`opt-expiry-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 
 CREATE TABLE IF NOT EXISTS `Stocks`.`Options-Data` (
@@ -78,15 +80,9 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Options-Data` (
   `date` DATE NOT NULL,
   `bid` DOUBLE(12, 3) NOT NULL,
   `ask` DOUBLE(12, 3) NOT NULL,  
-  PRIMARY KEY (`id`))
+  PRIMARY KEY (`opt-data-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 
--- GRANT ALL ON `Stocks`.* TO 'admin-stock';
--- GRANT SELECT ON TABLE `Stocks`.* TO 'admin-stock';
--- GRANT SELECT, INSERT, TRIGGER ON TABLE `Stocks`.* TO 'admin-stock';
--- GRANT SELECT, INSERT, TRIGGER, UPDATE, DELETE,EXECUTE ON TABLE `Stocks`.* TO 'admin-stock';
--- CREATE USER 'customer' IDENTIFIED BY 'password';
--- GRANT SELECT ON TABLE `Stocks`.* TO 'customer';
 use stocks;
 
 # drop table stocks;
@@ -95,6 +91,9 @@ drop table study;
 drop table `data`;
 drop table `study-data`;
 drop table `nn-data`;
+drop table `options`;
+drop table `options-data`;
+drop table `options-expiry`;
 
 DELETE FROM stock;
 DELETE FROM data;
@@ -103,31 +102,31 @@ DELETE FROM study;
 DELETE FROM `nn-data`;
 
 
-SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
-                        ON `stocks`.`data`.`stock-id` = `stocks`.`stock`.`id` 
-                          AND `stocks`.`stock`.`stock` = "SPY" ;
-SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
-                        ON `stock-id` = stocks.stock.`id` 
-                          AND stocks.stock.`stock` = "'SPY'"
-                           AND `stocks`.`data`.`date` = DATE('2021-10-25')
-                           INNER JOIN stocks.`study-data` ON
-                            stocks.stock.`id` = stocks.`study-data`.`stock-id`
-                            AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`;
-SELECT `stocks`.`data`.`date`,
-                        `stocks`.`study-data`.`val1`,`stocks`.`study-data`.`val2`,
-                        `stocks`.`study-data`.`val3`,`stocks`.`study-data`.`val4`,
-                        `stocks`.`study-data`.`val5`,`stocks`.`study-data`.`val6`,
-                        `stocks`.`study-data`.`val7`,`stocks`.`study-data`.`val8`,
-                        `stocks`.`study-data`.`val9`,`stocks`.`study-data`.`val10`,
-                        `stocks`.`study-data`.`val11`,`stocks`.`study-data`.`val12`,
-                        `stocks`.`study-data`.`val13`,`stocks`.`study-data`.`val14` 
-                         FROM stocks.`data` INNER JOIN stocks.stock 
-                        ON `stocks`.`data`.`stock-id` = stocks.stock.`id` 
-                          AND stocks.stock.`stock` = "SPY" 
-                           AND `stocks`.`data`.`date` = DATE("2021-10-25")
-                           INNER JOIN stocks.`study-data` ON
-                            stocks.stock.`id` = stocks.`study-data`.`stock-id`
-                            AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`;
+-- SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
+--                         ON `stocks`.`data`.`stock-id` = `stocks`.`stock`.`id` 
+--                           AND `stocks`.`stock`.`stock` = "SPY" ;
+-- SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
+--                         ON `stock-id` = stocks.stock.`id` 
+--                           AND stocks.stock.`stock` = "'SPY'"
+--                            AND `stocks`.`data`.`date` = DATE('2021-10-25')
+--                            INNER JOIN stocks.`study-data` ON
+--                             stocks.stock.`id` = stocks.`study-data`.`stock-id`
+--                             AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`;
+-- SELECT `stocks`.`data`.`date`,
+--                         `stocks`.`study-data`.`val1`,`stocks`.`study-data`.`val2`,
+--                         `stocks`.`study-data`.`val3`,`stocks`.`study-data`.`val4`,
+--                         `stocks`.`study-data`.`val5`,`stocks`.`study-data`.`val6`,
+--                         `stocks`.`study-data`.`val7`,`stocks`.`study-data`.`val8`,
+--                         `stocks`.`study-data`.`val9`,`stocks`.`study-data`.`val10`,
+--                         `stocks`.`study-data`.`val11`,`stocks`.`study-data`.`val12`,
+--                         `stocks`.`study-data`.`val13`,`stocks`.`study-data`.`val14` 
+--                          FROM stocks.`data` INNER JOIN stocks.stock 
+--                         ON `stocks`.`data`.`stock-id` = stocks.stock.`id` 
+--                           AND stocks.stock.`stock` = "SPY" 
+--                            AND `stocks`.`data`.`date` = DATE("2021-10-25")
+--                            INNER JOIN stocks.`study-data` ON
+--                             stocks.stock.`id` = stocks.`study-data`.`stock-id`
+--                             AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`;
 SHOW TABLES FROM stocks;
 select * from stocks.`data`;
 select * from stocks.`stock`;
@@ -135,50 +134,37 @@ select * from stocks.study;
 select * from stocks.`study-data`;
 select * from stocks.`nn-data`;
 
--- ALTER TABLE stocks.`study-data` 
--- ADD COLUMN `val5` VARCHAR(45) NULL AFTER `val4`,
--- ADD COLUMN `val6` VARCHAR(45) NULL AFTER `val5`,
--- ADD COLUMN `val7` VARCHAR(45) NULL AFTER `val6`,
--- ADD COLUMN `val8` VARCHAR(45) NULL AFTER `val7`,
--- ADD COLUMN `val9` VARCHAR(45) NULL AFTER `val8`,
--- ADD COLUMN `val10` VARCHAR(45) NULL AFTER `val9`,
--- ADD COLUMN `val11` VARCHAR(45) NULL AFTER `val10`,
--- ADD COLUMN `val12` VARCHAR(45) NULL AFTER `val11`,
--- ADD COLUMN `val13` VARCHAR(45) NULL AFTER `val12`,
--- ADD COLUMN `val14` VARCHAR(45) NULL AFTER `val13`;
-
-
-SELECT `stocks`.`data`.`date` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE('2021-09-01');
-SELECT `stock`,`id` FROM stocks.stock where `id` like 'SPY';
-SELECT * FROM stocks.`data` INNER JOIN stocks.stock WHERE `stock-id` = stocks.stock.`id` and stocks.stock.`stock` = "ULTA" AND stocks.`data`.`date` = "2021-09-01";
-ALTER TABLE stocks.stock ADD UNIQUE `stock-id` (id);
-select * from stocks.`study-data`;
-SELECT * FROM stocks.`data` INNER JOIN stocks.stock 
-                        ON `stocks`.`data`.`stock-id` = `stocks`.`stock`.`id` 
-                          AND stocks.stock.`stock` = "SPY"
-                            INNER JOIN stocks.`study-data` ON
-                            stocks.stock.`id` = stocks.`study-data`.`stock-id`
-                            INNER JOIN stocks.`study` ON
-                            stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
-                            AND stocks.`study-data`.`study-id` = (AES_ENCRYPT('14', UNHEX(SHA2('14',512)))) 
-                            AND stocks.`study-data`.`id` = (AES_ENCRYPT("2021-09-01 00:00:00SPY14", UNHEX(SHA2("2021-09-01 00:00:00SPY14",512))))
-                            AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`;
+-- SELECT `stocks`.`data`.`date` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE('2021-09-01');
+-- SELECT `stock`,`id` FROM stocks.stock where `id` like 'SPY';
+-- SELECT * FROM stocks.`data` INNER JOIN stocks.stock WHERE `stock-id` = stocks.stock.`id` and stocks.stock.`stock` = "ULTA" AND stocks.`data`.`date` = "2021-09-01";
+-- ALTER TABLE stocks.stock ADD UNIQUE `stock-id` (id);
+-- select * from stocks.`study-data`;
+-- SELECT * FROM stocks.`data` INNER JOIN stocks.stock 
+--                         ON `stocks`.`data`.`stock-id` = `stocks`.`stock`.`id` 
+--                           AND stocks.stock.`stock` = "SPY"
+--                             INNER JOIN stocks.`study-data` ON
+--                             stocks.stock.`id` = stocks.`study-data`.`stock-id`
+--                             INNER JOIN stocks.`study` ON
+--                             stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+--                             AND stocks.`study-data`.`study-id` = (AES_ENCRYPT('14', UNHEX(SHA2('14',512)))) 
+--                             AND stocks.`study-data`.`id` = (AES_ENCRYPT("2021-09-01 00:00:00SPY14", UNHEX(SHA2("2021-09-01 00:00:00SPY14",512))))
+--                             AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`;
 SHOW INDEX FROM stocks.stock;
 
 #select * from stocks.`data` where `stock-id` = (select data_id from stocks.stock where `stock` = 'AMD' LIMIT 1);
 #select * from stocks.`data` where date >= '2020-03-03' and date <= '2021-04-22' and `stock-id` = (select `data_id` from stocks.stock where stock = 'SPY');
-select * from stocks.data INNER JOIN stocks.stock ON `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.stock.stock = 'AXP' AND stocks.stock.id = AES_ENCRYPT('s', UNHEX(SHA2('s',512)));
-SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id`, `stocks`.`data`.`date` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'AMC' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`;
-SELECT * FROM stocks.`study-data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND stocks.`study-data`.`stock-id` = stocks.stock.id INNER JOIN stocks.`data` ON stocks.`study-data`.`data-id` = stocks.`data`.`data-id` INNER JOIN stocks.study ON stocks.study.study = "ema14" AND stocks.study.`study-id` = stocks.`study-data`.`study-id`;
-SELECT * FROM stocks.`study-data`  INNER JOIN stocks.study ON stocks.study.study = "ema30";
-SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'OCUL' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`;
-SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
-                        ON `stock-id` = stocks.stock.`id` 
-                          AND stocks.stock.`stock` = "SPY"
-                           AND `stocks`.`data`.`date` = DATE("2021-10-01")
-                           INNER JOIN stocks.`study-data` ON
-                            stocks.stock.`id` = stocks.`study-data`.`stock-id`
-                            INNER JOIN stocks.`study` ON
-                            stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
-                            AND stocks.`study-data`.`study-id` = (AES_ENCRYPT("fibonacci", UNHEX(SHA2("fibonacci",512))))
-                            AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`;
+-- select * from stocks.data INNER JOIN stocks.stock ON `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.stock.stock = 'AXP' AND stocks.stock.id = AES_ENCRYPT('s', UNHEX(SHA2('s',512)));
+-- SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id`, `stocks`.`data`.`date` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'AMC' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`;
+-- SELECT * FROM stocks.`study-data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND stocks.`study-data`.`stock-id` = stocks.stock.id INNER JOIN stocks.`data` ON stocks.`study-data`.`data-id` = stocks.`data`.`data-id` INNER JOIN stocks.study ON stocks.study.study = "ema14" AND stocks.study.`study-id` = stocks.`study-data`.`study-id`;
+-- SELECT * FROM stocks.`study-data`  INNER JOIN stocks.study ON stocks.study.study = "ema30";
+-- SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'OCUL' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`;
+-- SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
+--                         ON `stock-id` = stocks.stock.`id` 
+--                           AND stocks.stock.`stock` = "SPY"
+--                            AND `stocks`.`data`.`date` = DATE("2021-10-01")
+--                            INNER JOIN stocks.`study-data` ON
+--                             stocks.stock.`id` = stocks.`study-data`.`stock-id`
+--                             INNER JOIN stocks.`study` ON
+--                             stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+--                             AND stocks.`study-data`.`study-id` = (AES_ENCRYPT("fibonacci", UNHEX(SHA2("fibonacci",512))))
+--                             AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`;
