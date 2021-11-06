@@ -36,9 +36,9 @@ class launcher():
     def display_model(self,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",color:str="blue",force_generation=False,unnormalized_data = False,row=0,col=1):
         # Load machine learning model either based on divergence or not
         if 'divergence' not in name:
-            data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:GPU:0')
+            data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:GPU:0',rand_date=False)
         else:
-            data = load_divergence(f'{ticker.upper()}',has_actuals=_has_actuals,force_generation=force_generation,device_opt='/device:GPU:0')
+            data = load_divergence(f'{ticker.upper()}',has_actuals=_has_actuals,force_generation=force_generation,device_opt='/device:GPU:0',rand_date=False)
         # read data for loading into display portion
         if 'divergence' not in name:
             with self.listLock:

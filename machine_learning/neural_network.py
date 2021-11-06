@@ -11,29 +11,26 @@ import pandas as pd
 import threading
 from machine_learning.neural_framework import Neural_Framework
 from pandas.tseries.holiday import USFederalHolidayCalendar
-import pandas as pd
 from pathlib import Path
 from mysql.connector import errorcode
-import binascii
-import uuid
 import mysql.connector
 import xml.etree.ElementTree as ET
 import datetime
-
+import random
 
 class Network(Neural_Framework):
     def __init__(self,epochs,batch_size):
         super().__init__(epochs, batch_size)
-        self.model_map_names = {1:"model_relu",2:"model_leaky",3:"model_sigmoid",4:"model_relu2",5:"model_leaky2",
-                                6:"model_sigmoid2"}
+        self.model_map_names = {"model_relu":1,"model_leaky":2,"model_sigmoid":3,"model_relu2":4,"model_leaky2":5,
+                                "model_sigmoid2":6}
 
-    @tf.function
-    def create_model(self,model_choice=2):
-        # tf.function()
-        self.model_choice =model_choice
+
+    def create_model(self,model_choice="model_relu"):
+        self.model_name = model_choice
+        self.model_choice =self.model_map_names.get(model_choice)
         self.nn_input = keras.Input(shape=(1,1,140)) # 14 * 10 cols
         # Relu Model
-        if model_choice == 1:
+        if self.model_choice == 1:
             self.nn = keras.layers.Dense(140, activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             # self.nn = keras.layers.Dropout(0.1)(self.nn)
             keras.regularizers.l1(0.09)
@@ -44,7 +41,7 @@ class Network(Neural_Framework):
             self.nn = keras.layers.Dense(24,activation='relu')(self.nn)
             self.nn2 = keras.layers.Dense(10,activation='linear')(self.nn)
         #  Leaky Relu no Dropout
-        elif model_choice == 2:
+        elif self.model_choice == 2:
             self.nn = keras.layers.Dense(140, activation=keras.layers.LeakyReLU(alpha=0.3),kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             self.nn = keras.layers.Dense(140, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
             self.nn = keras.layers.Dense(48,activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
@@ -52,7 +49,7 @@ class Network(Neural_Framework):
             self.nn = keras.layers.Dense(24,activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
             self.nn2 = keras.layers.Dense(10,activation='linear')(self.nn)
         # Sigmoid 
-        elif model_choice == 3:
+        elif self.model_choice == 3:
             self.nn = keras.layers.Dense(140, activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             # self.nn = keras.layers.Dropout(0.1)(self.nn)
             keras.regularizers.l1(0.01)
@@ -63,7 +60,7 @@ class Network(Neural_Framework):
             self.nn = keras.layers.Dense(20,activation='sigmoid')(self.nn)
             self.nn2 = keras.layers.Dense(10,activation='linear')(self.nn)        
         # Relu - Out 3
-        elif model_choice == 4:
+        elif self.model_choice == 4:
             self.nn = keras.layers.Dense(140, activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             keras.regularizers.l1(0.02 )
             keras.regularizers.l2(0.07)
@@ -71,7 +68,7 @@ class Network(Neural_Framework):
             self.nn = keras.layers.Dropout(0.5)(self.nn)
             self.nn2 = keras.layers.Dense(3,activation='linear')(self.nn)
         # Leaky Relu - Out 3
-        elif model_choice == 5:
+        elif self.model_choice == 5:
             self.nn = keras.layers.Dense(140, activation=keras.layers.LeakyReLU(alpha=0.3),kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             keras.regularizers.l1(0.01)
             keras.regularizers.l2(0.04)
@@ -79,7 +76,7 @@ class Network(Neural_Framework):
             self.nn = keras.layers.Dense(24,activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
             self.nn2 = keras.layers.Dense(3,activation='linear')(self.nn)
         # Sigmoid - Out 3
-        elif model_choice == 6:
+        elif self.model_choice == 6:
             self.nn = keras.layers.Dense(140, activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             self.nn = keras.layers.Dense(140, activation='sigmoid')(self.nn)
             self.nn = keras.layers.Dropout(0.6)(self.nn) # Residual
@@ -91,9 +88,12 @@ class Network(Neural_Framework):
         self.nn = keras.Model(inputs=self.nn_input,outputs=[self.nn2])
         self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.0005,beta_1=0.95,beta_2=0.999), loss='mse',metrics=['MeanAbsoluteError','MeanAbsolutePercentageError'])
         return self.nn
-    def run_model(self):
+    
+
+    def run_model(self,rand_date=False):
         sampler = Sample()
         models = {}
+        path = Path(os.getcwd()).parent.absolute()
         # Retrieve all necessary data into training data
         for i in range(1,self.EPOCHS):
             print(f'\n\n\nEPOCH {i} -- {self.model_choice}')
@@ -101,13 +101,14 @@ class Network(Neural_Framework):
             train_targets=[]
             models[i] = 1
             for j in range(1,self.BATCHES):
+                sampler.set_ticker(self.choose_random_ticker(f'{path}/data/watchlist/default.csv'))
                 train= []
                 train_targets=[]
                 try:
-                    if self.model_choice < 6:
-                        sampler.generate_sample()
+                    if self.model_choice < 4:
+                        sampler.generate_sample(_has_actuals=True,rand_date=rand_date)
                     else:
-                        sampler.generate_sample(out=2)
+                        sampler.generate_sample(_has_actuals=True,out=2,rand_date=rand_date)
                     sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
                 except Exception as e:
                     print('[Error] Failed batch!\nException:\n',str(e))
@@ -139,7 +140,7 @@ class Network(Neural_Framework):
 
         return models
     def save_model(self):
-        self.nn.save(f'{self.path}/data/{self.model_map_names.get(self.model_choice)}')
+        self.nn.save(f'{self.path}/data/{self.model_name}')
     def load_model(self,name="model_relu"):
         super().load_model(name)
 listLock = threading.Lock()
@@ -147,7 +148,7 @@ listLock = threading.Lock()
 
 
 """Load Specified Model"""
-def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_generation=False,device_opt:str='/device:GPU:0'):        
+def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_generation=False,device_opt:str='/device:GPU:0',rand_date=False):        
     # Connect to local DB
     path=Path(os.getcwd()).parent.absolute()
     tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
@@ -300,7 +301,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
     sampler = Sample(ticker)
     # sampler.__init__(ticker)
     train = []
-    sampler.generate_sample(_has_actuals=has_actuals)
+    sampler.generate_sample(_has_actuals=has_actuals,rand_date=rand_date)
     try: # verify there is no extra 'index' column
         sampler.normalizer.data = sampler.normalizer.data.drop(['index'],axis=1)
     except Exception as e:
@@ -366,19 +367,22 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
     return (sampler.normalizer.unnormalize(predicted),sampler.normalizer.unnormalized_data.tail(1),predicted_unnormalized,sampler.normalizer.keltner,sampler.normalizer.fib)
 
 
-"""Run Specified Model"""
-def run(epochs,batch_size,name="model_relu",model=1):
+"""
+Run Specified Model by creating model and running batches/epochs.
+
+"""
+def run(epochs,batch_size,name="model_relu"):
     neural_net = Network(epochs,batch_size)
     neural_net.load_model(name)
-    neural_net.create_model(model_choice=model)
-    model = neural_net.run_model()
+    neural_net.create_model(model_choice=name)
+    model = neural_net.run_model(rand_date=True)
     for i in range(1,neural_net.EPOCHS):
         train_history = model[i]
         print(train_history)
     neural_net.save_model()
 
 
-# run(100,100,"model_relu",1)
+run(10,50,"model_relu")
 # run(100,100,"model_leaky",2)
 # run(100,100,"model_sigmoid",3)
 # run(100,100,"model_relu2",4)

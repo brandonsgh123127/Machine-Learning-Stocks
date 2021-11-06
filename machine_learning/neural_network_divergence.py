@@ -47,7 +47,7 @@ class Neural_Divergence(Neural_Framework):
                 train= []
                 train_targets=[]
                 try:
-                    print(sampler.generate_sample())
+                    sampler.generate_sample(is_divergence=True)
                     # sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
                 except:
                     continue
@@ -77,7 +77,7 @@ class Neural_Divergence(Neural_Framework):
         except:
             print("No model exists, creating new model...")
 listLock = threading.Lock()
-def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=False,device_opt='/device:CPU:0'):        
+def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=False,device_opt='/device:CPU:0',rand_date=False):        
     # Connect to local DB
     path=Path(os.getcwd()).parent.absolute()
     tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
@@ -215,7 +215,7 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=Fals
     
     sampler = Sample(ticker)
     train = []
-    sampler.generate_divergence_sample(False,has_actuals)
+    sampler.generate_divergence_sample(_has_actuals=has_actuals,rand_date=True,rand_date=rand_date)
     
     if predicted is None:
         neural_net = Neural_Divergence(0,0)

@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 import datetime
 import sys
 from pandas.tseries.holiday import USFederalHolidayCalendar
-
+import random
 
 '''
 Class that takes in studies and stock data, then transforms the data into a new dataframe.
@@ -71,30 +71,31 @@ class Normalizer():
     '''
         Utilize mysql to gather data.  Gathers stock data from table.
     '''
-    def mysql_read_data(self,ticker):
+    def mysql_read_data(self,ticker,date=None):
         try:
             self.cnx = self.db_con.cursor(buffered=True)
             self.cnx.autocommit = True
             # If string, convert to datetime.datetime                
             valid_datetime=datetime.datetime.now()
-            
-            # Verify date before proceeding 
-            holidays=USFederalHolidayCalendar().holidays(start=valid_datetime - datetime.timedelta(days=40),end=valid_datetime).to_pydatetime()
-            valid_date=valid_datetime.date()
-            if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
-                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-                valid_date = (valid_date - datetime.timedelta(days=1))
-            if valid_date.weekday()==5: # if saturday
-                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-                valid_date = (valid_date - datetime.timedelta(days=1))
-            if valid_date.weekday()==6: # if sunday
-                valid_datetime = (valid_datetime - datetime.timedelta(days=2))
-                valid_date = (valid_date - datetime.timedelta(days=2))
-            if valid_date in holidays:
-                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-                valid_date = (valid_date - datetime.timedelta(days=1))
-            initial_date=valid_datetime
-
+            if date is None:
+                # Verify date before proceeding 
+                holidays=USFederalHolidayCalendar().holidays(start=valid_datetime - datetime.timedelta(days=40),end=valid_datetime).to_pydatetime()
+                valid_date=valid_datetime.date()
+                if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
+                    valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                    valid_date = (valid_date - datetime.timedelta(days=1))
+                if valid_date.weekday()==5: # if saturday
+                    valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                    valid_date = (valid_date - datetime.timedelta(days=1))
+                if valid_date.weekday()==6: # if sunday
+                    valid_datetime = (valid_datetime - datetime.timedelta(days=2))
+                    valid_date = (valid_date - datetime.timedelta(days=2))
+                if valid_date in holidays:
+                    valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                    valid_date = (valid_date - datetime.timedelta(days=1))
+                initial_date=valid_datetime
+            else:
+                initial_date=date
             date_result = self.cnx.execute("""
         select * from stocks.`data` where stocks.`data`.`date` >= DATE(%(start)s) and stocks.`data`.`date` <= DATE(%(end)s) and `stock-id` = (select `id` from stocks.`stock` where stock = %(stock)s) ORDER BY stocks.`data`.`date` ASC
         """, ({'end':initial_date.strftime('%Y-%m-%d'),
@@ -156,28 +157,30 @@ class Normalizer():
         - fibonacci extension
         - keltner channel
     '''
-    def mysql_read_studies(self,ticker,study):
+    def mysql_read_studies(self,ticker,study,date=None):
         self.cnx = self.db_con.cursor(buffered=True)
         self.cnx.autocommit = True
         valid_datetime=datetime.datetime.now()
             
-        # Verify date before proceeding 
-        holidays=USFederalHolidayCalendar().holidays(start=valid_datetime - datetime.timedelta(days=40),end=valid_datetime).to_pydatetime()
-        valid_date=valid_datetime.date()
-        if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
-            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-            valid_date = (valid_date - datetime.timedelta(days=1))
-        if valid_date.weekday()==5: # if saturday
-            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-            valid_date = (valid_date - datetime.timedelta(days=1))
-        if valid_date.weekday()==6: # if sunday
-            valid_datetime = (valid_datetime - datetime.timedelta(days=2))
-            valid_date = (valid_date - datetime.timedelta(days=2))
-        if valid_date in holidays:
-            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-            valid_date = (valid_date - datetime.timedelta(days=1))
-        initial_date=valid_datetime
-
+        if date is None:
+            # Verify date before proceeding 
+            holidays=USFederalHolidayCalendar().holidays(start=valid_datetime - datetime.timedelta(days=40),end=valid_datetime).to_pydatetime()
+            valid_date=valid_datetime.date()
+            if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
+                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                valid_date = (valid_date - datetime.timedelta(days=1))
+            if valid_date.weekday()==5: # if saturday
+                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                valid_date = (valid_date - datetime.timedelta(days=1))
+            if valid_date.weekday()==6: # if sunday
+                valid_datetime = (valid_datetime - datetime.timedelta(days=2))
+                valid_date = (valid_date - datetime.timedelta(days=2))
+            if valid_date in holidays:
+                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                valid_date = (valid_date - datetime.timedelta(days=1))
+            initial_date=valid_datetime
+        else:
+            initial_date=date
         if study == 'ema':
             date_result = self.cnx.execute("""
             select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
@@ -352,25 +355,37 @@ class Normalizer():
     '''
         utilize mysql to retrieve data and study data for later usage...
     '''
-    def read_data(self,ticker):
+    def read_data(self,ticker,rand_dates=False):
+        if rand_dates:
+            # Get a random date for generation based on min/max date
+            d2 = datetime.datetime.strptime(datetime.datetime.now().strftime('%m/%d/%Y %I:%M %p'), '%m/%d/%Y %I:%M %p')
+            d1 = datetime.datetime.strptime('1/1/2007 1:00 AM', '%m/%d/%Y %I:%M %p')
+            # get time diff then get time in seconds
+            delta = d2 - d1
+            int_delta = (delta.days * 24 * 60 * 60) + delta.seconds
+            # append seconds to get a start date
+            random_second = random.randrange(int_delta)
+            date = d1 + datetime.timedelta(seconds=random_second)
+        else:
+            date=None
         try:
-            self.mysql_read_data(ticker)
+            self.mysql_read_data(ticker,date=date)
             self.data = self.data.drop(['Adj Close','Date'],axis=1)
-        except:
-            print('[ERROR] Failed to read data!\n')
+        except Exception as e:
+            print('[ERROR] Failed to read data!\nException:\n',str(e))
             raise RuntimeError
         try:
-            self.studies = self.mysql_read_studies(ticker,'ema')
+            self.studies = self.mysql_read_studies(ticker,'ema',date=date)
         except Exception as e:
             print('[ERROR] Failed to read ema studies!\nException:\n',str(e))
             raise RuntimeError
         try:
-            self.keltner= self.mysql_read_studies(ticker,'keltner')
+            self.keltner= self.mysql_read_studies(ticker,'keltner',date=date)
         except Exception as e:
             print('[ERROR] Failed to read keltner study!\nException:\n',str(e))
             raise RuntimeError
         try:
-            self.fib = self.mysql_read_studies(ticker,'fib')
+            self.fib = self.mysql_read_studies(ticker,'fib',date=date)
         except Exception as e:
             print('[ERROR] Failed to read ema14 study!\nException:\n',str(e))
             raise RuntimeError
@@ -378,9 +393,10 @@ class Normalizer():
             self.data = self.data.drop(['index'],axis=1)
             self.data = self.data.drop(['level_0'],axis=1)
         except:
-            print('[INFO] Could not find columns "index" and/or "level_0" from normalizer')
-            pass        
+            pass
         pd.set_option("display.max.columns", None)
+        
+        
     def convert_derivatives(self,out=8):
         self.data = self.data.astype('float')
         self.studies = self.studies.astype('float')

@@ -32,8 +32,10 @@ class Generator():
             # Loop until valid data populates
             try:
                 if studies.set_data_from_range(studies.date_set[0],studies.date_set[1]) != 0 or studies.data.isnull().values.any() or len(studies.data) < 16:
+                    print(f'[ERROR] Failed to generate data for {self.ticker}')
                     return 1
             except RuntimeError:
+                print('[ERROR] Runtime Error when generating data!')
                 pass
 
             # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
@@ -44,21 +46,24 @@ class Generator():
             query_params = {}
             query_params.update(query_param1);query_params.update(query_param2);query_params.update(query_param3);query_params.update(query_param4)
         try:
-            studies.data = studies.data.drop(['Volume'],axis=1)
-            studies.reset_data()
-            studies.load_data_mysql(dates[0],dates[1])
-            studies.apply_ema("14",self.studies.get_date_difference())
-            studies.load_data_mysql(dates[0],dates[1])
-            studies.apply_ema("30",self.studies.get_date_difference())
-            studies.keltner_channels(20, 1.3, None)
+            try:
+                studies.data = studies.data.drop(['Volume'],axis=1)
+            except:
+                pass
+            # studies.set_data_from_range(dates[0],dates[1])
+            studies.apply_ema("14",self.studies.get_date_difference(dates[0],dates[1]))
+            # studies.set_data_from_range(dates[0],dates[1])
+            studies.apply_ema("30",self.studies.get_date_difference(dates[0],dates[1]))
+            # studies.set_data_from_range(dates[0],dates[1])
         except Exception as e:
-            # raise Exception("[ERROR] Exception:\n{}".format(str(e)))
+            print(f'[ERROR] Failed to generate ema studies for {self.ticker}!\nException:\n{str(e)}')
             return  
         try:
-            os.remove(f'{self.path}/data/stock_no_tweets/{studies.get_indicator()}/{studies.date_set[0]}--{studies.date_set[1]}')
-        except:
-            pass
-        studies.save_data_csv(f'{self.path}/data/stock_no_tweets/{studies.get_indicator()}/{studies.date_set[0]}--{studies.date_set[1]}')
+            studies.apply_fibonacci()
+            studies.keltner_channels(20, 1.3, None)
+        except Exception as e:
+            print(f'[ERROR] Failed to generate fib/keltner studies for {self.ticker}!\nException:\n{str(e)}')
+            return  
         del studies
         
         # Generates the P/L and percent of current day
@@ -102,13 +107,16 @@ class Generator():
         except:
             pass
         # print(self.studies.data)
-        
-        self.studies.apply_ema("14",self.studies.get_date_difference())
-        self.studies.apply_ema("30",self.studies.get_date_difference()) 
-        self.studies.apply_fibonacci()
-        self.studies.keltner_channels(20, 1.3, None)
-        self.studies.reset_data()
-        self.studies = Studies(self.ticker)
+        try:
+            self.studies.apply_ema("14",self.studies.get_date_difference(self.studies.date_set[0],self.studies.date_set[1]))
+            self.studies.apply_ema("30",self.studies.get_date_difference(self.studies.date_set[0],self.studies.date_set[1])) 
+            self.studies.apply_fibonacci()
+            self.studies.keltner_channels(20, 1.3, None)
+            self.studies.reset_data()
+            self.studies = Studies(self.ticker)
+        except Exception as e:
+            print(f'[ERROR] Failed to generate studies for {self.ticker}!\nException:\n{str(e)}')
+            return  
     def get_ticker(self):
         return self.ticker
     def set_ticker(self,ticker):
@@ -121,7 +129,7 @@ def choose_random_ticker(csv_file):
         return ticker
 def main():
     MAX_TICKERS=300
-    MAX_ITERS=5
+    MAX_ITERS=2
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
@@ -132,7 +140,8 @@ def main():
             rc=generator.generate_data()
             while rc == 1:
                 rc=generator.generate_data()
-            time.sleep(j * (i/(MAX_ITERS/2)))
+                time.sleep(j * (i/(MAX_ITERS/1.5)) + 0.5)
+            time.sleep(j * (i/(MAX_ITERS/2)) + 1)
         del generator
         
     

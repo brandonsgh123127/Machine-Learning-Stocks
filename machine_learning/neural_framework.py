@@ -3,7 +3,7 @@ import os
 import keras
 import tensorflow as tf
 from tensorflow.python.client import device_lib 
-
+import random
 
 class Neural_Framework():
     def __init__(self,epochs,batch_size):
@@ -22,6 +22,12 @@ class Neural_Framework():
         pass
     def save_model(self):
         pass
+    def choose_random_ticker(self,csv_file):
+        with open(csv_file) as f:
+            ticker = random.choice(f.readlines())
+            ticker = ticker[0:ticker.find(',')]
+            print(ticker)
+            return ticker
     def load_model(self,name=None):
         try:
             self.nn = keras.models.load_model(

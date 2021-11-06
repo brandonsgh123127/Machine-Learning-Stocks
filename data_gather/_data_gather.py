@@ -300,7 +300,7 @@ class Gather():
             # append seconds to get a start date
             random_second = random.randrange(int_delta)
             start = d1 + datetime.timedelta(seconds=random_second)
-            end = start + datetime.timedelta(days=120)
+            end = start + datetime.timedelta(days=390)
             self.date_set=(start,end)
             return self.date_set
     def get_date_difference(self,date1=None,date2=None):
