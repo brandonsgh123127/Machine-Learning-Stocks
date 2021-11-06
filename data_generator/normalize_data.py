@@ -64,9 +64,13 @@ class Normalizer():
                 raise Exception
         self.cnx = self.db_con.cursor(buffered=True)
         self.cnx.autocommit = True
+    # Helper function used for appending new elements to a dataframe element via lambda call
     def append_data(self,struct:pd.DataFrame,label:str,val):
         struct = struct.append({label:val},ignore_index=True)
         return struct
+    '''
+        Utilize mysql to gather data.  Gathers stock data from table.
+    '''
     def mysql_read_data(self,initial_date,ticker):
         try:
             self.cnx = self.db_con.cursor(buffered=True)
@@ -147,6 +151,14 @@ class Normalizer():
         self.data = self.data.rename(columns={0: "Date", 1: "Open", 2: "High",3: "Low",4: "Close",5: "Adj Close"})
         self.cnx.close()
         return self.data
+    
+    '''
+        Utilize mysql to gather data for daily studies
+        Gathers the following:
+        - ema
+        - fibonacci extension
+        - keltner channel
+    '''
     def mysql_read_studies(self,initial_date,ticker,study):
         self.cnx = self.db_con.cursor(buffered=True)
         self.cnx.autocommit = True
@@ -184,7 +196,6 @@ class Normalizer():
             """, ((initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d"),
                   initial_date.strftime('%Y-%m-%d'),
                   ticker),multi=True)
-            # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
             tmp_14 = pd.DataFrame(columns=['ema14'])
             tmp_30 = pd.DataFrame(columns=['ema30'])
             tmp_20 = pd.DataFrame(columns=['ema20'])
@@ -255,8 +266,6 @@ class Normalizer():
             fib12 = pd.DataFrame(columns=['3.43'])
             fib13 = pd.DataFrame(columns=['3.83'])
             fib14 = pd.DataFrame(columns=['5.44'])
-            # print(date_result)
-            # date_res = self.cnx.fetchall()
             for set in date_result:
                 s = set.fetchall()
                 if len(s) == 0:
@@ -266,7 +275,6 @@ class Normalizer():
                     # Iterate through each element to retrieve values
                     cur_val = None
                     for index,row in enumerate(s):
-                        # print(row)
                         fib1 = fib1.append({'0.202':row[0]},ignore_index=True)
                         fib2 = fib2.append({'0.236':row[1]},ignore_index=True)
                         fib3 = fib3.append({'0.241':row[2]},ignore_index=True)
@@ -315,7 +323,6 @@ class Normalizer():
             """, ((initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d"),
                   initial_date.strftime('%Y-%m-%d'),
                   ticker),multi=True)
-            # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
             middle = pd.DataFrame(columns=['middle'])
             upper= pd.DataFrame(columns=['upper'])
             lower= pd.DataFrame(columns=['lower'])
@@ -346,6 +353,10 @@ class Normalizer():
             self.keltner = keltner.rename(columns={0: "middle", 1: "upper", 2: "lower"})
             self.cnx.close()
             return self.keltner
+        
+    '''
+        utilize mysql to retrieve data and study data for later usage...
+    '''
     def read_data(self,date,ticker):
         try:
             self.mysql_read_data(date, ticker)
@@ -373,16 +384,7 @@ class Normalizer():
             self.data = self.data.drop(['level_0'],axis=1)
         except:
             print('[INFO] Could not find columns "index" and/or "level_0" from normalizer')
-            pass
-        
-        """
-        TODO: Implement MYSQL keltner and fib entries
-        """
-        try:
-            self.keltner = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_keltner.csv',index_col=False)
-            self.fib = pd.read_csv(f'{self.path}/data/stock_no_tweets/{ticker}/{date}_fib.csv',index_col=False)
-        except:
-            pass
+            pass        
         pd.set_option("display.max.columns", None)
     def convert_derivatives(self,out=8):
         self.data = self.data.astype('float')
@@ -428,6 +430,9 @@ class Normalizer():
             except:
                 pass
         return 0
+    '''
+        Gather the divergence data for further use
+    '''
     def convert_divergence(self):
         self.data = self.data.astype('float')
         self.normalized_data = pd.DataFrame((),columns=['Divergence','Gain/Loss'])
@@ -439,6 +444,9 @@ class Normalizer():
             self.normalized_data.loc[index,"Gain/Loss"] = ((self.data.at[index,"Close"] - self.data.at[index,"Open"]))/(1)
             
         return 0
+    '''
+        Normalize:  Use Scalar to normalize given data
+    '''
     def normalize(self,out:int=8):
         self.normalized_data = self.normalized_data[-15:]
         self.unnormalized_data = self.normalized_data
@@ -453,6 +461,9 @@ class Normalizer():
             print('[ERROR] Failed to normalize!\nException:\n',str(e))
             return 1
         return 0
+    '''
+        Normalize data for the divergence data
+    '''
     def normalize_divergence(self):
         self.unnormalized_data = self.normalized_data
         scaler = self.min_max.fit(self.unnormalized_data) 
@@ -461,6 +472,9 @@ class Normalizer():
         except:
             return 1
         return 0
+    '''
+        Unnormalize data
+    '''
     def unnormalize(self,data):
         scaler = self.min_max.fit(self.unnormalized_data) 
         if len(data.columns) == 10:
@@ -473,12 +487,13 @@ class Normalizer():
             # print(new_data)
             return pd.DataFrame(scaler.inverse_transform((new_data.to_numpy())),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
                                                                                                           'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED DATA STORED IN NP ARRAY
+    '''
+        Unnormalize the divergence data
+    '''
     def unnormalize_divergence(self,data):
         scaler = self.min_max.fit(self.unnormalized_data)
         return pd.DataFrame(scaler.inverse_transform((data.to_numpy())),columns=['Divergence','Gain/Loss'])
-    def display_line(self):
-        self.normalized_data.plot()
-        plt.show()
+
 # norm = Normalizer()
 # norm.read_data("2016-03-18","CCL")
 # norm.convert_derivatives()
