@@ -120,20 +120,19 @@ def choose_random_ticker(csv_file):
         print(ticker)
         return ticker
 def main():
-    MAX_TICKERS=50
-    MAX_ITERS=1
+    MAX_TICKERS=300
+    MAX_ITERS=5
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
         generator = Generator(ticker,path)
         
-        # Generate data
-        # generator.generate_data_with_dates(start,start + datetime.timedelta(days=100))
-        
+        # Generate data        
         for j in range(MAX_ITERS):
             rc=generator.generate_data()
             while rc == 1:
                 rc=generator.generate_data()
+            time.sleep(j * (i/(MAX_ITERS/2)))
         del generator
         
     
