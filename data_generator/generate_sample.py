@@ -45,11 +45,9 @@ class Sample(Normalizer):
         if not _has_actuals:
             # print("Predict Mode")
             self.DAYS_SAMPLED = 14
-            self.to_date = datetime.date.today() + datetime.timedelta(days = 1)
         else:
             self.DAYS_SAMPLED = 15
-            self.to_date = datetime.date.today()
-        self.normalizer.read_data(self.to_date,self.ticker) # Get ticker and date from path
+        self.normalizer.read_data(self.ticker) # Get ticker and date from path
         # Iterate through dataframe and retrieve random sample
         self.normalizer.convert_derivatives(out=out)
         self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]
@@ -79,10 +77,9 @@ class Sample(Normalizer):
     def generate_divergence_sample(self,is_predict=False,_has_actuals=False):
         if is_predict:
             self.DAYS_SAMPLED = 14
-            self.to_date = datetime.date.today() + datetime.timedelta(days = 1)
         else:
-            self.to_date = datetime.date.today()
-        self.normalizer.read_data(self.to_date,self.ticker) # Get ticker and date from path
+            self.DAYS_SAMPLED = 15
+        self.normalizer.read_data(self.ticker) # Get ticker and date from path
         # Iterate through dataframe and retrieve random sample
         self.normalizer.convert_divergence()
         self.normalizer.normalized_data = self.normalizer.normalized_data.iloc[-(self.DAYS_SAMPLED):]

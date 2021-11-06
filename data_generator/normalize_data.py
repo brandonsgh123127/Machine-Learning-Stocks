@@ -71,14 +71,11 @@ class Normalizer():
     '''
         Utilize mysql to gather data.  Gathers stock data from table.
     '''
-    def mysql_read_data(self,initial_date,ticker):
+    def mysql_read_data(self,ticker):
         try:
             self.cnx = self.db_con.cursor(buffered=True)
             self.cnx.autocommit = True
-            # If string, convert to datetime.datetime
-            if type(initial_date) is str:
-                initial_date = datetime.datetime.strptime(initial_date,'%Y-%m-%d')
-                
+            # If string, convert to datetime.datetime                
             valid_datetime=datetime.datetime.now()
             
             # Verify date before proceeding 
@@ -159,11 +156,9 @@ class Normalizer():
         - fibonacci extension
         - keltner channel
     '''
-    def mysql_read_studies(self,initial_date,ticker,study):
+    def mysql_read_studies(self,ticker,study):
         self.cnx = self.db_con.cursor(buffered=True)
         self.cnx.autocommit = True
-        if type(initial_date) is str:
-            initial_date = datetime.datetime.strptime(initial_date,'%Y-%m-%d')
         valid_datetime=datetime.datetime.now()
             
         # Verify date before proceeding 
@@ -357,25 +352,25 @@ class Normalizer():
     '''
         utilize mysql to retrieve data and study data for later usage...
     '''
-    def read_data(self,date,ticker):
+    def read_data(self,ticker):
         try:
-            self.mysql_read_data(date, ticker)
+            self.mysql_read_data(ticker)
             self.data = self.data.drop(['Adj Close','Date'],axis=1)
         except:
             print('[ERROR] Failed to read data!\n')
             raise RuntimeError
         try:
-            self.studies = self.mysql_read_studies(date,ticker,'ema')
+            self.studies = self.mysql_read_studies(ticker,'ema')
         except Exception as e:
             print('[ERROR] Failed to read ema studies!\nException:\n',str(e))
             raise RuntimeError
         try:
-            self.keltner= self.mysql_read_studies(date,ticker,'keltner')
+            self.keltner= self.mysql_read_studies(ticker,'keltner')
         except Exception as e:
             print('[ERROR] Failed to read keltner study!\nException:\n',str(e))
             raise RuntimeError
         try:
-            self.fib = self.mysql_read_studies(date,ticker,'fib')
+            self.fib = self.mysql_read_studies(ticker,'fib')
         except Exception as e:
             print('[ERROR] Failed to read ema14 study!\nException:\n',str(e))
             raise RuntimeError
