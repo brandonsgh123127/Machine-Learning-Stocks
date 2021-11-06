@@ -31,9 +31,8 @@ class Generator():
             dates = studies.gen_random_dates()
             # Loop until valid data populates
             try:
-                while studies.get_data(studies.date_set[0],studies.date_set[1]) != 0 or studies.data.isnull().values.any() or len(studies.data) < 16:
-                    # print("looping...",flush=True)
-                    studies.gen_random_dates()
+                if studies.set_data_from_range(studies.date_set[0],studies.date_set[1]) != 0 or studies.data.isnull().values.any() or len(studies.data) < 16:
+                    return 1
             except RuntimeError:
                 pass
 
@@ -84,12 +83,11 @@ class Generator():
         self.studies.date_set = (date1,date2)
         # Loop until valid data populates
         try:
-            # self.studies.get_data(date1,date2)
             self.studies.set_data_from_range(self.studies.date_set[0],self.studies.date_set[1],force_generate)
             self.studies.data = self.studies.data.reset_index()
             # self.studies.data = self.studies.data.drop(['Date'],axis=1)
         except Exception as e:
-            print(f'[ERROR] Failed to generate data!',str(e))
+            print(f'[ERROR] Failed to generate data!\nException:\n',str(e))
             raise Exception
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
         query_param1 = {"query": "{}".format(self.ticker)}
@@ -122,36 +120,20 @@ def choose_random_ticker(csv_file):
         print(ticker)
         return ticker
 def main():
-    MAX_TICKERS=500
+    MAX_TICKERS=50
     MAX_ITERS=1
     path = Path(os.getcwd()).parent.absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
-        # ticker="SPY"
         generator = Generator(ticker,path)
-        try:
-            with threading.Lock():
-                try:
-                    os.mkdir("{0}/data/tweets".format(path))
-                except:
-                    pass
-                try:
-                    os.mkdir("{0}/data/stock_no_tweets".format(path))
-                except:
-                    pass 
-                try:
-                    os.mkdir(f'{path}/data/stock_no_tweets/{ticker}/')
-                except:
-                    pass 
-                os.mkdir("{0}/data/stock".format(path))
-        except:
-            pass
-        # generator.generate_data_with_dates(datetime.datetime(2021,3,3),datetime.datetime(2021,4,22))
-        s_time = time.time()
+        
+        # Generate data
+        # generator.generate_data_with_dates(start,start + datetime.timedelta(days=100))
+        
         for j in range(MAX_ITERS):
-            generator.generate_data()
-        e_time = time.time() - s_time
-        print(e_time)
+            rc=generator.generate_data()
+            while rc == 1:
+                rc=generator.generate_data()
         del generator
         
     

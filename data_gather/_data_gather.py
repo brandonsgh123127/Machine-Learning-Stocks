@@ -250,11 +250,6 @@ class Gather():
         # print('done gathering')
         return 0
     
-    def _reorder_dates(self,date1,date2):
-        if date1 < date2:
-            return (date1,date2) 
-        else:
-            return (date2,date1)
     def get_option_data(self):
         with threading.Lock():
             try:
@@ -296,19 +291,17 @@ class Gather():
     # Generate random date for data generation
     def gen_random_dates(self):
         with threading.Lock():
-            calc_leap_day = lambda year_month: random.randint(1,29) if year_month[1]==2 and ((year_month[0]%4==0 and year_month[0]%100==0 and year_month[0]%400==0) or (year_month[0]%4==0 and year_month[0]%100!=0)) else random.randint(1,28) if year_month[1]==2 else random.randint(1,self.DAYS_IN_MONTH[year_month[1]])
-            set1 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year - 1),random.randint(1,12))
-            set2 = (random.randint(self.MIN_DATE.year,self.MAX_DATE.year - 1),(set1[1]+2)%12 + 1)
-            self.date_set = (datetime.datetime(set1[0],set1[1],calc_leap_day(set1),tzinfo=pytz.utc),datetime.datetime(set2[0],set2[1],calc_leap_day(set2),tzinfo=pytz.utc))
-            # date difference has to be in between range 
-            while abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) < (self.MIN_RANGE *86400) or abs(self.date_set[0].timestamp() - self.date_set[1].timestamp()) > (self.MAX_RANGE * 86400):
-                n_list= (set1[0],random.randint(1,12))
-                self.date_set = (datetime.datetime(set1[0],set1[1],calc_leap_day(set1),tzinfo=pytz.utc),datetime.datetime(n_list[0],n_list[1],calc_leap_day(n_list),tzinfo=pytz.utc))
-            if self.date_set[0] > datetime.datetime.now().replace(tzinfo=pytz.utc):
-                self.date_set = (datetime.datetime.now().replace(month = 1, day=1,tzinfo=pytz.utc),self.date_set[1])
-            if self.date_set[1] > datetime.datetime.now().replace(tzinfo=pytz.utc):
-                self.date_set = (self.date_set[0],datetime.datetime.now().replace(month=3,day=int(datetime.datetime.today().strftime('%d')), tzinfo=pytz.utc))
-            self.date_set=self._reorder_dates(self.date_set[0].date(),self.date_set[1].date())
+            # Get a random date for generation based on min/max date
+            d2 = datetime.datetime.strptime(datetime.datetime.now().strftime('%m/%d/%Y %I:%M %p'), '%m/%d/%Y %I:%M %p')
+            d1 = datetime.datetime.strptime('1/1/2007 1:00 AM', '%m/%d/%Y %I:%M %p')
+            # get time diff then get time in seconds
+            delta = d2 - d1
+            int_delta = (delta.days * 24 * 60 * 60) + delta.seconds
+            # append seconds to get a start date
+            random_second = random.randrange(int_delta)
+            start = d1 + datetime.timedelta(seconds=random_second)
+            end = start + datetime.timedelta(days=120)
+            self.date_set=(start,end)
             return self.date_set
     def get_date_difference(self,date1=None,date2=None):
         with threading.Lock():
@@ -316,9 +309,6 @@ class Gather():
                 return (self.date_set[0] - self.date_set[1]).days
             else:
                 return (date2 - date1).days
-    def get_data(self):
-        with threading.Lock():
-            return self.data
     # Twitter API Web Scraper for data on specific stocks
     def get_recent_news(self,query):
         response = requests.post(self.search_url,json=query, headers=self.headers)
