@@ -33,7 +33,7 @@ class Generator():
             dates = studies.gen_random_dates()
             # Loop until valid data populates
             try:
-                if studies.set_data_from_range(studies.date_set[0],studies.date_set[1]) != 0 or studies.data.isnull().values.any() or len(studies.data) < 16:
+                if studies.set_data_from_range(studies.date_set[0],studies.date_set[1],_force_generate=True) != 0 or studies.data.isnull().values.any() or len(studies.data) < 16:
                     print(f'[ERROR] Failed to generate data for {self.ticker}')
                     return 1
             except RuntimeError:

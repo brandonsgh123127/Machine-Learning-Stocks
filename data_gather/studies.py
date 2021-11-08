@@ -236,9 +236,9 @@ class Studies(Gather):
                     for index,id in self.data.iterrows():
                         emastr=f'ema{length}'
                         insert_tuple=(f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",512)))',
-                        f'"{self.stock_ids[index]}"',
-                        f'"{self.data_ids[index]}"',
-                        f'"{self.study_id}"',
+                        f'{self.stock_ids[index]}',
+                        f'{self.data_ids[index]}',
+                        f'{self.study_id}',
                         self.applied_studies[emastr].iloc[index])
                         insert_list.append(insert_tuple) # add tuple to list
                     # Call execution statement to insert data in one shot
@@ -602,9 +602,9 @@ val1    val3_________________________          vall2
                 for index,row in self.data.iterrows():
 
                     insert_tuple=(f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",512)))',
-                    f'"{self.stock_ids[index]}"',
-                    f'"{self.data_ids[index]}"',
-                    f'"{self.study_id}"',
+                    f'{self.stock_ids[index]}',
+                    f'{self.data_ids[index]}',
+                    f'{self.study_id}',
                     self.fibonacci_extension.at[0,"0.202"],
                     self.fibonacci_extension.at[0,"0.236"],
                     self.fibonacci_extension.at[0,"0.241"],
@@ -799,9 +799,9 @@ val1    val3_________________________          vall2
         insert_list=[]
         for index,row in self.keltner.iterrows():
             insert_tuple=(f'AES_ENCRYPT("{self.data_cp.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}", UNHEX(SHA2("{self.data_cp.loc[index,:]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}",512)))',
-            f'"{self.stock_ids[index]}"',
-            f'"{self.data_ids[index]}"',
-            f'"{self.study_id}"',
+            f'{self.stock_ids[index]}',
+            f'{self.data_ids[index]}',
+            f'{self.study_id}',
             row["middle"].values[0],
             row["upper"].values[0],
             row["lower"].values[0])

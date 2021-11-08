@@ -147,7 +147,8 @@ select * from stocks.`nn-data` USE INDEX (`ids`);
 select * from stocks.`nn-data`;
 
 
-SELECT `stocks`.`data`.`date` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE('2021-08-23');
+select * from stocks.`data` inner join `stocks`.`stock` ON `stocks`.stock.stock = 'AXP' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`  and stocks.`data`.`date` = DATE('2008-11-07');
+SELECT `stocks`.`study-data`.* FROM `stocks`.`study-data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'PEP' AND `stocks`.`stock`.`id` = `stocks`.`study-data`.`stock-id` INNER JOIN stocks.`data` on stocks.`data`.`stock-id` = stocks.stock.`id` and stocks.`data`.`date` = DATE('2015-11-23') and stocks.`data`.`data-id` =  stocks.`study-data`.`data-id`	;
 -- SELECT `stock`,`id` FROM stocks.stock where `id` like 'SPY';
 -- SELECT * FROM stocks.`data` INNER JOIN stocks.stock WHERE `stock-id` = stocks.stock.`id` and stocks.stock.`stock` = "ULTA" AND stocks.`data`.`date` = "2021-09-01";
 -- ALTER TABLE stocks.stock ADD UNIQUE `stock-id` (id);

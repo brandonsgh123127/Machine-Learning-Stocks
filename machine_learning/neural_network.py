@@ -114,6 +114,7 @@ class Network(Neural_Framework):
                     sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
                 except Exception as e:
                     print('[Error] Failed batch!\nException:\n',str(e))
+                    continue
                 except Exception as e:
                     print(str(e))
                     continue
@@ -301,9 +302,9 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
 
         """        
     try:
-        check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,{'stock-id':stock_id,    
-                                                                        'from-date-id': from_date_id,
-                                                                        'to-date-id':to_date_id,
+        check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,{'stock-id':stock_id.encode("latin1"),    
+                                                                        'from-date-id': from_date_id.encode("latin1"),
+                                                                        'to-date-id':to_date_id.encode("latin1"),
                                                                         'model':name},
                                                                         multi=True)
         # Retrieve date, verify it is in date range, remove from date range
@@ -364,9 +365,9 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
             """        
         try:
             check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,{'id':f'{from_date_id}{to_date_id}{ticker.upper()}{name}',
-                                                                                'stock-id':stock_id,    
-                                                                            'from-date-id': from_date_id,
-                                                                            'to-date-id':to_date_id,
+                                                                                'stock-id':stock_id.encode("latin1"),    
+                                                                            'from-date-id': from_date_id.encode("latin1"),
+                                                                            'to-date-id':to_date_id.encode("latin1"),
                                                                                 'model':name,
                                                                                 'open':str(predicted['Open'].iloc[0]),
                                                                                 'close':str(predicted['Close'].iloc[0]),
