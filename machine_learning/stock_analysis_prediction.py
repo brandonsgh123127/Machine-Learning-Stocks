@@ -194,5 +194,6 @@ def get_preview_prices(ticker:str,force_generation=False):
 if __name__ == "__main__":
     _type = sys.argv[1]
     _has_actuals = sys.argv[3] == 'True'
+    _force_generate= sys.argv[4] == 'True'
     # print(_type,_has_actuals,_is_not_closed)
-    main(ticker=sys.argv[2],has_actuals=_has_actuals)
+    main(ticker=sys.argv[2],has_actuals=_has_actuals,force_generate=_force_generate)

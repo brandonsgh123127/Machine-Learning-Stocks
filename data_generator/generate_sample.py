@@ -31,8 +31,11 @@ class Sample(Normalizer):
         else:
             self.DAYS_SAMPLED = 15
         # Read the current ticker data
-        self.normalizer.read_data(self.ticker,rand_dates=rand_date) 
-        
+        try:
+            self.normalizer.read_data(self.ticker,rand_dates=rand_date) 
+        except Exception as e:
+            print(f'[ERROR] Failed to read sample data for ticker {self.ticker}')
+            raise Exception(e)
         # Iterate through dataframe and retrieve random sample
         if not is_divergence:
             self.normalizer.convert_derivatives(out=out)
@@ -53,6 +56,7 @@ class Sample(Normalizer):
 
         except Exception as e:
             print('[ERROR] Failed to Normalize data!\nException:\n',str(e))
+            raise Exception(e)
         try:
             if len(self.normalizer.normalized_data) < self.DAYS_SAMPLED:
                 self.normalizer.read_data(self.ticker,rand_dates=rand_date) # Get ticker and date from path

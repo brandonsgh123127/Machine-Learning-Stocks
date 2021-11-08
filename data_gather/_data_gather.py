@@ -121,7 +121,7 @@ class Gather():
         check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date`,`stocks`.`data`.`open`,
         `stocks`.`data`.`high`,`stocks`.`data`.`low`,
         `stocks`.`data`.`close`,`stocks`.`data`.`adj-close`
-         FROM stocks.`data` INNER JOIN stocks.stock 
+         FROM stocks.`data` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
          ON `stock-id` = stocks.stock.`id` 
           AND stocks.stock.`stock` = %(stock)s
            AND `stocks`.`data`.`date` >= DATE(%(sdate)s)
@@ -166,14 +166,18 @@ class Gather():
                 print(f'[INFO] Did not query all specified dates within range for data retrieval!  Remaining {date_range}')
             with threading.Lock():
                 try:
+                    try:
+                        self.cnx.close()
+                    except:
+                        pass
                     self.cnx = self.db_con.cursor(buffered=True)
-        
+                    self.cnx.autocommit = True
                     sys.stdout = open(os.devnull, 'w')
                     self.data = pdr.get_data_yahoo(self.indicator,start=start_date.strftime("%Y-%m-%d"),end=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
                     sys.stdout = sys.__stdout__
                     if self.data.empty:
+                        print(f'[ERROR] Data returned for {self.indicator} is empty!')
                         return 1
-                    uuid_gen = uuid.uuid4()
                     # Retrieve query from database, confirm that stock is in database, else make new query
         
                     select_stmt = "SELECT `id` FROM stocks.stock WHERE stock like %(stock)s"
@@ -189,6 +193,7 @@ class Gather():
                                 insert_resultado = self.cnx.execute(insert_stmt, { 'stock': f'{self.indicator.upper()}'},multi=True)
                                 self.db_con.commit()
                             except mysql.connector.errors.IntegrityError as e:
+                                print('[ERROR] Integrity Error.')
                                 pass
                             except Exception as e:
                                 print(f'[ERROR] Failed to insert stock named {self.indicator.upper()} into database!\nException:\n',str(e))
@@ -198,8 +203,6 @@ class Gather():
         
                         else:
                             for r in res:
-                                # print(f'{r[0]}\n')
-                                # print(repr(binascii.b2a_hex(str.encode(r[0]))))
                                 self.new_uuid_gen = binascii.b2a_hex(str.encode(str(r[0]),"utf8"))
                     try:
                         self.data['Date']
@@ -247,7 +250,6 @@ class Gather():
                     self.cnx.close()
                     return 1
         self.cnx.close()
-        # print('done gathering')
         return 0
     
     def get_option_data(self):

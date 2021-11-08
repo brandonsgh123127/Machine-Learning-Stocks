@@ -181,7 +181,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
     
     # First, get to date id
     check_cache_tdata_db_stmt = """SELECT `stocks`.`data`.`data-id`,`stocks`.`data`.`stock-id` 
-     FROM stocks.`data` INNER JOIN stocks.`stock`
+     FROM stocks.`data` USE INDEX (`id-and-date`) INNER JOIN stocks.`stock`
      ON stocks.`data`.`stock-id` = stocks.`stock`.`id` 
        AND `stocks`.`stock`.`stock` = %(stock)s
        AND stocks.`data`.`date` = DATE(%(date)s)
@@ -234,7 +234,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
     
     # Check nn-data table after retrieval of from-date and to-date id's
     check_cache_fdata_db_stmt = """SELECT `stocks`.`data`.`data-id` 
-     FROM stocks.`data` 
+     FROM stocks.`data` USE INDEX (`stockid-and-date`)
      WHERE stocks.`data`.`stock-id` = %(stock-id)s
        AND stocks.`data`.`date` = DATE(%(date)s)
         """
@@ -271,7 +271,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
     # Check nn-data table after retrieval of from-date and to-date id's
     check_cache_nn_db_stmt = """SELECT `stocks`.`nn-data`.`open`,`stocks`.`nn-data`.`close`,
     `stocks`.`nn-data`.`range` 
-     FROM stocks.`nn-data` WHERE
+     FROM stocks.`nn-data` USE INDEX (`from-to-model`,`stockid`) WHERE
     `stock-id` = %(stock-id)s
        AND `stocks`.`nn-data`.`from-date-id` = %(from-date-id)s
        AND `stocks`.`nn-data`.`to-date-id` = %(to-date-id)s
@@ -382,7 +382,7 @@ def run(epochs,batch_size,name="model_relu"):
     neural_net.save_model()
 
 
-run(10,50,"model_relu")
+# run(10,50,"model_relu")
 # run(100,100,"model_leaky",2)
 # run(100,100,"model_sigmoid",3)
 # run(100,100,"model_relu2",4)

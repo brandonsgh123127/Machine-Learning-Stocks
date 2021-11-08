@@ -189,7 +189,7 @@ class Normalizer():
               AND stocks.`data`.date >= %s
                AND stocks.`data`.date <= %s
                 AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
-                AND stocks.`study`.`study` like 'ema%' 
+                AND stocks.`study`.`study` like 'ema%%' 
              INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
             """, ((initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d"),
                   initial_date.strftime('%Y-%m-%d'),
@@ -202,7 +202,7 @@ class Normalizer():
             for set in date_result:
                 s = set.fetchall()
                 if len(s) == 0:
-                    print(f'[ERROR] Failed to retrieve ema study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}')
+                    print(f'[ERROR] Failed to retrieve ema study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}!')
                     break
                 try:
                     # Iterate through each element to retrieve values

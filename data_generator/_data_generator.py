@@ -106,6 +106,10 @@ class Generator():
             self.studies.data = self.studies.data.drop(['Volume'],axis=1)
         except:
             pass
+        try:
+            self.studies.data = self.studies.data.drop(['index'],axis=1)
+        except:
+            pass
         # print(self.studies.data)
         try:
             self.studies.apply_ema("14",self.studies.get_date_difference(self.studies.date_set[0],self.studies.date_set[1]))

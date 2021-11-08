@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Stock` (
   `stock` VARCHAR(5) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX stockid ON stocks.stock (id);
+
 CREATE TABLE IF NOT EXISTS `Stocks`.`Data` (
   `data-id` VARBINARY(128) NOT NULL,
   `stock-id` VARBINARY(128) NOT NULL,
@@ -18,11 +20,16 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Data` (
   `adj-close` DOUBLE(12, 3) NOT NULL,
   PRIMARY KEY (`data-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `id-and-date` ON stocks.`data` (`data-id`,`stock-id`,`date`);
+CREATE INDEX `stockid-and-date` ON stocks.`data` (`stock-id`,`date`);
+CREATE INDEX `date` ON stocks.`data` (`date`);
+
 CREATE TABLE IF NOT EXISTS `Stocks`.`Study` (
   `study-id` VARBINARY(128) NOT NULL,
   `study` VARCHAR(32) NOT NULL,
   PRIMARY KEY (`study-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `studyid` ON stocks.`study` (`study-id`);
 
 CREATE TABLE IF NOT EXISTS `Stocks`.`Study-Data` (
   `id` VARBINARY(128) NOT NULL,
@@ -45,6 +52,7 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Study-Data` (
   `val14` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `ids` ON stocks.`study-data` (`id`,`stock-id`,`data-id`,`study-id`);
 
 CREATE TABLE IF NOT EXISTS `Stocks`.`NN-Data` (
   `nn-id` VARBINARY(128) NOT NULL,
@@ -57,6 +65,9 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`NN-Data` (
   `range` DOUBLE(6, 3) NULL,
   PRIMARY KEY (`nn-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `ids` ON stocks.`nn-data` (`nn-id`,`stock-id`,`from-date-id`,`to-date-id`);
+CREATE INDEX `from-to-model` ON stocks.`nn-data` (`from-date-id`,`to-date-id`,`model`);
+CREATE INDEX `stockid` ON stocks.`nn-data` (`stock-id`);
 
 CREATE TABLE IF NOT EXISTS `Stocks`.`Options` (
   `option-id` VARBINARY(128) NOT NULL,
@@ -128,11 +139,14 @@ DELETE FROM `nn-data`;
 --                             stocks.stock.`id` = stocks.`study-data`.`stock-id`
 --                             AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`;
 SHOW TABLES FROM stocks;
-select * from stocks.`data`;
-select * from stocks.`stock`;
-select * from stocks.study;
-select * from stocks.`study-data`;
+EXPLAIN select * from stocks.`data` USE INDEX (`id-and-date`) ;
+select `open`,`high`,`low`,`close` from stocks.`data` USE INDEX (`id-and-date`,`date`) INNER JOIN stocks.`stock` USE INDEX(`stockid`) on `date` = DATE('2021-11-04') and `id` = stocks.`data`.`stock-id`;
+select * from stocks.`stock` USE INDEX (`stockid`);
+select * from stocks.study USE INDEX (`studyid`);
+select * from stocks.`study-data` USE INDEX (`ids`);
+select * from stocks.`nn-data` USE INDEX (`ids`);
 select * from stocks.`nn-data`;
+
 
 -- SELECT `stocks`.`data`.`date` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE('2021-09-01');
 -- SELECT `stock`,`id` FROM stocks.stock where `id` like 'SPY';
@@ -150,7 +164,16 @@ select * from stocks.`nn-data`;
 --                             AND stocks.`study-data`.`id` = (AES_ENCRYPT("2021-09-01 00:00:00SPY14", UNHEX(SHA2("2021-09-01 00:00:00SPY14",512))))
 --                             AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`;
 SHOW INDEX FROM stocks.stock;
-
+select * from stocks.`study-data` inner join stocks.stock on stocks.`study-data`.`stock-id` = stocks.`stock`.`id` and stock.stock = 'DOCU';
+select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
+            ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id` INNER JOIN stocks.`data` ON
+             stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id`
+              AND stocks.`data`.date >= DATE('2021-05-09')
+               AND stocks.`data`.date <= DATE('2021-06-18')
+                AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+                AND stocks.`study`.`study` like 'ema%' 
+             INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = 'DOCU';
+INSERT INTO stocks.stock (id, stock) VALUES (AES_ENCRYPT('test', 'test'),'test');
 #select * from stocks.`data` where `stock-id` = (select data_id from stocks.stock where `stock` = 'AMD' LIMIT 1);
 #select * from stocks.`data` where date >= '2020-03-03' and date <= '2021-04-22' and `stock-id` = (select `data_id` from stocks.stock where stock = 'SPY');
 -- select * from stocks.data INNER JOIN stocks.stock ON `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.stock.stock = 'AXP' AND stocks.stock.id = AES_ENCRYPT('s', UNHEX(SHA2('s',512)));

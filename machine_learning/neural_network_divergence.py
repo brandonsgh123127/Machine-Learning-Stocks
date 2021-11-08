@@ -110,7 +110,7 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=Fals
     
     # First, get to date id
     check_cache_tdata_db_stmt = """SELECT `stocks`.`data`.`data-id`,`stocks`.`data`.`stock-id` 
-     FROM stocks.`data` INNER JOIN stocks.`stock`
+     FROM stocks.`data` USE INDEX (`stockid-and-date`) INNER JOIN stocks.`stock`
      ON stocks.`data`.`stock-id` = stocks.`stock`.`id` 
        AND `stocks`.`stock`.`stock` = %(stock)s
        AND stocks.`data`.`date` = DATE(%(date)s)
@@ -185,7 +185,7 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=Fals
     # Check nn-data table after retrieval of from-date and to-date id's
     check_cache_nn_db_stmt = """SELECT `stocks`.`nn-data`.`open`,`stocks`.`nn-data`.`close`,
     `stocks`.`nn-data`.`range` 
-     FROM stocks.`nn-data` WHERE
+     FROM stocks.`nn-data` USE INDEX (`from-to-model`,`stockid`) WHERE
     `stock-id` = %(stock-id)s
        AND `stocks`.`nn-data`.`from-date-id` = %(from-date-id)s
        AND `stocks`.`nn-data`.`to-date-id` = %(to-date-id)s
@@ -215,7 +215,7 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=Fals
     
     sampler = Sample(ticker)
     train = []
-    sampler.generate_divergence_sample(_has_actuals=has_actuals,rand_date=True,rand_date=rand_date)
+    sampler.generate_divergence_sample(_has_actuals=has_actuals,rand_date=rand_date)
     
     if predicted is None:
         neural_net = Neural_Divergence(0,0)
