@@ -23,11 +23,13 @@ class Network(Neural_Framework):
         super().__init__(epochs, batch_size)
         self.model_map_names = {"model_relu":1,"model_leaky":2,"model_sigmoid":3,"model_relu2":4,"model_leaky2":5,
                                 "model_sigmoid2":6}
+        self.model_choice:int = None
 
-
+    def get_mapping(self,choice:int):
+        return self.model_map_names.keys()[self.model_map_names.values().index(choice)]
     def create_model(self,model_choice="model_relu"):
         self.model_name = model_choice
-        self.model_choice =self.model_map_names.get(model_choice)
+        self.model_choice = self.model_map_names.get(model_choice)
         self.nn_input = keras.Input(shape=(1,1,140)) # 14 * 10 cols
         # Relu Model
         if self.model_choice == 1:
@@ -142,6 +144,7 @@ class Network(Neural_Framework):
     def save_model(self):
         self.nn.save(f'{self.path}/data/{self.model_name}')
     def load_model(self,name="model_relu"):
+        self.model_choice = self.model_map_names.get(name)
         super().load_model(name)
 listLock = threading.Lock()
 
@@ -266,7 +269,6 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
             break
         else:
             from_date_id = id_res[0][0].decode('latin1')
-        
         
     # Check nn-data table after retrieval of from-date and to-date id's
     check_cache_nn_db_stmt = """SELECT `stocks`.`nn-data`.`open`,`stocks`.`nn-data`.`close`,

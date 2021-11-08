@@ -7,6 +7,7 @@ from threading_impl.Thread_Pool import Thread_Pool
 import threading
 import time
 import datetime
+
 '''
     This class allows for unification of data, studies and news for future machine learning training.
     data formatting 
@@ -16,6 +17,7 @@ class Generator():
         # print(ticker)
         self.studies = Studies(ticker,force_generate=force_generate)
         self.news=News_Scraper(ticker)
+        self.thread_pool = Thread_Pool(amount_of_threads=2)
         if ticker is not None:
             self.ticker=ticker
         if path is not None:
@@ -112,10 +114,13 @@ class Generator():
             pass
         # print(self.studies.data)
         try:
-            self.studies.apply_ema("14",self.studies.get_date_difference(self.studies.date_set[0],self.studies.date_set[1]))
-            self.studies.apply_ema("30",self.studies.get_date_difference(self.studies.date_set[0],self.studies.date_set[1])) 
+            date_diff=self.studies.get_date_difference(self.studies.date_set[0],self.studies.date_set[1])
+            self.studies.apply_ema("14",date_diff)
+            self.studies.apply_ema("30",date_diff)
             self.studies.apply_fibonacci()
             self.studies.keltner_channels(20, 1.3, None)
+            # Final join
+            
             self.studies.reset_data()
             self.studies = Studies(self.ticker)
         except Exception as e:

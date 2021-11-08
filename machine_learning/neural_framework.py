@@ -16,7 +16,7 @@ class Neural_Framework():
         # print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
         # print(device_lib.list_local_devices())
         
-    def create_model(self,model_choice=None):
+    def create_model(self,model_choice="model_relu"):
         pass
     def run_model(self):
         pass
@@ -36,4 +36,5 @@ class Neural_Framework():
                 if(name == name_loc):
                     self.model_choice = model_choice
         except:
-            print("No model exists, creating new model...")
+            print(f'[INFO] No model exists for {name}, creating new model...')
+            raise Exception()

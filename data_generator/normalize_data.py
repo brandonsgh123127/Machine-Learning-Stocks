@@ -97,23 +97,25 @@ class Normalizer():
             else:
                 initial_date=date
             date_result = self.cnx.execute("""
-        select * from stocks.`data` where stocks.`data`.`date` >= DATE(%(start)s) and stocks.`data`.`date` <= DATE(%(end)s) and `stock-id` = (select `id` from stocks.`stock` where stock = %(stock)s) ORDER BY stocks.`data`.`date` ASC
+        select * from stocks.`data` USE INDEX (`id-and-date`)
+         WHERE stocks.`data`.`date` >= DATE(%(start)s)
+          AND stocks.`data`.`date` <= DATE(%(end)s)
+           AND `stock-id` = (select `id` from stocks.`stock` where stock = %(stock)s)
+            ORDER BY stocks.`data`.`date` ASC
         """, ({'end':initial_date.strftime('%Y-%m-%d'),
                'start':(initial_date - datetime.timedelta(days=40)).strftime('%Y-%m-%d'),
                'stock':ticker.upper()}),multi=True)
         except Exception as e:
             print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}!\nException:\n',str(e))
             raise RuntimeError
-        # date_res = self.cnx.fetchall()
-        # print(date_result,flush=True)
         for res in date_result:
             r_set = res.fetchall()
             if len(r_set) == 0: # empty results 
-                raise RuntimeError("Failed to query any results for statement:",f'select * from stocks.`data` where stocks.`data`.date >= DATE({(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}) and stocks.`data`.date <= DATE({initial_date.strftime("%Y-%m-%d")}) and `stock-id` = (select `id` from stocks.`stock` where stock = {ticker.upper()}) ORDER BY stocks.`data`.`date` ASC')
+                raise RuntimeError("Failed to query any results for read db statement:",f'select * from stocks.`data` where stocks.`data`.date >= DATE({(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}) and stocks.`data`.date <= DATE({initial_date.strftime("%Y-%m-%d")}) and `stock-id` = (select `id` from stocks.`stock` where stock = {ticker.upper()}) ORDER BY stocks.`data`.`date` ASC')
             for set in r_set:
                 if len(set) == 0: #if somehow a result got returned and no values included, fail
-                    print(f'[ERROR] Failed to retrieve data for {ticker} from range {initial_date}--{initial_date + datetime.timedelta(days=40)}\n')
-                    exit(1)
+                    raise Exception(f'[ERROR] Failed to retrieve data for {ticker} from range {initial_date}--{initial_date + datetime.timedelta(days=40)}\n')
+                    
                 try:
                     # Iterate through each element to retrieve values
                     for index,row in enumerate(set):
@@ -183,14 +185,19 @@ class Normalizer():
             initial_date=date
         if study == 'ema':
             date_result = self.cnx.execute("""
-            select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
-            ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id` INNER JOIN stocks.`data` ON
+            select stocks.`study-data`.val1, stocks.`study`.study
+             FROM stocks.`study` USE INDEX (`studyid`)
+             INNER JOIN stocks.`study-data` USE INDEX (`ids`)
+            ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+             INNER JOIN stocks.`data` USE INDEX (`id-and-date`) ON
              stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id`
               AND stocks.`data`.date >= %s
                AND stocks.`data`.date <= %s
                 AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
                 AND stocks.`study`.`study` like 'ema%%' 
-             INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
+             INNER JOIN stocks.stock
+              ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s
+               ORDER BY stocks.`data`.`date` ASC
             """, ((initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d"),
                   initial_date.strftime('%Y-%m-%d'),
                   ticker),multi=True)
@@ -233,19 +240,23 @@ class Normalizer():
             return self.studies
         elif study == 'fib':
             date_result = self.cnx.execute("""
-            select stocks.`study-data`.val1, stocks.`study-data`.val2,
+            SELECT stocks.`study-data`.val1, stocks.`study-data`.val2,
             stocks.`study-data`.val3, stocks.`study-data`.val4, stocks.`study-data`.val5,
             stocks.`study-data`.val6, stocks.`study-data`.val7, stocks.`study-data`.val8,
             stocks.`study-data`.val9, stocks.`study-data`.val10, stocks.`study-data`.val11,
             stocks.`study-data`.val12, stocks.`study-data`.val13, stocks.`study-data`.val14,
-            stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
-            ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id` INNER JOIN stocks.`data` ON
+            stocks.`study`.study from stocks.`study`
+             INNER JOIN stocks.`study-data` USE INDEX (`ids`)
+            ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
+             INNER JOIN stocks.`data` USE INDEX (`id-and-date`) ON
              stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id` 
              AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
              AND stocks.`study`.`study` = 'fibonacci'
               AND stocks.`data`.date >= DATE(%s)
                AND stocks.`data`.date <= DATE(%s) 
-             INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
+             INNER JOIN stocks.stock ON
+              stocks.stock.`id` = stocks.`data`.`stock-id`
+              AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
             """, ((initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d"),
                   initial_date.strftime('%Y-%m-%d'),
                   ticker),multi=True)
@@ -308,16 +319,19 @@ class Normalizer():
             return self.fib
         elif study == 'keltner':
             date_result = self.cnx.execute("""
-            select stocks.`study-data`.val1, stocks.`study-data`.val2, stocks.`study-data`.val3,
-             stocks.`study`.study from stocks.`study` INNER JOIN stocks.`study-data` 
+            SELECT stocks.`study-data`.val1, stocks.`study-data`.val2, stocks.`study-data`.val3,
+             stocks.`study`.study FROM stocks.`study` USE INDEX (`studyid`)
+              INNER JOIN stocks.`study-data` USE INDEX (`ids`)
             ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
-             INNER JOIN stocks.`data` ON
+             INNER JOIN stocks.`data` USE INDEX (`id-and-date`) ON
              stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id`
               AND stocks.`data`.date >= %s
                AND stocks.`data`.date <= %s
                 AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
                 AND stocks.`study`.`study` = 'keltner20-1.3' 
-             INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
+             INNER JOIN stocks.stock USE INDEX (`stockid`) ON
+              stocks.stock.`id` = stocks.`data`.`stock-id`
+               AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
             """, ((initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d"),
                   initial_date.strftime('%Y-%m-%d'),
                   ticker),multi=True)

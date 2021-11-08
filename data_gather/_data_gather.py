@@ -83,6 +83,23 @@ class Gather():
                 print("Database does not exist")
             else:
                 print(err)
+        # Make second connection use for multiple connection threads
+        try:
+            self.db_con2 = mysql.connector.connect(
+              host="127.0.0.1",
+              user=root[0].text,
+              password=root[1].text,
+              raise_on_warnings = True,
+              database='stocks',
+              charset = 'latin1'
+            )
+        except mysql.connector.Error as err:
+            if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+                print("Something is wrong with your user name or password")
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                print("Database does not exist")
+            else:
+                print(err)
                 
         self.cnx = self.db_con.cursor(buffered=True)
         # self.cnx.execute('SHOW TABLES FROM stocks;')

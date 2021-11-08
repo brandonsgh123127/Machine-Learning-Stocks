@@ -72,8 +72,7 @@ class Neural_Divergence(Neural_Framework):
         self.nn.save(f'{self.path}/data/divergence')
     def load_model(self):
         try:
-            self.nn = keras.models.load_model(
-                f'{self.path}/data/divergence')
+            super().load_model('divergence')
         except:
             print("No model exists, creating new model...")
 listLock = threading.Lock()
