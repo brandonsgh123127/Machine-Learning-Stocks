@@ -121,60 +121,60 @@ class Studies(Gather):
                 # iterate through each data row and verify data is in place before continuing...
                 study_data=pd.DataFrame(columns=[f'ema{length}'])
                 # Before inserting data, check cached data, verify if there is data there...
-                with threading.Lock():
-                    try: # Try connection to db_con, if not, connect to 
-                        self.ema_cnx = self.db_con.cursor()
-                    except:
-                        self.ema_cnx = self.db_con2.cursor()
-                    self.ema_cnx.autocommit = True
-                    check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date`,
-                    `stocks`.`study-data`.`val1` 
-                     FROM stocks.`data` USE INDEX (`id-and-date`)
-                      INNER JOIN stocks.stock USE INDEX(`stockid`)
-                    ON `stock-id` = stocks.stock.`id` 
-                      AND stocks.stock.`stock` = %(stock)s
-                    
-                        AND `stocks`.`data`.`date` >= DATE(%(bdate)s)
-                        AND `stocks`.`data`.`date` <= DATE(%(edate)s)
-                       INNER JOIN stocks.`study-data` USE INDEX (`ids`)
-                        ON
-                        stocks.stock.`id` = stocks.`study-data`.`stock-id`
-                        AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`
-                        AND stocks.`study-data`.`study-id` = %(id)s ORDER BY stocks.`data`.`date` ASC
-                        """
-                    try:
-                        check_cache_studies_db_result = self.ema_cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
-                                                                                        'bdate':self.data["Date"].iloc[0].strftime('%Y-%m-%d') if isinstance(self.data["Date"].iloc[0],datetime.datetime) else self.data["Date"].iloc[0],
-                                                                                        'edate':self.data["Date"].iloc[-1].strftime('%Y-%m-%d') if isinstance(self.data["Date"].iloc[-1],datetime.datetime) else self.data["Date"].iloc[-1],
-                                                                                        'id': self.study_id},multi=True)
-                        # Retrieve date, verify it is in date range, remove from date range
-                        for res in check_cache_studies_db_result:
-                            res= res.fetchall()
-                            # Convert datetime to str
-                            for r in res:
-                                try:
-                                    date=datetime.date.strftime(r[0],"%Y-%m-%d")
-                                except Exception as e:
-                                    print(f'[ERROR] No date found for study element!\nException:\n{str(e)}')
-                                    continue
-                                if date is None:
-                                    print(f'[INFO] Not enough prior ema{length} found for {self.indicator.upper()} from {self.data["Date"].iloc[0]} to {self.data["Date"].iloc[-1]}... Generating ema{length} data...!\n',flush=True)
-                                    break
+                try: # Try connection to db_con, if not, connect to 
+                    self.ema_cnx = self.db_con.cursor()
+                except:
+                    self.ema_cnx = self.db_con2.cursor()
+                self.ema_cnx.autocommit = True
+                check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date`,
+                `stocks`.`study-data`.`val1` 
+                 FROM stocks.`data` USE INDEX (`id-and-date`)
+                  INNER JOIN stocks.stock USE INDEX(`stockid`)
+                ON `stock-id` = stocks.stock.`id` 
+                  AND stocks.stock.`stock` = %(stock)s
+                    AND `stocks`.`data`.`date` >= DATE(%(bdate)s)
+                    AND `stocks`.`data`.`date` <= DATE(%(edate)s)
+                   INNER JOIN stocks.`study-data` USE INDEX (`ids`)
+                    ON
+                    stocks.stock.`id` = stocks.`study-data`.`stock-id`
+                    AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`
+                    AND stocks.`study-data`.`study-id` = %(id)s 
+                    ORDER BY stocks.`data`.`date` ASC
+                    """
+                try:
+                    check_cache_studies_db_result = self.ema_cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
+                                                                                    'bdate':self.data["Date"].iloc[0].strftime('%Y-%m-%d') if isinstance(self.data["Date"].iloc[0],datetime.datetime) else self.data["Date"].iloc[0],
+                                                                                    'edate':self.data["Date"].iloc[-1].strftime('%Y-%m-%d') if isinstance(self.data["Date"].iloc[-1],datetime.datetime) else self.data["Date"].iloc[-1],
+                                                                                    'id': self.study_id},multi=True)
+                    # Retrieve date, verify it is in date range, remove from date range
+                    for res in check_cache_studies_db_result:
+                        res= res.fetchall()
+                        # Convert datetime to str
+                        for r in res:
+                            try:
+                                date=datetime.date.strftime(r[0],"%Y-%m-%d")
+                            except Exception as e:
+                                print(f'[ERROR] No date found for study element!\nException:\n{str(e)}')
+                                continue
+                            if date is None:
+                                print(f'[INFO] Not enough prior ema{length} found for {self.indicator.upper()} from {self.data["Date"].iloc[0]} to {self.data["Date"].iloc[-1]}... Generating ema{length} data...!\n',flush=True)
+                                break
+                            else:
+                                # check if date is there, if not fail this
+                                if date in date_range:
+                                    study_data = study_data.append({f'ema{length}':r[1]},
+                                                                    ignore_index=True)
+                                    date_range.remove(date)                                 
                                 else:
-                                    # check if date is there, if not fail this
-                                    if date in date_range:
-                                        study_data = study_data.append({f'ema{length}':r[1]},
-                                                                        ignore_index=True)
-                                        date_range.remove(date)                                 
-                                    else:
-                                        continue
-                    except mysql.connector.errors.IntegrityError: # should not happen
-                        self.ema_cnx.close()
-                        pass
-                    except Exception as e:
-                        print('[ERROR] Failed to check for cached ema-data element!\nException:\n',str(e))
-                        self.ema_cnx.close()
-                        raise mysql.connector.errors.DatabaseError()
+                                    # print(f'[INFO] Skipping date removal for {date}')
+                                    continue
+                except mysql.connector.errors.IntegrityError: # should not happen
+                    self.ema_cnx.close()
+                    pass
+                except Exception as e:
+                    print('[ERROR] Failed to check for cached ema-data element!\nException:\n',str(e))
+                    self.ema_cnx.close()
+                    raise mysql.connector.errors.DatabaseError()
                 if len(date_range) == 0 and not self._force_generate: # continue loop if found cached data
                     self.applied_studies=pd.concat([self.applied_studies,study_data])
                     continue
@@ -199,66 +199,65 @@ class Studies(Gather):
                     except:
                         pass
                     # Calculate and store data to DB ...   
-                    with threading.Lock(): 
-                        try: # Try connection to db_con, if not, connect to 
-                            self.ema_cnx = self.db_con.cursor()
-                        except:
-                            self.ema_cnx = self.db_con2.cursor()
-                        self.ema_cnx.autocommit = True
-                        # Retrieve the stock-id, and data-point id in a single select statement
-                        retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`,
-                         `stocks`.`data`.`stock-id` FROM `stocks`.`data` USE INDEX (`id-and-date`)
-                        INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`
-                         AND `stocks`.`data`.`date`>= DATE(%(bdate)s) 
-                         AND `stocks`.`data`.`date`<= DATE(%(edate)s)
-                         ORDER BY stocks.`data`.`date` ASC 
-                        """
-                        retrieve_data_result = self.ema_cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
-                                                                                    'bdate':self.data["Date"].iloc[0].strftime('%Y-%m-%d') if isinstance(self.data["Date"].iloc[0],datetime.datetime) else self.data["Date"].iloc[0],
-                                                                                    'edate':self.data["Date"].iloc[-1].strftime('%Y-%m-%d') if isinstance(self.data["Date"].iloc[-1],datetime.datetime) else self.data["Date"].iloc[-1]},multi=True)
-                        self.stock_ids=[]
-                        self.data_ids=[]
-                        for retrieve_result in retrieve_data_result:
-                            id_res = retrieve_result.fetchall()
-                            for res in id_res:
-                                if len(res) == 0:
-                                    print(f'[ERROR] Failed to locate a data id under {retrieve_data_result}')
-                                    raise Exception()
-                                else:
-                                    try:
-                                        self.stock_ids.append(res[1].decode('latin1'))
-                                        self.data_ids.append(res[0].decode('latin1'))
-                                    except Exception as e:
-                                        print(f'[ERROR] failed to query stock id/data_id for ema insert!\nException:\n{str(e)}')
-                        # Execute insert for study-data
-                        insert_studies_db_stmt = "REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"        
-                        
-                        insert_list=[]
-                        for index,id in self.data.iterrows():
-                            emastr=f'ema{length}'
-                            insert_tuple=(f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",512)))',
-                            f'"{self.stock_ids[index]}"',
-                            f'"{self.data_ids[index]}"',
-                            f'"{self.study_id}"',
-                            self.applied_studies[emastr].iloc[index])
-                            insert_list.append(insert_tuple) # add tuple to list
-                        # Call execution statement to insert data in one shot
-                        try:
-                            # print(insert_studies_db_stmt)
-                            insert_studies_db_result = self.ema_cnx.executemany(insert_studies_db_stmt,insert_list)
-                            self.db_con.commit()
-                        except mysql.connector.errors.IntegrityError:
-                            print('[ERROR] Integrity Error')
-                            self.ema_cnx.close()
-                            pass
-                        except TypeError as e:
-                            print(f'[ERROR] TypeError!\nException:\n{str(e)}')
-                        except ValueError as e:
-                            print(f'[ERROR] ValueError!\nException:\n{str(e)}')
-                        except Exception as e:
-                            print('[ERROR] Failed to insert ema-data element!\nException:\n',str(e))
-                            self.ema_cnx.close()
-                            pass
+                    try: # Try connection to db_con, if not, connect to 
+                        self.ema_cnx = self.db_con.cursor()
+                    except:
+                        self.ema_cnx = self.db_con2.cursor()
+                    self.ema_cnx.autocommit = True
+                    # Retrieve the stock-id, and data-point id in a single select statement
+                    retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`,
+                     `stocks`.`data`.`stock-id` FROM `stocks`.`data` USE INDEX (`id-and-date`)
+                    INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`
+                     AND `stocks`.`data`.`date`>= DATE(%(bdate)s) 
+                     AND `stocks`.`data`.`date`<= DATE(%(edate)s)
+                     ORDER BY stocks.`data`.`date` ASC 
+                    """
+                    retrieve_data_result = self.ema_cnx.execute(retrieve_data_stmt,{'stock':f'{self.indicator.upper()}',
+                                                                                'bdate':self.data["Date"].iloc[0].strftime('%Y-%m-%d') if isinstance(self.data["Date"].iloc[0],datetime.datetime) else self.data["Date"].iloc[0],
+                                                                                'edate':self.data["Date"].iloc[-1].strftime('%Y-%m-%d') if isinstance(self.data["Date"].iloc[-1],datetime.datetime) else self.data["Date"].iloc[-1]},multi=True)
+                    self.stock_ids=[]
+                    self.data_ids=[]
+                    for retrieve_result in retrieve_data_result:
+                        id_res = retrieve_result.fetchall()
+                        for res in id_res:
+                            if len(res) == 0:
+                                print(f'[ERROR] Failed to locate a data id under {retrieve_data_result}')
+                                raise Exception()
+                            else:
+                                try:
+                                    self.stock_ids.append(res[1].decode('latin1'))
+                                    self.data_ids.append(res[0].decode('latin1'))
+                                except Exception as e:
+                                    print(f'[ERROR] failed to query stock id/data_id for ema insert!\nException:\n{str(e)}')
+                    # Execute insert for study-data
+                    insert_studies_db_stmt = "REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"        
+                    
+                    insert_list=[]
+                    for index,id in self.data.iterrows():
+                        emastr=f'ema{length}'
+                        insert_tuple=(f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",512)))',
+                        f'"{self.stock_ids[index]}"',
+                        f'"{self.data_ids[index]}"',
+                        f'"{self.study_id}"',
+                        self.applied_studies[emastr].iloc[index])
+                        insert_list.append(insert_tuple) # add tuple to list
+                    # Call execution statement to insert data in one shot
+                    try:
+                        # print(insert_studies_db_stmt)
+                        insert_studies_db_result = self.ema_cnx.executemany(insert_studies_db_stmt,insert_list)
+                        self.db_con.commit()
+                    except mysql.connector.errors.IntegrityError:
+                        print('[ERROR] Integrity Error')
+                        self.ema_cnx.close()
+                        pass
+                    except TypeError as e:
+                        print(f'[ERROR] TypeError!\nException:\n{str(e)}')
+                    except ValueError as e:
+                        print(f'[ERROR] ValueError!\nException:\n{str(e)}')
+                    except Exception as e:
+                        print('[ERROR] Failed to insert ema-data element!\nException:\n',str(e))
+                        self.ema_cnx.close()
+                        pass
         self.ema_cnx.close()
         return 0
    

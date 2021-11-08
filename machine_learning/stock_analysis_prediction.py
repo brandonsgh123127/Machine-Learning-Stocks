@@ -97,11 +97,17 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
         # Confirm end date is valid 
         holidays=USFederalHolidayCalendar().holidays(start=valid_datetime - datetime.timedelta(days=75),end=valid_datetime).to_pydatetime()
         valid_date=valid_datetime.date()
+        if (datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30) and datetime.datetime.utcnow().hour >= 0: # if current time is before 9:30 AM EST, go back a day
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+            valid_date = (valid_date - datetime.timedelta(days=1))
         if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
             valid_date = (valid_date - datetime.timedelta(days=1))
         if valid_date.weekday()==5: # if saturday
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
             valid_date = (valid_date - datetime.timedelta(days=1))
         if valid_date.weekday()==6: # if sunday
+            valid_datetime = (valid_datetime - datetime.timedelta(days=2))
             valid_date = (valid_date - datetime.timedelta(days=2))
         if valid_date in holidays:
             valid_date = (valid_date - datetime.timedelta(days=1))

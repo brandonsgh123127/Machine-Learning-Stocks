@@ -193,21 +193,21 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
     valid_datetime=datetime.datetime.today()
     holidays=USFederalHolidayCalendar().holidays(start=valid_datetime,end=(valid_datetime + datetime.timedelta(days=7))).to_pydatetime()
     valid_date=valid_datetime.date()
-    if datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30 and datetime.datetime.utcnow().hour >= 4: # if current time is before 9:30 AM EST, go back a day
+    if (datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30) or (datetime.datetime.utcnow().weekday() == 0 and datetime.datetime.utcnow().hour <= 4): # if current time is before 9:30 AM EST, go back a day
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
     if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
-        valid_datetime = (valid_datetime + datetime.timedelta(days=1))
-        valid_date = (valid_date + datetime.timedelta(days=1))
+        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+        valid_date = (valid_date - datetime.timedelta(days=1))
     if valid_date.weekday()==5: # if saturday
-        valid_datetime = (valid_datetime + datetime.timedelta(days=2))
-        valid_date = (valid_date + datetime.timedelta(days=2))
+        valid_datetime = (valid_datetime - datetime.timedelta(days=2))
+        valid_date = (valid_date - datetime.timedelta(days=2))
     if valid_date.weekday()==6: # if sunday
-        valid_datetime = (valid_datetime + datetime.timedelta(days=1))
-        valid_date = (valid_date + datetime.timedelta(days=1))
+        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+        valid_date = (valid_date - datetime.timedelta(days=1))
     if valid_date in holidays:
-        valid_datetime = (valid_datetime + datetime.timedelta(days=1))
-        valid_date = (valid_date + datetime.timedelta(days=1))
+        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+        valid_date = (valid_date - datetime.timedelta(days=1))
     if has_actuals: # go back a day
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
@@ -227,8 +227,24 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
     for retrieve_result in retrieve_tdata_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
-            if not force_generation:
-                print(f'[INFO] Failed to locate a to data-id and stock-id for {ticker} on {valid_datetime.strftime("%Y-%m-%d")} with has_actuals: {has_actuals}')
+            print(f'[INFO] Failed to locate a to data-id and stock-id for {ticker} on {valid_datetime.strftime("%Y-%m-%d")} with has_actuals: {has_actuals}')
+            print(f'[INFO] Retrieving just stock-id...')
+            check_stockid_db_stmt = """SELECT `stocks`.`stock`.`id` 
+             FROM stocks.`stock` USE INDEX (`stockid`) WHERE
+               `stocks`.`stock`.`stock` = %(stock)s
+                """
+            result = cnx.execute(check_stockid_db_stmt,{'stock':f'{ticker.upper()}'
+                                                        },multi=True)
+                
+            for retrieve_result in retrieve_tdata_result:
+                id_res = retrieve_result.fetchall()
+                if len(id_res) == 0:
+                    print('[ERROR] No stock id found! Breaking!!')
+                    raise Exception('[ERROR] Could not find stock id!')
+                else:
+                    stock_id = id_res[0][0].decode('latin1')
+                    print('[INFO] Retrieved stock ID')
+
             break
         else:
             stock_id = id_res[0][1].decode('latin1')
@@ -245,6 +261,10 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
     valid_datetime=datetime.datetime.today() - datetime.timedelta(days=75)
     holidays=USFederalHolidayCalendar().holidays(start=valid_datetime,end=(valid_datetime + datetime.timedelta(days=7)).strftime('%Y-%m-%d')).to_pydatetime()
     valid_date=valid_datetime.date()
+    
+    if (datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30) or (datetime.datetime.utcnow().weekday() == 0 and datetime.datetime.utcnow().hour <= 4): # if current time is before 9:30 AM EST, go back a day
+        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+        valid_date = (valid_date - datetime.timedelta(days=1))
     if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4:
         valid_datetime = (valid_datetime + datetime.timedelta(days=1))
         valid_date = (valid_date + datetime.timedelta(days=1))

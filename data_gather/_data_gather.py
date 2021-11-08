@@ -143,6 +143,7 @@ class Gather():
           AND stocks.stock.`stock` = %(stock)s
            AND `stocks`.`data`.`date` >= DATE(%(sdate)s)
            AND `stocks`.`data`.`date` <= DATE(%(edate)s)
+           ORDER BY stocks.`data`.`date` ASC
             """
                 
         try:
@@ -236,7 +237,7 @@ class Gather():
                         try: 
                             # print(row.name)
                             insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'data_id': f'{self.indicator}{row["Date"].strftime("%Y-%m-%d")}',
-                                                                                    'stock':f'{self.indicator}',
+                                                                                    'stock':f'{self.indicator.upper()}',
                                                                                     'Date':row['Date'].strftime("%Y-%m-%d"),
                                                                                     'Open':row['Open'],
                                                                                     'High':row['High'],

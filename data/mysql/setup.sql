@@ -112,7 +112,6 @@ DELETE FROM `study-data`;
 DELETE FROM study;
 DELETE FROM `nn-data`;
 
-
 -- SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
 --                         ON `stocks`.`data`.`stock-id` = `stocks`.`stock`.`id` 
 --                           AND `stocks`.`stock`.`stock` = "SPY" ;
@@ -148,7 +147,7 @@ select * from stocks.`nn-data` USE INDEX (`ids`);
 select * from stocks.`nn-data`;
 
 
--- SELECT `stocks`.`data`.`date` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE('2021-09-01');
+SELECT `stocks`.`data`.`date` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.`data`.`date`= DATE('2021-08-23');
 -- SELECT `stock`,`id` FROM stocks.stock where `id` like 'SPY';
 -- SELECT * FROM stocks.`data` INNER JOIN stocks.stock WHERE `stock-id` = stocks.stock.`id` and stocks.stock.`stock` = "ULTA" AND stocks.`data`.`date` = "2021-09-01";
 -- ALTER TABLE stocks.stock ADD UNIQUE `stock-id` (id);
