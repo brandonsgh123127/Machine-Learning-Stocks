@@ -198,11 +198,11 @@ class Gather():
                         while retries <= max_retries:
                             print(f'[WARN] Failed to gather data for {self.indicator}! {retries}/{max_retries} Retr(ies)...')
                             retries = retries + 1
-                            time.sleep(4 * (retries/1.33))
+                            time.sleep(2 * (retries/1.33))
                             self.data = get_data(self.indicator.upper(),start_date=start_date.strftime("%Y-%m-%d"),end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
                         if retries > max_retries:
                             print('[ERROR] Failed to gather data!')
-                            raise AssertionError()
+                            raise Exception()
                         else:
                             pass
                     if self.data.empty:

@@ -444,7 +444,6 @@ val1    val3_________________________          vall2
                                                     '1.556':r[11],'3.43':r[12],
                                                     '3.83':r[13],'5.44':r[14]},
                                                     ignore_index=True)
-
                         # check if date is there, if not fail this
                         if date in date_range:
                             date_range.remove(date)                            
@@ -516,7 +515,7 @@ val1    val3_________________________          vall2
                 
                 # After this, iterate new list and find which direction stock may go
                 val1=None;val2=None;val3=None
-                for i,row in new_set['Vals'].iloc[int(len(new_set.index)/3):].iteritems(): # val 1 
+                for i,row in new_set['Vals'].iloc[int(len(new_set.index)/1.33):].iteritems(): # val 1 
                     if i != 0:
                         # if the first value is lower than the close , do upwards fib, else downwards
                         if new_set.at[0,'Vals'] < new_set.at[len(new_set.index)-1,'Vals']:
@@ -525,14 +524,14 @@ val1    val3_________________________          vall2
                                 if row < float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) < row : # if low is found, jump to this value
                                     val1 =  row
                                     # find val2 by finding next local high
-                                    for j,sub in new_set['Vals'].iloc[int(len(new_set.index)/3):].iteritems():
+                                    for j,sub in new_set['Vals'].iloc[int(len(new_set.index)/1.33):].iteritems():
                                         if j < i:
                                             continue
                                         else: # find val2 by making sure next local high is valid
                                             if sub > float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) > sub:
                                                 val2 = sub
                                                 # find val3 by getting next low
-                                                for k,low in new_set['Vals'].iloc[int(len(new_set.index)/3):].iteritems():
+                                                for k,low in new_set['Vals'].iloc[int(len(new_set.index)/1.33):].iteritems():
                                                     if k < j:
                                                         continue
                                                     else:
@@ -559,14 +558,14 @@ val1    val3_________________________          vall2
                                 if row > float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) > row : # if low is found, jump to this value
                                     val1 =  row
                                     # find val2 by finding next local high
-                                    for j,sub in new_set['Vals'].iloc[int(len(new_set.index)/3):].iteritems():
+                                    for j,sub in new_set['Vals'].iloc[int(len(new_set.index)/1.33):].iteritems():
                                         if j < i:
                                             continue
                                         else: # find val2 by making sure next local low is valid
                                             if sub < float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) < sub:
                                                 val2 = sub
                                                 # find val3 by getting next high
-                                                for k,low in new_set['Vals'].iloc[int(len(new_set.index)/3):].iteritems():
+                                                for k,low in new_set['Vals'].iloc[int(len(new_set.index)/1.33):].iteritems():
                                                     if k < j:
                                                         continue
                                                     else:
@@ -597,56 +596,55 @@ val1    val3_________________________          vall2
                                                                   '0.382':[self.fib_help(val1,val2,val3,0.382)],'0.5':[self.fib_help(val1,val2,val3,0.5)],'0.618':[self.fib_help(val1,val2,val3,0.618)],
                                                                   '0.796':[self.fib_help(val1,val2,val3,0.796)],'1.556':[self.fib_help(val1,val2,val3,1.556)],'3.43':[self.fib_help(val1,val2,val3,3.43)],
                                                                   '3.83':[self.fib_help(val1,val2,val3,3.83)],'5.44':[self.fib_help(val1,val2,val3,5.44)]})
-                # Insert data if not in db...
-                insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                    """
-                insert_list=[]
-                self.fibonacci_extension= self.fibonacci_extension.reset_index()
-                for index,row in self.data.iterrows():
-
-                    insert_tuple=(f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",512)))',
-                    f'{self.stock_ids[index]}',
-                    f'{self.data_ids[index]}',
-                    f'{self.study_id}',
-                    self.fibonacci_extension.at[0,"0.202"],
-                    self.fibonacci_extension.at[0,"0.236"],
-                    self.fibonacci_extension.at[0,"0.241"],
-                    self.fibonacci_extension.at[0,"0.273"],
-                    self.fibonacci_extension.at[0,"0.283"],
-                    self.fibonacci_extension.at[0,"0.316"],
-                    self.fibonacci_extension.at[0,"0.382"],
-                    self.fibonacci_extension.at[0,"0.5"],
-                    self.fibonacci_extension.at[0,"0.618"],
-                    self.fibonacci_extension.at[0,"0.796"],
-                    self.fibonacci_extension.at[0,"1.556"],
-                    self.fibonacci_extension.at[0,"3.43"],
-                    self.fibonacci_extension.at[0,"3.83"],
-                    self.fibonacci_extension.at[0,"5.44"])
-                    insert_list.append(insert_tuple) # add tuple to list
-                try:
-                    # print(type(self.stock_id),type(self.data_id),type(self.study_id),row['ema14'])
-                    insert_studies_db_result = self.fib_cnx.executemany(insert_studies_db_stmt,insert_list)
-                
-                except mysql.connector.errors.IntegrityError:
-                    self.fib_cnx.close()
-                    pass
-                except Exception as e:
-                    print('[ERROR] Failed to insert study-data element fibonacci!\nException:\n',str(e))
-                    self.fib_cnx.close()
-                    pass
-                try:
-                    self.db_con.commit()
-                except mysql.connector.errors.IntegrityError:
-                    self.fib_cnx.close()
-                    pass
-                except Exception as e:
-                    print('[ERROR] Failed to insert fib-data element fibonacci!\nException:\n',str(e))
-                    self.fib_cnx.close()
-                    pass
+            # Insert data if not in db...
+            insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
+                                        `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """
+            insert_list=[]
+            self.fibonacci_extension= self.fibonacci_extension.reset_index()
+            for index,row in self.data.iterrows():
+                insert_tuple=(f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",512)))',
+                f'{self.stock_ids[index]}',
+                f'{self.data_ids[index]}',
+                f'{self.study_id}',
+                self.fibonacci_extension.at[0,"0.202"],
+                self.fibonacci_extension.at[0,"0.236"],
+                self.fibonacci_extension.at[0,"0.241"],
+                self.fibonacci_extension.at[0,"0.273"],
+                self.fibonacci_extension.at[0,"0.283"],
+                self.fibonacci_extension.at[0,"0.316"],
+                self.fibonacci_extension.at[0,"0.382"],
+                self.fibonacci_extension.at[0,"0.5"],
+                self.fibonacci_extension.at[0,"0.618"],
+                self.fibonacci_extension.at[0,"0.796"],
+                self.fibonacci_extension.at[0,"1.556"],
+                self.fibonacci_extension.at[0,"3.43"],
+                self.fibonacci_extension.at[0,"3.83"],
+                self.fibonacci_extension.at[0,"5.44"])
+                insert_list.append(insert_tuple) # add tuple to list
+            try:
+                # print(type(self.stock_id),type(self.data_id),type(self.study_id),row['ema14'])
+                insert_studies_db_result = self.fib_cnx.executemany(insert_studies_db_stmt,insert_list)
+            
+            except mysql.connector.errors.IntegrityError:
+                self.fib_cnx.close()
+                pass
+            except Exception as e:
+                print('[ERROR] Failed to insert study-data element fibonacci!\nException:\n',str(e))
+                self.fib_cnx.close()
+                pass
+            try:
+                self.db_con.commit()
+            except mysql.connector.errors.IntegrityError:
+                print('Integrity Error!')
+                self.fib_cnx.close()
+                pass
+            except Exception as e:
+                print('[ERROR] Failed to insert fib-data element fibonacci!\nException:\n',str(e))
+                self.fib_cnx.close()
+                pass
     
-                                
         self.fib_cnx.close()
         return 0
     

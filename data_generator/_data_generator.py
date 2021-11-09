@@ -87,7 +87,7 @@ class Generator():
             print(f'[ERROR] Failed to gather quick data for {ticker}...\nException:\n',str(e))
             return ['n/a','n/a']
     def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,force_generate=False):
-        self.studies = Studies(self.ticker)
+        self.studies = Studies(self.ticker,force_generate=force_generate)
         self.studies.date_set = (date1,date2)
         # Loop until valid data populates
         try:

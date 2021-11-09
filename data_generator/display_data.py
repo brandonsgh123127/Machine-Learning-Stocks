@@ -48,7 +48,11 @@ class Display():
         except:
             self.fib_display = self.fib_display.set_axis(['index','0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'], 1)
         # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.keltner_display.index) + 2)]
-        self.fib_display = self.fib_display.iloc[:int(len(self.fib_display.index)/2+1)].reset_index().astype('float')
+        self.fib_display = self.fib_display.astype('float')
+        try:
+            self.fib_display = self.fib_display.drop(['level_0'],axis=1)
+        except:
+            pass
         self.fib_display['0.202'].transpose().plot.line(ax=self.axes[row,col],color='green',x='0.202',y='0.202')
         self.fib_display['0.236'].transpose().plot.line(ax=self.axes[row,col])
         self.fib_display['0.241'].transpose().plot.line(ax=self.axes[row,col])
@@ -65,7 +69,7 @@ class Display():
         self.fib_display['5.44'].transpose().plot.line(ax=self.axes[row,col])
         if has_actuals:
             data = data.astype('float')
-            data.iloc[int(len(data.index)/2+1):-1].transpose().boxplot(ax=self.axes[row,col],patch_artist=True,
+            data.iloc[int(len(data.index)/1.33+1):-1].transpose().boxplot(ax=self.axes[row,col],patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
                                                     capprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(data.iloc[-2]['Close']) else 'green' ),
                                                     showfliers=False,
@@ -76,7 +80,7 @@ class Display():
                                                     autorange=True)
         else:
             data = data.astype('float')
-            data.iloc[int(len(data.index)/2+1):].transpose().boxplot(ax=self.axes[row,col],patch_artist=True,
+            data.iloc[int(len(data.index)/1.33+1):].transpose().boxplot(ax=self.axes[row,col],patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
                                                     capprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(data.iloc[-2]['Close']) else 'green' ),
                                                     showfliers=False,
@@ -85,7 +89,7 @@ class Display():
                                                     markeredgecolor='red' if float(data.iloc[-1]['Close']) < float(data.iloc[-2]['Close']) else 'green'),
                                                     medianprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(data.iloc[-2]['Close']) else 'green'),
                                                     autorange=True)
-        self.keltner_display = self.keltner_display.iloc[int(len(self.keltner_display.index)/2+1):].reset_index().astype('float')
+        self.keltner_display = self.keltner_display.iloc[int(len(self.keltner_display.index)/1.33+1):].reset_index().astype('float')
         self.keltner_display['middle'].transpose().plot.line(ax=self.axes[row,col])
         self.keltner_display['upper'].transpose().plot.line(ax=self.axes[row,col])
         self.keltner_display['lower'].transpose().plot.line(ax=self.axes[row,col])
