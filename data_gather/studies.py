@@ -23,8 +23,8 @@ class Studies(Gather):
     
     def __init__(self,indicator,force_generate=False):
         with threading.Lock():
-            Gather.__init__(self)
-            Gather.set_indicator(self, indicator)
+            super().__init__(indicator)
+            self.set_indicator(indicator)
         self.applied_studies= pd.DataFrame(dtype=float)
         self.fibonacci_extension = pd.DataFrame()
         self.keltner = pd.DataFrame()
@@ -161,9 +161,9 @@ class Studies(Gather):
                                 break
                             else:
                                 # check if date is there, if not fail this
+                                study_data = study_data.append({f'ema{length}':r[1]},
+                                                                ignore_index=True)
                                 if date in date_range:
-                                    study_data = study_data.append({f'ema{length}':r[1]},
-                                                                    ignore_index=True)
                                     date_range.remove(date)                                 
                                 else:
                                     # print(f'[INFO] Skipping date removal for {date}')
@@ -176,7 +176,7 @@ class Studies(Gather):
                     self.ema_cnx.close()
                     raise mysql.connector.errors.DatabaseError()
                 if len(date_range) == 0 and not self._force_generate: # continue loop if found cached data
-                    self.applied_studies=pd.concat([self.applied_studies,study_data])
+                    self.applied_studies=pd.concat([self.applied_studies,study_data],axis=1)
                     continue
                 # Insert data into db if query above is not met
                 else:
@@ -189,7 +189,7 @@ class Studies(Gather):
                             data = self.data.copy().drop(['Date'],axis=1)
                         except:
                             pass
-                        data = data.copy().drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Close':f'ema{length}'}).ewm(alpha=2/(int(length)+1),adjust=True).mean()
+                        data = data.drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Close':f'ema{length}'}).ewm(alpha=2/(int(length)+1),adjust=True).mean()
                         self.applied_studies= pd.concat([self.applied_studies,data],axis=1)
                         del data
                         gc.collect()
@@ -431,18 +431,18 @@ val1    val3_________________________          vall2
                         print(f'[INFO] Not enough fib data found for {self.indicator.upper()}... Creating fib data...!\n',flush=True)
                         break
                     else:
+                        fib_data = fib_data.append({'0.202':r[1],'0.236':r[2],
+                                                    '0.241':r[3],'0.273':r[4],
+                                                    '0.283':r[5],'0.316':r[6],
+                                                    '0.382':r[7],'0.5':r[8],
+                                                    '0.618':r[9],'0.796':r[10],
+                                                    '1.556':r[11],'3.43':r[12],
+                                                    '3.83':r[13],'5.44':r[14]},
+                                                    ignore_index=True)
+
                         # check if date is there, if not fail this
                         if date in date_range:
-                            date_range.remove(date)
-                            fib_data = fib_data.append({'0.202':r[1],'0.236':r[2],
-                                                        '0.241':r[3],'0.273':r[4],
-                                                        '0.283':r[5],'0.316':r[6],
-                                                        '0.382':r[7],'0.5':r[8],
-                                                        '0.618':r[9],'0.796':r[10],
-                                                        '1.556':r[11],'3.43':r[12],
-                                                        '3.83':r[13],'5.44':r[14]},
-                                                        ignore_index=True)
-                            
+                            date_range.remove(date)                            
                         else:
                             continue
         except mysql.connector.errors.IntegrityError: # should not happen
@@ -769,9 +769,9 @@ val1    val3_________________________          vall2
         self.kelt_cnx.autocommit = True
         retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`,
          `stocks`.`data`.`stock-id` FROM `stocks`.`data` USE INDEX (`id-and-date`)
-        INNER JOIN `stocks`.`stock`
-         ON `stocks`.stock.stock = %(stock)s
-          AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`
+        INNER JOIN `stocks`.`stock` USE INDEX (`stockid`)
+        ON `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`
+         AND `stocks`.stock.stock = %(stock)s
            AND `stocks`.`data`.`date`>= DATE(%(bdate)s) 
            AND `stocks`.`data`.`date`<= DATE(%(edate)s) 
            ORDER BY stocks.`data`.`date` ASC

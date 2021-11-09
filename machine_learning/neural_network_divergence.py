@@ -48,12 +48,12 @@ class Neural_Divergence(Neural_Framework):
                 train_targets=[]
                 try:
                     sampler.generate_sample(is_divergence=True)
-                    # sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
+                    # sampler.data = sampler.data.drop(['High','Low'],axis=1)
                 except:
                     continue
                 try:
-                    train.append(np.reshape(sampler.normalizer.normalized_data.iloc[:-1].to_numpy(),(1,1,28)))# Retrieve all except for last data to be analyzed/predicted
-                    train_targets.append(np.reshape(sampler.normalizer.normalized_data.iloc[-1:].to_numpy(),(1,2)))
+                    train.append(np.reshape(sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,28)))# Retrieve all except for last data to be analyzed/predicted
+                    train_targets.append(np.reshape(sampler.normalized_data.iloc[-1:].to_numpy(),(1,2)))
                 except:
                     continue
                 disp = self.nn.train_on_batch(np.stack(train), np.stack(train_targets))
@@ -76,36 +76,12 @@ class Neural_Divergence(Neural_Framework):
         except:
             print("No model exists, creating new model...")
 listLock = threading.Lock()
-def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=False,device_opt='/device:CPU:0',rand_date=False):        
-    # Connect to local DB
-    path=Path(os.getcwd()).parent.absolute()
-    tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
-    root = tree.getroot()
-    try:
-        db_con = mysql.connector.connect(
-          host="127.0.0.1",
-          user=root[0].text,
-          password=root[1].text,
-          raise_on_warnings = True,
-          database='stocks',
-          charset = 'latin1'
-        )
-    except mysql.connector.Error as err:
-        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-            print("Something is wrong with your user name or password")
-        elif err.errno == errorcode.ER_BAD_DB_ERROR:
-            print("Database does not exist")
-        else:
-            print(err)
-            
-    cnx = db_con.cursor(buffered=True)
 
-    
+def check_db_cache(cnx=None,ticker:str=None,has_actuals:bool=False,force_generation=False):
     # Before inserting data, check cached data, verify if there is data there...
     from_date_id=None
     to_date_id=None
     stock_id=None
-    predicted=None
     
     # First, get to date id
     check_cache_tdata_db_stmt = """SELECT `stocks`.`data`.`data-id`,`stocks`.`data`.`stock-id` 
@@ -115,10 +91,10 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=Fals
        AND stocks.`data`.`date` = DATE(%(date)s)
         """
     # check if currently weekend/holiday
-    valid_datetime=datetime.datetime.today()
+    valid_datetime=datetime.datetime.utcnow()
     holidays=USFederalHolidayCalendar().holidays(start=valid_datetime,end=(valid_datetime + datetime.timedelta(days=7))).to_pydatetime()
     valid_date=valid_datetime.date()
-    if (datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30) and datetime.datetime.utcnow().hour >= 0: # if current time is before 9:30 AM EST, go back a day
+    if (datetime.datetime.utcnow().hour <= 14 and datetime.datetime.utcnow().minute < 30) and datetime.datetime.utcnow().hour >= 0: # if current time is before 9:30 AM EST, go back a day
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
     if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
@@ -130,6 +106,18 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=Fals
     if valid_date.weekday()==6: # if sunday
         valid_datetime = (valid_datetime - datetime.timedelta(days=2))
         valid_date = (valid_date - datetime.timedelta(days=2))
+    if has_actuals: # go back a day
+        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+        valid_date = (valid_date - datetime.timedelta(days=1))
+        if valid_date.weekday()==5: # if saturday
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+            valid_date = (valid_date - datetime.timedelta(days=1))
+        if valid_date.weekday()==6: # if sunday
+            valid_datetime = (valid_datetime - datetime.timedelta(days=2))
+            valid_date = (valid_date - datetime.timedelta(days=2))
+        if valid_date in holidays:
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+            valid_date = (valid_date - datetime.timedelta(days=1))
 
     retrieve_tdata_result = cnx.execute(check_cache_tdata_db_stmt,{'stock':f'{ticker.upper()}',
                                                             'date':valid_datetime.strftime('%Y-%m-%d')},multi=True)
@@ -152,7 +140,7 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=Fals
        AND stocks.`data`.`date` = DATE(%(date)s)
         """
     # 75 days ago max -- check if weekday or holiday before proceeding
-    valid_datetime=datetime.datetime.today() - datetime.timedelta(days=75)
+    valid_datetime=datetime.datetime.utcnow() - datetime.timedelta(days=75)
     holidays=USFederalHolidayCalendar().holidays(start=valid_datetime,end=(valid_datetime + datetime.timedelta(days=7)).strftime('%Y-%m-%d')).to_pydatetime()
     valid_date=valid_datetime.date()
     if valid_date in holidays:
@@ -202,7 +190,7 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=Fals
             result= result.fetchall()
             for res in result:        
                 # Set predicted value
-                predicted = pd.DataFrame({'Open':float(res[0]),'Close':float(res[1]),'Range':float(res[2])},index=[0]) 
+                return (pd.DataFrame({'Divergence':float(res[0]),'Gain/Loss':float(res[1])},index=[0]),stock_id,from_date_id,to_date_id)
     except mysql.connector.errors.IntegrityError: # should not happen
         cnx.close()
         pass
@@ -210,24 +198,87 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=Fals
         print('[ERROR] Failed to check cached nn-data!\nException:\n',str(e))
         cnx.close()
         raise mysql.connector.errors.DatabaseError()
-        
-    
-    sampler = Sample(ticker)
-    train = []
-    sampler.generate_divergence_sample(_has_actuals=has_actuals,rand_date=rand_date)
+    return (None,None,None,None)
+
+def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=False,device_opt='/device:CPU:0',rand_date=False,data:tuple=None):        
+    # Connect to local DB
+    path=Path(os.getcwd()).parent.absolute()
+    tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
+    root = tree.getroot()
+    try:
+        db_con = mysql.connector.connect(
+          host="127.0.0.1",
+          user=root[0].text,
+          password=root[1].text,
+          raise_on_warnings = True,
+          database='stocks',
+          charset = 'latin1'
+        )
+    except mysql.connector.Error as err:
+        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            print("Something is wrong with your user name or password")
+        elif err.errno == errorcode.ER_BAD_DB_ERROR:
+            print("Database does not exist")
+        else:
+            print(err)
+            
+    cnx = db_con.cursor(buffered=True)
+    predicted=None
+    from_date_id=None
+    to_date_id=None
+    stock_id=None
+    try:
+        vals=check_db_cache(cnx,ticker,has_actuals,force_generation)
+        predicted=vals[0]
+        stock_id=vals[1]
+        from_date_id=vals[2]
+        to_date_id=vals[3]
+    except Exception as e:
+        print('[ERROR] Failed to gather predicted value from DB!')
+        raise Exception(str(e))
     
     if predicted is None:
         neural_net = Neural_Divergence(0,0)
         neural_net.load_model()
-    
+        sampler = Sample(ticker)
+        train = []
+        if data is not None:
+            sampler.set_sample_data(data[0],data[1],data[2],data[3])
+        sampler.generate_divergence_sample(_has_actuals=has_actuals,rand_date=rand_date)
         with listLock:
             if has_actuals:
-                train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,28)))
+                train.append(np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(),(1,1,28)))
             else:
-                train.append(np.reshape(sampler.normalizer.normalized_data[-14:].to_numpy(),(1,1,28)))
+                train.append(np.reshape(sampler.normalized_data[-14:].to_numpy(),(1,1,28)))
             prediction = neural_net.nn.predict(np.stack(train))
         predicted = pd.DataFrame((np.reshape((prediction),(1,2))),columns=['Divergence','Gain/Loss']) #NORMALIZED
-    return (sampler.normalizer.unnormalize_divergence(predicted),sampler.normalizer.unnormalized_data.iloc[-1:],sampler.normalizer.keltner,sampler.normalizer.fib)
+        
+        # Upload data to DB given prediction has finished
+        check_cache_nn_db_stmt = """REPLACE INTO `stocks`.`nn-data` (`nn-id`, `stock-id`, 
+                                                                `from-date-id`,`to-date-id`,
+                                                                `model`,`open`,`close`,`range`)
+                                                        VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(stock-id)s,%(from-date-id)s,
+                                                        %(to-date-id)s,%(model)s,%(open)s,%(close)s,%(range)s)
+            """        
+        try:
+            check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,{'id':f'{from_date_id}{to_date_id}{ticker.upper()}divergence',
+                                                                                'stock-id':stock_id,    
+                                                                            'from-date-id': from_date_id,
+                                                                            'to-date-id':to_date_id,
+                                                                                'model':'divergence',
+                                                                                'open':str(predicted['Divergence'].iloc[0]),
+                                                                                'close':str(predicted['Gain/Loss'].iloc[0]),
+                                                                                'range':str(predicted['Gain/Loss'].iloc[0])})
+            db_con.commit()
+        except mysql.connector.errors.IntegrityError:
+            cnx.close()
+            pass
+        except Exception as e:
+            print(f'[ERROR] Failed to insert nn-data element {predicted} for model divergence!\nException:\n',str(e))
+            cnx.close()
+            pass
+        cnx.close()
+    return (sampler.unnormalize_divergence(predicted),sampler.unnormalized_data.iloc[-1:],sampler.keltner,sampler.fib)
 def run(epochs,batch_size):
     neural_net = Neural_Divergence(epochs,batch_size)
     neural_net.load_model()

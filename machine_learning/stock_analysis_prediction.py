@@ -6,7 +6,6 @@ from data_generator._data_generator import Generator
 from pathlib import Path
 import os
 import matplotlib.pyplot as plt
-from machine_learning.neural_network import Network
 from machine_learning.neural_network import load
 from machine_learning.neural_network_divergence import load_divergence
 from data_generator.normalize_data import Normalizer
@@ -33,12 +32,12 @@ class launcher():
         self.dis:Display = Display()
         self.listLock=threading.Lock()
     
-    def display_model(self,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",color:str="blue",force_generation=False,unnormalized_data = False,row=0,col=1):
+    def display_model(self,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",color:str="blue",force_generation=False,unnormalized_data = False,row=0,col=1,data:tuple=None):
         # Load machine learning model either based on divergence or not
         if 'divergence' not in name:
-            data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:GPU:0',rand_date=False)
+            data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:GPU:0',rand_date=False,data=data)
         else:
-            data = load_divergence(f'{ticker.upper()}',has_actuals=_has_actuals,force_generation=force_generation,device_opt='/device:GPU:0',rand_date=False)
+            data = load_divergence(f'{ticker.upper()}',has_actuals=_has_actuals,force_generation=force_generation,device_opt='/device:GPU:0',rand_date=False,data=data)
         # read data for loading into display portion
         if 'divergence' not in name:
             with self.listLock:
@@ -89,17 +88,19 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
     gen = Generator(ticker.upper(),path,force_generate)
     # if current trading day, set prediction for tomorrow in date name
     dates = []
+    # Confirm end date is valid 
+    valid_datetime=datetime.datetime.utcnow()
+    holidays=USFederalHolidayCalendar().holidays(start=valid_datetime,end=(valid_datetime - datetime.timedelta(days=7))).to_pydatetime()
+    valid_date=valid_datetime.date()
+    if (datetime.datetime.utcnow().hour <= 14 and datetime.datetime.utcnow().minute < 30): # if current time is before 9:30 AM EST, go back a day
+        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+        valid_date = (valid_date - datetime.timedelta(days=1))
+
     if not has_actuals: #predict next day
-        dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+        dates = (datetime.datetime.utcnow().date() - datetime.timedelta(days = 75), valid_date  + datetime.timedelta(days = 1)) #month worth of data
     else:
-        valid_datetime=datetime.datetime.now()
+        dates = (datetime.datetime.utcnow().date() - datetime.timedelta(days = 75), datetime.datetime.utcnow().date()) #month worth of data
         
-        # Confirm end date is valid 
-        holidays=USFederalHolidayCalendar().holidays(start=valid_datetime - datetime.timedelta(days=75),end=valid_datetime).to_pydatetime()
-        valid_date=valid_datetime.date()
-        if (datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30) and datetime.datetime.utcnow().hour >= 0: # if current time is before 9:30 AM EST, go back a day
-            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-            valid_date = (valid_date - datetime.timedelta(days=1))
         if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
             valid_datetime = (valid_datetime - datetime.timedelta(days=1))
             valid_date = (valid_date - datetime.timedelta(days=1))
@@ -110,51 +111,60 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
             valid_datetime = (valid_datetime - datetime.timedelta(days=2))
             valid_date = (valid_date - datetime.timedelta(days=2))
         if valid_date in holidays:
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
             valid_date = (valid_date - datetime.timedelta(days=1))
+        if has_actuals: # go back a day
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+            valid_date = (valid_date - datetime.timedelta(days=1))
+            if valid_date.weekday()==5: # if saturday
+                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                valid_date = (valid_date - datetime.timedelta(days=1))
+            if valid_date.weekday()==6: # if sunday
+                valid_datetime = (valid_datetime - datetime.timedelta(days=2))
+                valid_date = (valid_date - datetime.timedelta(days=2))
+            if valid_date in holidays:
+                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                valid_date = (valid_date - datetime.timedelta(days=1))
         e_date=valid_date
         
-        
-        dates = (datetime.date.today() - datetime.timedelta(days = 75), e_date ) #month worth of data
+        dates = (e_date - datetime.timedelta(days = 75), e_date ) #month worth of data
     
     _has_actuals = has_actuals
-    try:
-        # print(f'{dates[0]} to {dates[1]}')
-        gen.generate_data_with_dates(dates[0],dates[1],force_generate=force_generate)
-    except Exception as e:
-        print(f'[ERROR] Failed to generate data for dates ranging from {dates[0]} to {dates[1]}!\nException:\n',str(e),flush=True)
-        raise Exception(str(e))
+    # Generate Data for usage in display_model
+    data = gen.generate_data_with_dates(dates[0], dates[1], False, force_generate)
     # 
     # PREDICT LABEL
     
     # Call display line on first result, rest display predict only
+
     if _has_actuals:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu",_has_actuals,ticker,'green',force_generate,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu",_has_actuals,ticker,'green',force_generate,False,1,0,data))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky",_has_actuals,ticker,'black',force_generate,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky",_has_actuals,ticker,'black',force_generate,False,1,0,data))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid",_has_actuals,ticker,'magenta',force_generate,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid",_has_actuals,ticker,'magenta',force_generate,False,1,0,data))) == 1:
                 thread_pool.join_workers()
 
     # Call solely display predict only
     else:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu",_has_actuals,ticker,'green',force_generate,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu",_has_actuals,ticker,'green',force_generate,False,1,0,data))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky",_has_actuals,ticker,'black',force_generate,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky",_has_actuals,ticker,'black',force_generate,False,1,0,data))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid",_has_actuals,ticker,'magenta',force_generate,False,1,0))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid",_has_actuals,ticker,'magenta',force_generate,False,1,0,data))) == 1:
                 thread_pool.join_workers()
     gc.collect()
     thread_pool.join_workers()
     #
     # DIVERGENCE LABEL
     with listLock:
-        while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("divergence",_has_actuals,ticker,'magenta',force_generate,False,1,1))) == 1:
+        while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("divergence",_has_actuals,ticker,'magenta',force_generate,False,1,1,data))) == 1:
             thread_pool.join_workers()
         thread_pool.join_workers()
         # dis.display_divergence(color=f'm',has_actuals=_has_actuals,row=1,col=1)
@@ -162,30 +172,30 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
 
     #
     # CHART LABEL
-    launch.display_model("model_relu",has_actuals,ticker,'green',force_generate,True,0,0)
+    launch.display_model("model_relu",has_actuals,ticker,'green',force_generate,True,0,0,data)
     gc.collect()
 
     #
     # Model_Out_2 LABEL
     if _has_actuals:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,'green',force_generate,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,'green',force_generate,False,0,1,data))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",_has_actuals,ticker,'black',force_generate,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",_has_actuals,ticker,'black',force_generate,False,0,1,data))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",_has_actuals,ticker,'magenta',force_generate,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",_has_actuals,ticker,'magenta',force_generate,False,0,1,data))) == 1:
                 thread_pool.join_workers()
     else:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,'green',force_generate,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,'green',force_generate,False,0,1,data))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",_has_actuals,ticker,'black',force_generate,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",_has_actuals,ticker,'black',force_generate,False,0,1,data))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",_has_actuals,ticker,'magenta',force_generate,False,0,1))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",_has_actuals,ticker,'magenta',force_generate,False,0,1,data))) == 1:
                 thread_pool.join_workers()
 
     gc.collect()
@@ -196,6 +206,13 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
     # return PIL.Image.frombytes('RGB',launch.dis.fig.canvas.get_width_height(),launch.dis.fig.canvas.tostring_rgb()) #Return Canvas as image in output
 
 def get_preview_prices(ticker:str,force_generation=False):
+    try:
+        res = data_gen.generate_quick_data(ticker,force_generation)
+    except:
+        time.sleep(3)  
+        print(ticker)      
+        res = data_gen.generate_quick_data(ticker,force_generation)
+
     return data_gen.generate_quick_data(ticker,force_generation)
 if __name__ == "__main__":
     _type = sys.argv[1]

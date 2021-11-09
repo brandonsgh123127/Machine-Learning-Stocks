@@ -132,9 +132,9 @@ class GUI(Thread_Pool):
             if not is_caching:
                 self.generate_button.grid_forget()
             if not has_actuals:
-                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+                dates = (datetime.date.utcnow() - datetime.timedelta(days = 75), datetime.date.utcnow() + datetime.timedelta(days = 1)) #month worth of data
             elif has_actuals:
-                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today()) #month worth of data
+                dates = (datetime.date.utcnow() - datetime.timedelta(days = 75), datetime.date.utcnow()) #month worth of data
             self.img=analyze_stock(ticker, has_actuals,force_generate=force_generation)[0]
             # self.image = ImageTk.PhotoImage(self.img)
             
@@ -167,9 +167,9 @@ class GUI(Thread_Pool):
                 self.generate_button.grid_forget()
             # When predicting next day, set day to +1
             if not has_actuals:
-                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today() + datetime.timedelta(days = 1)) #month worth of data
+                dates = (datetime.datetime.utcnow().date() - datetime.timedelta(days = 75), datetime.datetime.utcnow().date()+ datetime.timedelta(days = 1)) #month worth of data
             else:
-                dates = (datetime.date.today() - datetime.timedelta(days = 75), datetime.date.today()) #month worth of data
+                dates = (datetime.datetime.utcnow().date() - datetime.timedelta(days = 75), datetime.datetime.utcnow().date()) #month worth of data
             if not has_actuals:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     thread = executor.submit(analyze_stock,ticker, has_actuals,force_generation)                    
@@ -283,7 +283,7 @@ class GUI(Thread_Pool):
         self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
         self.generate_button.grid(column=3, row=2)
         # self.next_page_button.pack(side='bottom')
-        self.cache_queue.put(threading.Thread(target=self.load_dropdown,args=()))
+        # self.cache_queue.put(threading.Thread(target=self.load_dropdown,args=()))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True,False)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True,False)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True,False)))

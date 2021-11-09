@@ -91,11 +91,25 @@ class Network(Neural_Framework):
         self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.0005,beta_1=0.95,beta_2=0.999), loss='mse',metrics=['MeanAbsoluteError','MeanAbsolutePercentageError'])
         return self.nn
     
+    def generate_sample(self,_has_actuals=False,rand_date=None):
+        path = Path(os.getcwd()).parent.absolute()
+        self.sampler.set_ticker(self.choose_random_ticker(f'{path}/data/watchlist/default.csv'))
+        try:
+            if self.model_choice < 4:
+                self.sampler.generate_sample(_has_actuals=_has_actuals,rand_date=rand_date)
+            else:
+                self.sampler.generate_sample(_has_actuals=_has_actuals,out=2,rand_date=rand_date)
+            self.sampler.data = self.sampler.data.drop(['High','Low'],axis=1)
+        except Exception as e:
+            print('[Error] Failed batch!\nException:\n',str(e))
+            raise Exception()
+        except Exception as e:
+            print(str(e))
+            raise Exception()
 
     def run_model(self,rand_date=False):
-        sampler = Sample()
+        self.sampler = Sample()
         models = {}
-        path = Path(os.getcwd()).parent.absolute()
         # Retrieve all necessary data into training data
         for i in range(1,self.EPOCHS):
             print(f'\n\n\nEPOCH {i} -- {self.model_choice}')
@@ -103,27 +117,15 @@ class Network(Neural_Framework):
             train_targets=[]
             models[i] = 1
             for j in range(1,self.BATCHES):
-                sampler.set_ticker(self.choose_random_ticker(f'{path}/data/watchlist/default.csv'))
                 train= []
                 train_targets=[]
+                self.generate_sample(True, rand_date)
                 try:
-                    if self.model_choice < 4:
-                        sampler.generate_sample(_has_actuals=True,rand_date=rand_date)
-                    else:
-                        sampler.generate_sample(_has_actuals=True,out=2,rand_date=rand_date)
-                    sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
-                except Exception as e:
-                    print('[Error] Failed batch!\nException:\n',str(e))
-                    continue
-                except Exception as e:
-                    print(str(e))
-                    continue
-                try:
-                    train.append(np.reshape(sampler.normalizer.normalized_data.iloc[:-1].to_numpy(),(1,1,140)))# Retrieve all except for last data to be analyzed/predicted
+                    train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,140)))# Retrieve all except for last data to be analyzed/predicted
                     if self.model_choice <= 3:
-                        train_targets.append(np.reshape(sampler.normalizer.normalized_data.iloc[-1:].to_numpy(),(1,10)))
+                        train_targets.append(np.reshape(self.sampler.normalized_data.iloc[-1:].to_numpy(),(1,10)))
                     else:
-                        tmp = sampler.normalizer.normalized_data.iloc[-1:]
+                        tmp = self.sampler.normalized_data.iloc[-1:]
                         tmp = pd.concat([pd.DataFrame([tmp['Open'].to_numpy()]),pd.DataFrame([tmp['Close'].to_numpy()]),pd.DataFrame([tmp['Range'].to_numpy()])])
                         train_targets.append(np.reshape(tmp.to_numpy(),(1,3)))
                 except Exception as e:
@@ -149,40 +151,12 @@ class Network(Neural_Framework):
         super().load_model(name)
 listLock = threading.Lock()
 
-
-
-"""Load Specified Model"""
-def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_generation=False,device_opt:str='/device:GPU:0',rand_date=False):        
-    # Connect to local DB
-    path=Path(os.getcwd()).parent.absolute()
-    tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
-    root = tree.getroot()
-    try:
-        db_con = mysql.connector.connect(
-          host="127.0.0.1",
-          user=root[0].text,
-          password=root[1].text,
-          raise_on_warnings = True,
-          database='stocks',
-          charset = 'latin1'
-        )
-    except mysql.connector.Error as err:
-        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-            print("Something is wrong with your user name or password")
-        elif err.errno == errorcode.ER_BAD_DB_ERROR:
-            print("Database does not exist")
-        else:
-            print(err)
-            
-    cnx = db_con.cursor(buffered=True)
-
-    
+def check_db_cache(cnx:mysql.connector.connect=None,ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_generation:bool=False):    
     # Before inserting data, check cached data, verify if there is data there...
     from_date_id=None
     to_date_id=None
     stock_id=None
-    predicted=None
-    
+        
     # First, get to date id
     check_cache_tdata_db_stmt = """SELECT `stocks`.`data`.`data-id`,`stocks`.`data`.`stock-id` 
      FROM stocks.`data` USE INDEX (`id-and-date`) INNER JOIN stocks.`stock`
@@ -191,21 +165,21 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
        AND stocks.`data`.`date` = DATE(%(date)s)
         """
     # check if currently weekend/holiday
-    valid_datetime=datetime.datetime.today()
+    valid_datetime=datetime.datetime.utcnow()
     holidays=USFederalHolidayCalendar().holidays(start=valid_datetime,end=(valid_datetime + datetime.timedelta(days=7))).to_pydatetime()
     valid_date=valid_datetime.date()
-    if (datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30) or (datetime.datetime.utcnow().weekday() == 0 and datetime.datetime.utcnow().hour <= 4): # if current time is before 9:30 AM EST, go back a day
+    if (datetime.datetime.utcnow().hour <= 14 and datetime.datetime.utcnow().minute < 30): # if current time is before 9:30 AM EST, go back a day
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
     if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
     if valid_date.weekday()==5: # if saturday
-        valid_datetime = (valid_datetime - datetime.timedelta(days=2))
-        valid_date = (valid_date - datetime.timedelta(days=2))
-    if valid_date.weekday()==6: # if sunday
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
+    if valid_date.weekday()==6: # if sunday
+        valid_datetime = (valid_datetime - datetime.timedelta(days=2))
+        valid_date = (valid_date - datetime.timedelta(days=2))
     if valid_date in holidays:
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
@@ -251,7 +225,6 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
             stock_id = id_res[0][1].decode('latin1')
             to_date_id = id_res[0][0].decode('latin1')
 
-    
     # Check nn-data table after retrieval of from-date and to-date id's
     check_cache_fdata_db_stmt = """SELECT `stocks`.`data`.`data-id` 
      FROM stocks.`data` USE INDEX (`stockid-and-date`)
@@ -259,13 +232,10 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
        AND stocks.`data`.`date` = DATE(%(date)s)
         """
     # 75 days ago max -- check if weekday or holiday before proceeding
-    valid_datetime=datetime.datetime.today() - datetime.timedelta(days=75)
+    valid_datetime=datetime.datetime.utcnow() - datetime.timedelta(days=75)
     holidays=USFederalHolidayCalendar().holidays(start=valid_datetime,end=(valid_datetime + datetime.timedelta(days=7)).strftime('%Y-%m-%d')).to_pydatetime()
     valid_date=valid_datetime.date()
     
-    if (datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30) or (datetime.datetime.utcnow().weekday() == 0 and datetime.datetime.utcnow().hour <= 4): # if current time is before 9:30 AM EST, go back a day
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
     if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4:
         valid_datetime = (valid_datetime + datetime.timedelta(days=1))
         valid_date = (valid_date + datetime.timedelta(days=1))
@@ -290,7 +260,6 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
             break
         else:
             from_date_id = id_res[0][0].decode('latin1')
-        
     # Check nn-data table after retrieval of from-date and to-date id's
     check_cache_nn_db_stmt = """SELECT `stocks`.`nn-data`.`open`,`stocks`.`nn-data`.`close`,
     `stocks`.`nn-data`.`range` 
@@ -302,9 +271,9 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
 
         """        
     try:
-        check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,{'stock-id':stock_id.encode("latin1"),    
-                                                                        'from-date-id': from_date_id.encode("latin1"),
-                                                                        'to-date-id':to_date_id.encode("latin1"),
+        check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,{'stock-id':stock_id,    
+                                                                        'from-date-id': from_date_id,
+                                                                        'to-date-id':to_date_id,
                                                                         'model':name},
                                                                         multi=True)
         # Retrieve date, verify it is in date range, remove from date range
@@ -312,7 +281,8 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
             result= result.fetchall()
             for res in result:        
                 # Set predicted value
-                predicted = pd.DataFrame({'Open':float(res[0]),'Close':float(res[1]),'Range':float(res[2])},index=[0]) 
+                if not force_generation:
+                    return (pd.DataFrame({'Open':float(res[0]),'Close':float(res[1]),'Range':float(res[2])},index=[0]),stock_id,from_date_id,to_date_id)
     except mysql.connector.errors.IntegrityError: # should not happen
         cnx.close()
         pass
@@ -320,35 +290,93 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
         print('[ERROR] Failed to check cached nn-data!\nException:\n',str(e))
         cnx.close()
         raise mysql.connector.errors.DatabaseError()
-    # Actually gather data and insert if query is not met
-    sampler = Sample(ticker)
-    # sampler.__init__(ticker)
-    train = []
-    sampler.generate_sample(_has_actuals=has_actuals,rand_date=rand_date)
-    try: # verify there is no extra 'index' column
-        sampler.normalizer.data = sampler.normalizer.data.drop(['index'],axis=1)
-    except Exception as e:
-        # print('[ERROR] Failed to drop "index" from sampler data',str(e))
-        pass
-    try:
-        sampler.normalizer.data = sampler.normalizer.data.drop(['Date','High','Low'],axis=1)
-    except:
-        try:
-            sampler.normalizer.data = sampler.normalizer.data.drop(['High','Low'],axis=1)
-        except Exception as e:
-            print('[ERROR] Failed to drop "High" and "Low" from sampler data!',str(e))
+    return None
 
+
+
+
+
+
+
+
+
+
+
+
+"""Load Specified Model"""
+def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_generation=False,device_opt:str='/device:GPU:0',rand_date=False,data:tuple=None):        
+    # Connect to local DB
+    path=Path(os.getcwd()).parent.absolute()
+    tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
+    root = tree.getroot()
+    try:
+        db_con = mysql.connector.connect(
+          host="127.0.0.1",
+          user=root[0].text,
+          password=root[1].text,
+          raise_on_warnings = True,
+          database='stocks',
+          charset = 'latin1'
+        )
+    except mysql.connector.Error as err:
+        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            print("Something is wrong with your user name or password")
+        elif err.errno == errorcode.ER_BAD_DB_ERROR:
+            print("Database does not exist")
+        else:
+            print(err)
+            
+    cnx = db_con.cursor(buffered=True)
+    predicted=None
+    from_date_id=None
+    to_date_id=None
+    stock_id=None
+
+    try:
+        vals=check_db_cache(cnx,ticker,has_actuals,name,force_generation)
+        predicted=vals[0]
+        stock_id=vals[1]
+        from_date_id=vals[2]
+        to_date_id=vals[3]
+    except Exception as e:
+        print('[INFO] Failed to gather predicted value from DB!')
+        pass
+    
+    # Start ML calculations
     if predicted is None or force_generation:
         neural_net = Network(0,0)
         neural_net.load_model(name=name)
+        
+        # Actually gather data and insert if query is not met
+        sampler = Sample(ticker=ticker,force_generate=force_generation)
+        # sampler.__init__(ticker)
+        # If data is populated, go ahead and utilize it, skip over data check for normalizer...
+        if data is not None:
+            sampler.set_sample_data(data[0],data[1],data[2],data[3])
+        train = []
+        sampler.generate_sample(_has_actuals=has_actuals,rand_date=rand_date)
+    
+        try: # verify there is no extra 'index' column
+            sampler.data = sampler.data.drop(['index'],axis=1)
+        except Exception as e:
+            # print('[ERROR] Failed to drop "index" from sampler data',str(e))
+            pass
+        try:
+            sampler.data = sampler.data.drop(['Date','High','Low'],axis=1)
+        except:
+            try:
+                sampler.data = sampler.data.drop(['High','Low'],axis=1)
+            except Exception as e:
+                print('[ERROR] Failed to drop "High" and "Low" from sampler data!',str(e))
+
 
         if not force_generation:
             print(f'[INFO] Did not query all specified dates within range for nn-data retrieval!')
         with listLock:
             if has_actuals:
-                train.append(np.reshape(sampler.normalizer.normalized_data.iloc[-15:-1].to_numpy(),(1,1,140)))
+                train.append(np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(),(1,1,140)))
             else:
-                train.append(np.reshape(sampler.normalizer.normalized_data[-14:].to_numpy(),(1,1,140)))
+                train.append(np.reshape(sampler.normalized_data[-14:].to_numpy(),(1,1,140)))
             prediction = neural_net.nn.predict(np.stack(train))
         if neural_net.model_choice <= 3:
             predicted = pd.DataFrame((np.reshape((prediction),(1,10))),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
@@ -365,9 +393,9 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
             """        
         try:
             check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,{'id':f'{from_date_id}{to_date_id}{ticker.upper()}{name}',
-                                                                                'stock-id':stock_id.encode("latin1"),    
-                                                                            'from-date-id': from_date_id.encode("latin1"),
-                                                                            'to-date-id':to_date_id.encode("latin1"),
+                                                                                'stock-id':stock_id,    
+                                                                            'from-date-id': from_date_id,
+                                                                            'to-date-id':to_date_id,
                                                                                 'model':name,
                                                                                 'open':str(predicted['Open'].iloc[0]),
                                                                                 'close':str(predicted['Close'].iloc[0]),
@@ -377,17 +405,17 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
             cnx.close()
             pass
         except Exception as e:
-            print('[ERROR] Failed to insert nn-data element!\nException:\n',str(e))
+            print(f'[ERROR] Failed to insert nn-data element {predicted} for model {name}!\nException:\n',str(e))
             cnx.close()
             pass
         cnx.close()
 
         
-    unnormalized_prediction = sampler.normalizer.unnormalize(predicted).to_numpy()
+    unnormalized_prediction = sampler.unnormalize(predicted).to_numpy()
     # space = pd.DataFrame([[0,0]],columns=['Open','Close'])
-    unnormalized_predict_values = sampler.normalizer.data.append(pd.DataFrame([[unnormalized_prediction[0,0] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Open')],unnormalized_prediction[0,1] + sampler.normalizer.data.iloc[-1,sampler.normalizer.data.columns.get_loc('Close')]]],columns=['Open','Close']),ignore_index=True)
+    unnormalized_predict_values = sampler.data.append(pd.DataFrame([[unnormalized_prediction[0,0] + sampler.data['Open'].iloc[-1],unnormalized_prediction[0,1] + sampler.data['Close'].iloc[-1]]],columns=['Open','Close']),ignore_index=True)
     predicted_unnormalized = pd.concat([unnormalized_predict_values])
-    return (sampler.normalizer.unnormalize(predicted),sampler.normalizer.unnormalized_data.tail(1),predicted_unnormalized,sampler.normalizer.keltner,sampler.normalizer.fib)
+    return (sampler.unnormalize(predicted),sampler.unnormalized_data.tail(1),predicted_unnormalized,sampler.keltner,sampler.fib)
 
 
 """

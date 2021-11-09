@@ -1,4 +1,4 @@
-import yfinance as yf
+from yahoo_fin.stock_info import *
 import datetime
 from pandas_datareader import data as pdr
 import twitter
@@ -48,15 +48,14 @@ class Gather():
 
     def __repr__(self):
         return 'stock_data.gather_data object <%s>' % ",".join(self.indicator)
-    def __init__(self):
-        yf.pdr_override()
+    def __init__(self,indicator=None):
         # Local API Key for twitter account
         self.api = twitter.Api(consumer_key="wQ6ZquVju93IHqNNW0I4xn4ii",
                           consumer_secret="PorwKI2n1VpHznwyC38HV8a9xoDMWko4mOIDFfv2q7dQsFn2uY",
                           access_token_key="1104618795115651072-O3LSWBFVEPENGiTnXqf7cTtNgmNqUF",
                           access_token_secret="by7SUTtNPOYgAws0yliwk9YdiWIloSdv8kYX0YKic28UE",
                           sleep_on_rate_limit="true")
-        self.indicator = ""
+        self.indicator = indicator
         self.data : pdr.DataReader= None
         self.date_set = ()
         self.bearer="AAAAAAAAAAAAAAAAAAAAAJdONwEAAAAAzi2H1WrnhmAddAQKwveAfRN1DAY%3DdSFsj3bTRnDqqMxNmnxEKTG6O6UN3t3VMtnC0Y7xaGxqAF1QVq"
@@ -103,7 +102,6 @@ class Gather():
                 
         self.cnx = self.db_con.cursor(buffered=True)
         # self.cnx.execute('SHOW TABLES FROM stocks;')
-        yf.pdr_override()
         
     def set_indicator(self,indicator):
         with threading.Lock():
@@ -114,8 +112,6 @@ class Gather():
     # retrieve pandas_datareader object of datetime
     def set_data_from_range(self,start_date,end_date,_force_generate=False):
         # Date range utilized for query...
-        if datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30 and datetime.datetime.utcnow().hour >= 4: # if current time is before 9:30 AM EST, go back a day for end-date
-            end_date = end_date - datetime.timedelta(days=1)
         date_range =[d.strftime('%Y-%m-%d') for d in pd.date_range(start_date, end_date)] #start/end date list
         holidays=USFederalHolidayCalendar().holidays(start=f'{start_date.year}-01-01',end=f'{end_date.year}-12-31').to_pydatetime()
         # For each date, verify data is in the specified range by removing any unnecessary dates first
@@ -128,7 +124,6 @@ class Gather():
             datetime_date=datetime.datetime.strptime(d,'%Y-%m-%d')
             if datetime_date.weekday() == 6:
                 date_range.remove(d)
-                
         # iterate through each data row and verify data is in place before continuing...
         new_data= pd.DataFrame(columns=['Date','Open','High','Low','Close','Adj. Close'])
         self.cnx = self.db_con.cursor()
@@ -161,12 +156,12 @@ class Gather():
                     if date is None:
                         print(f'[INFO] No prior data found for {self.indicator.upper()} from {start_date.strftime("%Y-%m-%d")} to {end_date.strftime("%Y-%m-%d")}... Generating data...!\n',flush=True)
                     else:
+                        new_data = new_data.append({'Date':date,'Open':float(res[1]),'High':float(res[2]),
+                                         'Low':float(res[3]),'Close':float(res[4]),
+                                         'Adj. Close':float(res[5])},ignore_index=True) 
                         # check if date is there, if not fail this
                         if date in date_range:
                             date_range.remove(date)
-                            new_data = new_data.append({'Date':date,'Open':float(res[1]),'High':float(res[2]),
-                                             'Low':float(res[3]),'Close':float(res[4]),
-                                             'Adj. Close':float(res[5])},ignore_index=True) 
                         else:
                             continue
         except mysql.connector.errors.IntegrityError: # should not happen
@@ -178,6 +173,10 @@ class Gather():
             raise mysql.connector.errors.DatabaseError()
         if len(date_range) == 0 and not _force_generate: # If all dates are satisfied, set data
             self.data=new_data
+            try:
+                self.data['Date'] = pd.to_datetime(self.data['Date'])
+            except:
+                print('[INFO] Could not convert Date col to datetime')
         # Actually gather data if query is not met
         else:
             if not _force_generate:
@@ -190,9 +189,22 @@ class Gather():
                         pass
                     self.cnx = self.db_con.cursor(buffered=True)
                     self.cnx.autocommit = True
-                    sys.stdout = open(os.devnull, 'w')
-                    self.data = pdr.get_data_yahoo(self.indicator,start=start_date.strftime("%Y-%m-%d"),end=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
-                    sys.stdout = sys.__stdout__
+                    self.data = None
+                    try:
+                        self.data = get_data(self.indicator.upper(),start_date=start_date.strftime("%Y-%m-%d"),end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
+                    except:
+                        retries=1
+                        max_retries=4
+                        while retries <= max_retries:
+                            print(f'[WARN] Failed to gather data for {self.indicator}! {retries}/{max_retries} Retr(ies)...')
+                            retries = retries + 1
+                            time.sleep(4 * (retries/1.33))
+                            self.data = get_data(self.indicator.upper(),start_date=start_date.strftime("%Y-%m-%d"),end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
+                        if retries > max_retries:
+                            print('[ERROR] Failed to gather data!')
+                            raise AssertionError()
+                        else:
+                            pass
                     if self.data.empty:
                         print(f'[ERROR] Data returned for {self.indicator} is empty!')
                         return 1
@@ -226,9 +238,18 @@ class Gather():
                         self.data['Date']
                     except:
                         try:
+                            self.data['Date'] = self.data.index
                             self.data = self.data.reset_index()
                         except Exception as e:
                             print('[Error] Failed to add \'Date\' column into data!\nException:\n{}'.format(str(e)))
+                    # Rename rows back to original state
+                    self.data = self.data.transpose().drop(['ticker'])
+                    self.data=self.data.transpose().rename(columns={"open": "Open", "high":"High","low":"Low","close":"Close","adjclose":"Adj Close","volume":"Volume"})
+                    try:
+                        self.data['Date'] = pd.to_datetime(self.data['Date'])
+                    except Exception as e:
+                        print('[INFO] Could not convert Date col to datetime',str(e))
+
                     #Append dates to database
                     for index, row in self.data.iterrows():
                         insert_date_stmt = """REPLACE INTO `stocks`.`data` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
@@ -271,42 +292,42 @@ class Gather():
         return 0
     
     def get_option_data(self):
-        with threading.Lock():
-            try:
-                # sys.stdout = open(os.devnull, 'w')
-                ticker = yf.Ticker(self.indicator)
-                exps = ticker.options
-                # Get options for each expiration
-                options = pd.DataFrame()
-                for e in exps:
-                    if (datetime.datetime.strptime(e,'%Y-%m-%d') - datetime.datetime.today()).days < 7:
-                        opt = ticker.option_chain(e)
-                        opt = pd.DataFrame().append(opt.calls).append(opt.puts)
-                        opt['expirationDate'] = e
-                        options = options.append(opt, ignore_index=True)
-                    else:
-                        break
-                # Bizarre error in yfinance that gives the wrong expiration date
-                # Add 1 day to get the correct expiration date
-                options['expirationDate'] = pd.to_datetime(options['expirationDate']) + datetime.timedelta(days = 1)
-                options['dte'] = (options['expirationDate'] - datetime.datetime.today()).dt.days / 365
-                
-                # Boolean column if the option is a CALL
-                options['CALL'] = options['contractSymbol'].str[4:].apply(
-                    lambda x: "C" in x)
-                
-                options[['bid', 'ask', 'strike']] = options[['bid', 'ask', 'strike']].apply(pd.to_numeric)
-                options['mark'] = (options['bid'] + options['ask']) / 2 # Calculate the midpoint of the bid-ask
-                
-                # Drop unnecessary and meaningless columns
-                self.options = options.drop(columns = ['contractSize', 'currency', 'change', 'percentChange', 'lastTradeDate', 'lastPrice'])
-                # sys.stdout = sys.__stdout__
-            except Exception as e:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                print(exc_type, fname, exc_tb.tb_lineno)
-                print(str(e))
-                time.sleep(300) # Sleep since API is does not want to communicate
+        # with threading.Lock():
+            # try:
+                # # sys.stdout = open(os.devnull, 'w')
+                # ticker = yf.Ticker(self.indicator)
+                # exps = ticker.options
+                # # Get options for each expiration
+                # options = pd.DataFrame()
+                # for e in exps:
+                    # if (datetime.datetime.strptime(e,'%Y-%m-%d') - datetime.datetime.today()).days < 7:
+                        # opt = ticker.option_chain(e)
+                        # opt = pd.DataFrame().append(opt.calls).append(opt.puts)
+                        # opt['expirationDate'] = e
+                        # options = options.append(opt, ignore_index=True)
+                    # else:
+                        # break
+                # # Bizarre error in yfinance that gives the wrong expiration date
+                # # Add 1 day to get the correct expiration date
+                # options['expirationDate'] = pd.to_datetime(options['expirationDate']) + datetime.timedelta(days = 1)
+                # options['dte'] = (options['expirationDate'] - datetime.datetime.today()).dt.days / 365
+                #
+                # # Boolean column if the option is a CALL
+                # options['CALL'] = options['contractSymbol'].str[4:].apply(
+                    # lambda x: "C" in x)
+                    #
+                # options[['bid', 'ask', 'strike']] = options[['bid', 'ask', 'strike']].apply(pd.to_numeric)
+                # options['mark'] = (options['bid'] + options['ask']) / 2 # Calculate the midpoint of the bid-ask
+                #
+                # # Drop unnecessary and meaningless columns
+                # self.options = options.drop(columns = ['contractSize', 'currency', 'change', 'percentChange', 'lastTradeDate', 'lastPrice'])
+                # # sys.stdout = sys.__stdout__
+            # except Exception as e:
+                # exc_type, exc_obj, exc_tb = sys.exc_info()
+                # fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                # print(exc_type, fname, exc_tb.tb_lineno)
+                # print(str(e))
+                # time.sleep(300) # Sleep since API is does not want to communicate
         return 0
     # Generate random date for data generation
     def gen_random_dates(self):
@@ -336,3 +357,5 @@ class Gather():
         if response.status_code != 200:
             raise Exception(response.status_code, response.text)
         return response.json()
+# d = Gather("SPY")
+# d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=7),end_date=datetime.datetime.utcnow().date(),_force_generate=True)

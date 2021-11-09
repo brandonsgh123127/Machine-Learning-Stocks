@@ -73,26 +73,26 @@ class Generator():
         self.studies.set_indicator(ticker)
         if ticker is not None:
             self.ticker=ticker
-        if datetime.date.today().weekday() == 5:
-            self.studies.set_data_from_range(datetime.datetime.today() - datetime.timedelta(days=1) , datetime.datetime.today(),_force_generate=force_generation)
-        elif datetime.date.today().weekday() == 6:
-            self.studies.set_data_from_range(datetime.datetime.today() - datetime.timedelta(days=2) , datetime.datetime.today(),_force_generate=force_generation)
-        elif datetime.date.today().weekday() == 0: #monday
-            self.studies.set_data_from_range(datetime.datetime.today() - datetime.timedelta(days=3) , datetime.datetime.today(),_force_generate=force_generation)
+        if datetime.datetime.utcnow().date().weekday() == 5:
+            self.studies.set_data_from_range(datetime.datetime.utcnow() - datetime.timedelta(days=1) , datetime.datetime.utcnow(),_force_generate=force_generation)
+        elif datetime.datetime.utcnow().date().weekday() == 6:
+            self.studies.set_data_from_range(datetime.datetime.utcnow() - datetime.timedelta(days=2) , datetime.datetime.utcnow(),_force_generate=force_generation)
+        elif datetime.datetime.utcnow().date().weekday() == 0: #monday
+            self.studies.set_data_from_range(datetime.datetime.utcnow() - datetime.timedelta(days=3) , datetime.datetime.utcnow(),_force_generate=force_generation)
         else:
-            self.studies.set_data_from_range(datetime.datetime.today()- datetime.timedelta(days=1), datetime.datetime.today(),_force_generate=force_generation)
+            self.studies.set_data_from_range(datetime.datetime.utcnow()- datetime.timedelta(days=1), datetime.datetime.utcnow(),_force_generate=force_generation)
         try:
             return [round(self.studies.data[['Close']].diff().iloc[1].to_list()[0],3),f'{round(self.studies.data[["Close"]].pct_change().iloc[1].to_list()[0]*100,3)}%']
         except Exception as e:
             print(f'[ERROR] Failed to gather quick data for {ticker}...\nException:\n',str(e))
             return ['n/a','n/a']
     def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,force_generate=False):
+        self.studies = Studies(self.ticker)
         self.studies.date_set = (date1,date2)
         # Loop until valid data populates
         try:
-            self.studies.set_data_from_range(self.studies.date_set[0],self.studies.date_set[1],force_generate)
-            self.studies.data = self.studies.data.reset_index()
-            # self.studies.data = self.studies.data.drop(['Date'],axis=1)
+            self.studies.set_data_from_range(date1,date2,force_generate)
+            # self.studies.data = self.studies.data.reset_index()
         except Exception as e:
             print(f'[ERROR] Failed to generate data!\nException:\n',str(e))
             raise Exception
@@ -109,23 +109,34 @@ class Generator():
         except:
             pass
         try:
+            self.studies.data = self.studies.data.drop(['Adj Close'],axis=1)
+        except:
+            pass
+        try:
             self.studies.data = self.studies.data.drop(['index'],axis=1)
+        except:
+            pass
+        try:
+            self.studies.data = self.studies.data.drop(['level_0'],axis=1)
         except:
             pass
         # print(self.studies.data)
         try:
             date_diff=self.studies.get_date_difference(self.studies.date_set[0],self.studies.date_set[1])
+
             self.studies.apply_ema("14",date_diff)
+            # print(len(self.studies.data),len(self.studies.applied_studies['ema14']))
             self.studies.apply_ema("30",date_diff)
             self.studies.apply_fibonacci()
+
             self.studies.keltner_channels(20, 1.3, None)
+
             # Final join
-            
-            self.studies.reset_data()
-            self.studies = Studies(self.ticker)
+          
         except Exception as e:
             print(f'[ERROR] Failed to generate studies for {self.ticker}!\nException:\n{str(e)}')
-            return  
+            return 
+        return (self.studies.data,self.studies.applied_studies,self.studies.fibonacci_extension,self.studies.keltner)
     def get_ticker(self):
         return self.ticker
     def set_ticker(self,ticker):

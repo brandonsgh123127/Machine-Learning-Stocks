@@ -13,6 +13,9 @@ import datetime
 import sys
 from pandas.tseries.holiday import USFederalHolidayCalendar
 import random
+from data_generator._data_generator import Generator
+
+
 
 '''
 Class that takes in studies and stock data, then transforms the data into a new dataframe.
@@ -21,19 +24,14 @@ This frame then gets normalized and outputted.
 '''
 
 class Normalizer():
-    def __init__(self):
+    def __init__(self,ticker=None,force_generate=False):
         self.data= pd.DataFrame()
         self.studies= pd.DataFrame(columns=['ema14','ema30'])
         self.normalized_data = pd.DataFrame()
         self.unnormalized_data = pd.DataFrame()
         self.path = Path(os.getcwd()).parent.absolute() 
         self.min_max = MinMaxScaler()
-        self.Date = pd.DataFrame(columns=['Date'])
-        self.Open = pd.DataFrame(columns=['Open'],dtype='float')
-        self.High = pd.DataFrame(columns=['High'],dtype='float')
-        self.Low = pd.DataFrame(columns=['Low'],dtype='float')
-        self.Close = pd.DataFrame(columns=['Close'],dtype='float')
-        self.AdjClose = pd.DataFrame(columns=['Adj Close'],dtype='float')
+        self.gen = Generator(ticker=ticker,force_generate=force_generate)
 
         '''
         Utilize a config file to establish a mysql connection to the database
@@ -71,7 +69,7 @@ class Normalizer():
     '''
         Utilize mysql to gather data.  Gathers stock data from table.
     '''
-    def mysql_read_data(self,ticker,date=None):
+    def mysql_read_data(self,ticker,date=None,force_generate=False):
         try:
             self.cnx = self.db_con.cursor(buffered=True)
             self.cnx.autocommit = True
@@ -96,279 +94,17 @@ class Normalizer():
                 initial_date=valid_datetime
             else:
                 initial_date=date
-            date_result = self.cnx.execute("""
-        select * from stocks.`data` USE INDEX (`id-and-date`)
-         WHERE stocks.`data`.`date` >= DATE(%(start)s)
-          AND stocks.`data`.`date` <= DATE(%(end)s)
-           AND `stock-id` = (select `id` from stocks.`stock` where stock = %(stock)s)
-            ORDER BY stocks.`data`.`date` ASC
-        """, ({'end':initial_date.strftime('%Y-%m-%d'),
-               'start':(initial_date - datetime.timedelta(days=40)).strftime('%Y-%m-%d'),
-               'stock':ticker.upper()}),multi=True)
+            vals=self.gen.generate_data_with_dates(initial_date - datetime.timedelta(days=40),initial_date,force_generate=force_generate)
+            self.studies=vals[1]
+            self.data=vals[0]
+            self.fib=vals[2]
+            self.keltner=vals[3]
         except Exception as e:
             print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}!\nException:\n',str(e))
             raise RuntimeError
-        for res in date_result:
-            r_set = res.fetchall()
-            if len(r_set) == 0: # empty results 
-                raise RuntimeError("Failed to query any results for read db statement:",f'select * from stocks.`data` where stocks.`data`.date >= DATE({(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}) and stocks.`data`.date <= DATE({initial_date.strftime("%Y-%m-%d")}) and `stock-id` = (select `id` from stocks.`stock` where stock = {ticker.upper()}) ORDER BY stocks.`data`.`date` ASC')
-            for set in r_set:
-                if len(set) == 0: #if somehow a result got returned and no values included, fail
-                    raise Exception(f'[ERROR] Failed to retrieve data for {ticker} from range {initial_date}--{initial_date + datetime.timedelta(days=40)}\n')
-                    
-                try:
-                    # Iterate through each element to retrieve values
-                    for index,row in enumerate(set):
-                        # print(row)
-                        append_lambda = lambda i: '' if i>=0 and i <=1 else self.append_data(self.Date, 'Date', row) if i==2 else self.append_data(self.Open,'Open',row) if i==3 else self.append_data(self.High,'High',row) if i==4 else self.append_data(self.Low,'Low',row) if i==5 else self.append_data(self.Close,'Close',row) if i==6 else self.append_data(self.AdjClose,'Adj Close',row) if i==7 else print('[ERROR] Could not map lambda!')
-                        val = append_lambda(index)
-                        if index == 2:
-                            self.Date = val
-                        elif index == 3:
-                            self.Open = val
-                        elif index == 4:
-                            self.High = val
-                        elif index == 5:
-                            self.Low = val
-                        elif index == 6:
-                            self.Close = val
-                        elif index == 7:
-                            self.AdjClose = val
-                except Exception as e:
-                    print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
-                    exc_type, exc_obj, exc_tb = sys.exc_info()
-                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                    print(exc_type, fname, exc_tb.tb_lineno)
-                    return
-        # After retrieving data, Store to self.data
-        self.Open.reset_index(drop=True, inplace=True)
-        self.Date.reset_index(drop=True, inplace=True)
-        self.High.reset_index(drop=True, inplace=True)
-        self.Low.reset_index(drop=True, inplace=True)
-        self.Close.reset_index(drop=True, inplace=True)
-        self.AdjClose.reset_index(drop=True, inplace=True)
-        self.data = pd.concat([self.Date,self.Open,self.High,self.Low,self.Close,self.AdjClose],names=['Date','Open','High','Low','Close','Adj Close'],ignore_index=True,axis=1)
-        self.data = self.data.rename(columns={0: "Date", 1: "Open", 2: "High",3: "Low",4: "Close",5: "Adj Close"})
         self.cnx.close()
-        return self.data
+        return 
     
-    '''
-        Utilize mysql to gather data for daily studies
-        Gathers the following:
-        - ema
-        - fibonacci extension
-        - keltner channel
-    '''
-    def mysql_read_studies(self,ticker,study,date=None):
-        self.cnx = self.db_con.cursor(buffered=True)
-        self.cnx.autocommit = True
-        valid_datetime=datetime.datetime.now()
-            
-        if date is None:
-            # Verify date before proceeding 
-            holidays=USFederalHolidayCalendar().holidays(start=valid_datetime - datetime.timedelta(days=40),end=valid_datetime).to_pydatetime()
-            valid_date=valid_datetime.date()
-            if (datetime.datetime.utcnow().hour < 13 and datetime.datetime.utcnow().minute < 30) and datetime.datetime.utcnow().hour >= 0: # if current time is before 9:30 AM EST, go back a day
-                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-                valid_date = (valid_date - datetime.timedelta(days=1))
-            if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
-                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-                valid_date = (valid_date - datetime.timedelta(days=1))
-            if valid_date.weekday()==5: # if saturday
-                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-                valid_date = (valid_date - datetime.timedelta(days=1))
-            if valid_date.weekday()==6: # if sunday
-                valid_datetime = (valid_datetime - datetime.timedelta(days=2))
-                valid_date = (valid_date - datetime.timedelta(days=2))
-            if valid_date in holidays:
-                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-                valid_date = (valid_date - datetime.timedelta(days=1))
-            initial_date=valid_datetime
-        else:
-            initial_date=date
-        if study == 'ema':
-            date_result = self.cnx.execute("""
-            select stocks.`study-data`.val1, stocks.`study`.study
-             FROM stocks.`study` USE INDEX (`studyid`)
-             INNER JOIN stocks.`study-data` USE INDEX (`ids`)
-            ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
-             INNER JOIN stocks.`data` USE INDEX (`id-and-date`) ON
-             stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id`
-              AND stocks.`data`.date >= %s
-               AND stocks.`data`.date <= %s
-                AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
-                AND stocks.`study`.`study` like 'ema%%' 
-             INNER JOIN stocks.stock
-              ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = %s
-               ORDER BY stocks.`data`.`date` ASC
-            """, ((initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d"),
-                  initial_date.strftime('%Y-%m-%d'),
-                  ticker),multi=True)
-            tmp_14 = pd.DataFrame(columns=['ema14'])
-            tmp_30 = pd.DataFrame(columns=['ema30'])
-            tmp_20 = pd.DataFrame(columns=['ema20'])
-            # print(date_result)
-            # date_res = self.cnx.fetchall()
-            for set in date_result:
-                s = set.fetchall()
-                if len(s) == 0:
-                    print(f'[ERROR] Failed to retrieve ema study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}!')
-                    break
-                try:
-                    # Iterate through each element to retrieve values
-                    cur_val = None
-                    for index,row in enumerate(s):
-                        cur_val = row[0]
-                        # print(row)
-                        if row[1] == 'ema14':
-                            tmp_14 = tmp_14.append({row[1]:cur_val},ignore_index=True)
-                        elif row[1] == 'ema30':
-                            tmp_30 = tmp_30.append({row[1]:cur_val},ignore_index=True)
-                        elif row[1] == 'ema20':
-                            tmp_20 = tmp_20.append({row[1]:cur_val},ignore_index=True)
-                        else:
-                            print('Unknown value in ema',row)
-                            pass
-                except Exception as e:
-                    print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
-                    exc_type, exc_obj, exc_tb = sys.exc_info()
-                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                    print(exc_type, fname, exc_tb.tb_lineno)
-                    self.cnx.close()
-                    return
-            # After retrieving data, Store to self.data
-            self.studies = pd.concat([tmp_14,tmp_30,tmp_20],ignore_index=True,axis=1)
-            self.studies = self.studies.rename(columns={0: "ema14", 1: "ema30", 2: "ema20"})
-            self.cnx.close()
-            return self.studies
-        elif study == 'fib':
-            date_result = self.cnx.execute("""
-            SELECT stocks.`study-data`.val1, stocks.`study-data`.val2,
-            stocks.`study-data`.val3, stocks.`study-data`.val4, stocks.`study-data`.val5,
-            stocks.`study-data`.val6, stocks.`study-data`.val7, stocks.`study-data`.val8,
-            stocks.`study-data`.val9, stocks.`study-data`.val10, stocks.`study-data`.val11,
-            stocks.`study-data`.val12, stocks.`study-data`.val13, stocks.`study-data`.val14,
-            stocks.`study`.study from stocks.`study`
-             INNER JOIN stocks.`study-data` USE INDEX (`ids`)
-            ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
-             INNER JOIN stocks.`data` USE INDEX (`id-and-date`) ON
-             stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id` 
-             AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
-             AND stocks.`study`.`study` = 'fibonacci'
-              AND stocks.`data`.date >= DATE(%s)
-               AND stocks.`data`.date <= DATE(%s) 
-             INNER JOIN stocks.stock ON
-              stocks.stock.`id` = stocks.`data`.`stock-id`
-              AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
-            """, ((initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d"),
-                  initial_date.strftime('%Y-%m-%d'),
-                  ticker),multi=True)
-            # print(len(date_res) - int(self.get_date_difference(start, end).strftime('%j')))
-            fib1 = pd.DataFrame(columns=['0.202'])
-            fib2 = pd.DataFrame(columns=['0.236'])
-            fib3 = pd.DataFrame(columns=['0.241'])
-            fib4 = pd.DataFrame(columns=['0.273'])
-            fib5 = pd.DataFrame(columns=['0.283'])
-            fib6 = pd.DataFrame(columns=['0.316'])
-            fib7 = pd.DataFrame(columns=['0.382'])
-            fib8 = pd.DataFrame(columns=['0.5'])
-            fib9 = pd.DataFrame(columns=['0.618'])
-            fib10 = pd.DataFrame(columns=['0.796']) 
-            fib11 = pd.DataFrame(columns=['1.556'])
-            fib12 = pd.DataFrame(columns=['3.43'])
-            fib13 = pd.DataFrame(columns=['3.83'])
-            fib14 = pd.DataFrame(columns=['5.44'])
-            for set in date_result:
-                s = set.fetchall()
-                if len(s) == 0:
-                    print(f'[ERROR] Failed to retrieve fib study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}')
-                    break
-                try:
-                    # Iterate through each element to retrieve values
-                    cur_val = None
-                    for index,row in enumerate(s):
-                        fib1 = fib1.append({'0.202':row[0]},ignore_index=True)
-                        fib2 = fib2.append({'0.236':row[1]},ignore_index=True)
-                        fib3 = fib3.append({'0.241':row[2]},ignore_index=True)
-                        fib4 = fib4.append({'0.273':row[3]},ignore_index=True)
-                        fib5 = fib5.append({'0.283':row[4]},ignore_index=True)
-                        fib6 = fib6.append({'0.316':row[5]},ignore_index=True)
-                        fib7 = fib7.append({'0.382':row[6]},ignore_index=True)
-                        fib8 = fib8.append({'0.5':row[7]},ignore_index=True)
-                        fib9 = fib9.append({'0.618':row[8]},ignore_index=True)
-                        fib10 = fib10.append({'0.796':row[9]},ignore_index=True)
-                        fib11 = fib11.append({'1.556':row[10]},ignore_index=True)
-                        fib12 = fib12.append({'3.43':row[11]},ignore_index=True)
-                        fib13 = fib13.append({'3.83':row[12]},ignore_index=True)
-                        fib14 = fib14.append({'5.44':row[13]},ignore_index=True)
-                except Exception as e:
-                    print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
-                    exc_type, exc_obj, exc_tb = sys.exc_info()
-                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                    print(exc_type, fname, exc_tb.tb_lineno)
-                    self.cnx.close()
-            # After retrieving data, Store to self.data
-            fib = pd.concat([fib1,fib2,fib3,fib4,fib5,
-                             fib6,fib7,fib8,fib9,fib10,
-                             fib11,fib12,fib13,fib14],ignore_index=True,axis=1)
-            self.fib = fib.rename(columns={0: "0.202", 1: "236",
-                                           2: "0.241", 3: "0.273",
-                                           4: "0.283", 5: "0.316",
-                                           6: "0.382", 7: "0.5",
-                                           8: "0.618", 9: "0.796",
-                                           10: "1.556", 11: "3.43",
-                                           12: "3.83", 13: "5.44",})
-            self.cnx.close()
-            return self.fib
-        elif study == 'keltner':
-            date_result = self.cnx.execute("""
-            SELECT stocks.`study-data`.val1, stocks.`study-data`.val2, stocks.`study-data`.val3,
-             stocks.`study`.study FROM stocks.`study` USE INDEX (`studyid`)
-              INNER JOIN stocks.`study-data` USE INDEX (`ids`)
-            ON stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
-             INNER JOIN stocks.`data` USE INDEX (`id-and-date`) ON
-             stocks.`study-data`.`data-id` = `stocks`.`data`.`data-id`
-              AND stocks.`data`.date >= %s
-               AND stocks.`data`.date <= %s
-                AND stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
-                AND stocks.`study`.`study` = 'keltner20-1.3' 
-             INNER JOIN stocks.stock USE INDEX (`stockid`) ON
-              stocks.stock.`id` = stocks.`data`.`stock-id`
-               AND stocks.stock.stock = %s ORDER BY stocks.`data`.`date` ASC
-            """, ((initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d"),
-                  initial_date.strftime('%Y-%m-%d'),
-                  ticker),multi=True)
-            middle = pd.DataFrame(columns=['middle'])
-            upper= pd.DataFrame(columns=['upper'])
-            lower= pd.DataFrame(columns=['lower'])
-            # print(date_result)
-            # date_res = self.cnx.fetchall()
-            for set in date_result:
-                s = set.fetchall()
-                # print(s)
-                if len(s) == 0:
-                    print(f'[ERROR] Failed to retrieve keltner study data for {ticker} from range {initial_date.strftime("%Y-%m-%d")}--{(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}')
-                    break
-                try:
-                    # Iterate through each element to retrieve values
-                    cur_val = None
-                    for index,row in enumerate(s):
-                        middle = middle.append({'middle':row[0]},ignore_index=True)
-                        upper = upper.append({'upper':row[1]},ignore_index=True)
-                        lower = lower.append({'lower':row[2]},ignore_index=True)
-                except Exception as e:
-                    print('[ERROR] Unknown error occurred when retrieving study information!\nException:\n',str(e))
-                    exc_type, exc_obj, exc_tb = sys.exc_info()
-                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                    print(exc_type, fname, exc_tb.tb_lineno)
-                    self.cnx.close()
-                    return
-            # After retrieving data, Store to self.data
-            keltner = pd.concat([middle,upper,lower],ignore_index=True,axis=1)
-            self.keltner = keltner.rename(columns={0: "middle", 1: "upper", 2: "lower"})
-            self.cnx.close()
-            return self.keltner
-        
     '''
         utilize mysql to retrieve data and study data for later usage...
     '''
@@ -387,25 +123,17 @@ class Normalizer():
             date=None
         try:
             self.mysql_read_data(ticker,date=date)
-            self.data = self.data.drop(['Adj Close','Date'],axis=1)
         except Exception as e:
             print('[ERROR] Failed to read data!\nException:\n',str(e))
             raise RuntimeError
         try:
-            self.studies = self.mysql_read_studies(ticker,'ema',date=date)
-        except Exception as e:
-            print('[ERROR] Failed to read ema studies!\nException:\n',str(e))
-            raise RuntimeError
+            self.data = self.data.drop(['Adj Close'],axis=1)
+        except:
+            pass
         try:
-            self.keltner= self.mysql_read_studies(ticker,'keltner',date=date)
-        except Exception as e:
-            print('[ERROR] Failed to read keltner study!\nException:\n',str(e))
-            raise RuntimeError
-        try:
-            self.fib = self.mysql_read_studies(ticker,'fib',date=date)
-        except Exception as e:
-            print('[ERROR] Failed to read ema14 study!\nException:\n',str(e))
-            raise RuntimeError
+            self.data = self.data.drop(['Date'],axis=1)
+        except:
+            pass
         try:
             self.data = self.data.drop(['index'],axis=1)
             self.data = self.data.drop(['level_0'],axis=1)
@@ -415,61 +143,70 @@ class Normalizer():
         
         
     def convert_derivatives(self,out=8):
-        self.data = self.data.astype('float')
+        try:
+            data = self.data.drop(columns={'Date'})
+        except:
+            pass
+        data = data.astype('float')
         self.studies = self.studies.astype('float')
         self.normalized_data = pd.DataFrame((),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
                                                                                                       'Close EMA30 Diff','EMA14 EMA30 Diff'])
-        self.normalized_data["Open"] = self.data["Open"]
-        self.normalized_data["Close"] = self.data["Close"]
-        self.normalized_data["Range"] = self.data["Open"]
-        self.normalized_data["Euclidean Open"] = self.data["Open"]
-        self.normalized_data["Euclidean Close"] =self.data["Close"]
+        self.normalized_data["Open"] = data["Open"]
+        self.normalized_data["Close"] = data["Close"]
+        self.normalized_data["Range"] = data["Open"]
+        self.normalized_data["Euclidean Open"] = data["Open"]
+        self.normalized_data["Euclidean Close"] =data["Close"]
         self.normalized_data["Open EMA14 Diff"] = self.studies["ema14"]
         self.normalized_data["Open EMA30 Diff"] = self.studies["ema30"]
         self.normalized_data["Close EMA14 Diff"] = self.studies["ema14"]
         self.normalized_data["Close EMA30 Diff"] = self.studies["ema30"]
         self.normalized_data["EMA14 EMA30 Diff"] = self.studies["ema14"]
 
-        for index,row in self.data.iterrows():
+        for index,row in data.iterrows():
             try:
                 if index == 0:
-                    self.normalized_data.loc[index,"Open"] = 0
-                    self.normalized_data.loc[index,"Close"] = 0
-                    self.normalized_data.loc[index,"Range"] = abs(self.data.at[index,"Close"] - self.data.at[index,"Open"])
-                    self.normalized_data.loc[index,"Euclidean Open"] = np.power(np.power(((self.data.at[index,"Open"] - self.studies.at[index,"ema14"])+(self.data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
-                    self.normalized_data.loc[index,"Euclidean Close"] = np.power(np.power(((self.data.at[index,"Close"] - self.studies.at[index,"ema14"])+(self.data.at[index,"Close"] - self.studies.at[index,"ema30"])),2),1/2)       
-                    self.normalized_data.loc[index,"Open EMA14 Diff"] = (self.data.at[index,"Open"] - self.studies.at[index,'ema14'])/self.data.at[index,"Open"]
-                    self.normalized_data.loc[index,"Open EMA30 Diff"] = (self.data.at[index,"Open"] - self.studies.at[index,'ema30'])/self.data.at[index,"Open"]
-                    self.normalized_data.loc[index,"Close EMA14 Diff"] = (self.data.at[index,"Close"] - self.studies.at[index,'ema14'])/self.data.at[index,"Close"]
-                    self.normalized_data.loc[index,"Close EMA30 Diff"] = (self.data.at[index,"Close"] - self.studies.at[index,'ema30'])/self.data.at[index,"Close"]
+                    self.normalized_data.loc[index,"Open"] = data["Open"].iloc[0]
+                    self.normalized_data.loc[index,"Close"] = data["Close"].iloc[0]
+                    self.normalized_data.loc[index,"Range"] = abs(data.at[index,"Close"] - data.at[index,"Open"])
+                    self.normalized_data.loc[index,"Euclidean Open"] = np.power(np.power(((data.at[index,"Open"] - self.studies.at[index,"ema14"])+(data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
+                    self.normalized_data.loc[index,"Euclidean Close"] = np.power(np.power(((data.at[index,"Close"] - self.studies.at[index,"ema14"])+(data.at[index,"Close"] - self.studies.at[index,"ema30"])),2),1/2)       
+                    self.normalized_data.loc[index,"Open EMA14 Diff"] = (data.at[index,"Open"] - self.studies.at[index,'ema14'])/data.at[index,"Open"]
+                    self.normalized_data.loc[index,"Open EMA30 Diff"] = (data.at[index,"Open"] - self.studies.at[index,'ema30'])/data.at[index,"Open"]
+                    self.normalized_data.loc[index,"Close EMA14 Diff"] = (data.at[index,"Close"] - self.studies.at[index,'ema14'])/data.at[index,"Close"]
+                    self.normalized_data.loc[index,"Close EMA30 Diff"] = (data.at[index,"Close"] - self.studies.at[index,'ema30'])/data.at[index,"Close"]
                     self.normalized_data.loc[index,"EMA14 EMA30 Diff"] = (self.studies.at[index,"ema14"] - self.studies.at[index,'ema30'])/self.studies.at[index,"ema14"]
     
                 else:
-                    self.normalized_data.loc[index,"Close"] = ((self.data.at[index,"Close"] - self.data.at[index-1,"Close"]))/(1)
-                    self.normalized_data.loc[index,"Open"] = ((self.data.at[index,"Open"] - self.data.at[index-1,"Open"]))/(1)
-                    self.normalized_data.loc[index,"Range"] = abs(self.data.at[index,"Close"] - self.data.at[index,"Open"])
-                    self.normalized_data.loc[index,"Euclidean Open"] = np.power(np.power(((self.data.at[index,"Open"] - self.studies.at[index,"ema14"])+(self.data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
-                    self.normalized_data.loc[index,"Euclidean Close"] = np.power(np.power(((self.data.at[index,"Close"] - self.studies.at[index,"ema14"])+(self.data.at[index,"Close"] - self.studies.at[index,"ema30"])),2),1/2)       
-                    self.normalized_data.loc[index,"Open EMA14 Diff"] = (self.data.at[index,"Open"] - self.studies.at[index,'ema14'])/self.data.at[index,"Open"]
-                    self.normalized_data.loc[index,"Open EMA30 Diff"] = (self.data.at[index,"Open"] - self.studies.at[index,'ema30'])/self.data.at[index,"Open"]
-                    self.normalized_data.loc[index,"Close EMA14 Diff"] = (self.data.at[index,"Close"] - self.studies.at[index,'ema14'])/self.data.at[index,"Close"]
-                    self.normalized_data.loc[index,"Close EMA30 Diff"] = (self.data.at[index,"Close"] - self.studies.at[index,'ema30'])/self.data.at[index,"Close"]
+                    self.normalized_data.loc[index,"Close"] = ((data.at[index,"Close"] - data.at[index-1,"Close"]))/(1)
+                    self.normalized_data.loc[index,"Open"] = ((data.at[index,"Open"] - data.at[index-1,"Open"]))/(1)
+                    self.normalized_data.loc[index,"Range"] = abs(data.at[index,"Close"] - data.at[index,"Open"])
+                    self.normalized_data.loc[index,"Euclidean Open"] = np.power(np.power(((data.at[index,"Open"] - self.studies.at[index,"ema14"])+(data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
+                    self.normalized_data.loc[index,"Euclidean Close"] = np.power(np.power(((data.at[index,"Close"] - self.studies.at[index,"ema14"])+(data.at[index,"Close"] - self.studies.at[index,"ema30"])),2),1/2)       
+                    self.normalized_data.loc[index,"Open EMA14 Diff"] = (data.at[index,"Open"] - self.studies.at[index,'ema14'])/data.at[index,"Open"]
+                    self.normalized_data.loc[index,"Open EMA30 Diff"] = (data.at[index,"Open"] - self.studies.at[index,'ema30'])/data.at[index,"Open"]
+                    self.normalized_data.loc[index,"Close EMA14 Diff"] = (data.at[index,"Close"] - self.studies.at[index,'ema14'])/data.at[index,"Close"]
+                    self.normalized_data.loc[index,"Close EMA30 Diff"] = (data.at[index,"Close"] - self.studies.at[index,'ema30'])/data.at[index,"Close"]
                     self.normalized_data.loc[index,"EMA14 EMA30 Diff"] = (self.studies.at[index,"ema14"] - self.studies.at[index,'ema30'])/self.studies.at[index,"ema14"]
             except:
                 pass
+        # print(self.normalized_data,len(self.studies),len(data))
         return 0
     '''
         Gather the divergence data for further use
     '''
     def convert_divergence(self):
-        self.data = self.data.astype('float')
+        try:
+            data = self.data.drop(columns={'Date'})
+        except:
+            pass
+        data = data.astype('float')
         self.normalized_data = pd.DataFrame((),columns=['Divergence','Gain/Loss'])
         self.normalized_data["Divergence"] = self.data["Open"]
         self.normalized_data["Gain/Loss"] = self.data["Close"]
 
         for index,row in self.data.iterrows():
-            self.normalized_data.loc[index,"Divergence"] = ((self.data.at[index,"High"] - self.data.at[index,"Low"]))/(1)
-            self.normalized_data.loc[index,"Gain/Loss"] = ((self.data.at[index,"Close"] - self.data.at[index,"Open"]))/(1)
+            self.normalized_data.loc[index,"Divergence"] = ((data.at[index,"High"] - data.at[index,"Low"]))/(1)
+            self.normalized_data.loc[index,"Gain/Loss"] = ((data.at[index,"Close"] - data.at[index,"Open"]))/(1)
             
         return 0
     '''
