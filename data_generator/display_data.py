@@ -64,6 +64,7 @@ class Display():
         self.fib_display['3.83'].transpose().plot.line(ax=self.axes[row,col])
         self.fib_display['5.44'].transpose().plot.line(ax=self.axes[row,col])
         if has_actuals:
+            data = data.astype('float')
             data.iloc[int(len(data.index)/2+1):-1].transpose().boxplot(ax=self.axes[row,col],patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
                                                     capprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(data.iloc[-2]['Close']) else 'green' ),
