@@ -43,7 +43,10 @@ class Display():
         c = 'blue'
         if data is None:
             raise Exception('[ERROR] data cannot be None!  Exiting display boxplot...')
-        self.fib_display = self.fib_display.reset_index().set_axis(['index','0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'], 1)
+        try:
+            self.fib_display = self.fib_display.reset_index().set_axis(['index','0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'], 1)
+        except:
+            self.fib_display = self.fib_display.set_axis(['index','0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'], 1)
         # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.keltner_display.index) + 2)]
         self.fib_display = self.fib_display.iloc[:int(len(self.fib_display.index)/2+1)].reset_index().astype('float')
         self.fib_display['0.202'].transpose().plot.line(ax=self.axes[row,col],color='green',x='0.202',y='0.202')

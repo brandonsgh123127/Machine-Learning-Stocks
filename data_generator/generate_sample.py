@@ -30,7 +30,7 @@ class Sample(Normalizer):
         else:
             self.DAYS_SAMPLED = 15
         # If data has been set via neural_network, don't read data
-        if self.data is not None and self.keltner is not None:
+        if self.data is not None:
             pass
         else:
             # Read the current ticker data

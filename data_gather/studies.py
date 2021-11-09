@@ -189,7 +189,12 @@ class Studies(Gather):
                             data = self.data.copy().drop(['Date'],axis=1)
                         except:
                             pass
-                        data = data.drop(['Open','High','Low','Adj Close'],axis=1).rename(columns={'Close':f'ema{length}'}).ewm(alpha=2/(int(length)+1),adjust=True).mean()
+                        data = data.drop(['Open','High','Low'],axis=1)
+                        try:
+                            data = data.drop(['Adj Close'],axis=1)
+                        except:
+                            pass
+                        data=data.rename(columns={'Close':f'ema{length}'}).ewm(alpha=2/(int(length)+1),adjust=True).mean()
                         self.applied_studies= pd.concat([self.applied_studies,data],axis=1)
                         del data
                         gc.collect()
