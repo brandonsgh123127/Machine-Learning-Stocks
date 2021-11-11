@@ -439,9 +439,10 @@ def run(epochs,batch_size,name="model_relu"):
     neural_net.save_model()
 
 
-run(100,100,"model_relu")
-run(100,100,"model_leaky")
-run(100,100,"model_sigmoid")
-# run(100,100,"model_relu2")
+# run(50,100,"model_relu")
+# run(100,100,"model_leaky")
+# run(100,100,"model_sigmoid")
+# run(50,100,"model_relu2")
+#
 # run(100,100,"model_leaky2")
 # run(100,100,"model_sigmoid2")

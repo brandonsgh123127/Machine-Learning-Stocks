@@ -43,33 +43,50 @@ class Display():
         c = 'blue'
         if data is None:
             raise Exception('[ERROR] data cannot be None!  Exiting display boxplot...')
+        
         try:
-            self.fib_display = self.fib_display.reset_index().set_axis(['index','0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'], 1)
+            if has_actuals:
+                data = data.iloc[int(len(data.index)/1.33+1):-1]
+                self.fib_display = self.fib_display.iloc[int(len(data.index)/1.33+1):-1].reset_index().astype('float')
+            else:
+                data = data.iloc[int(len(data.index)/1.33+1):]
+                self.fib_display = self.fib_display.iloc[int(len(data.index)/1.33+1):].reset_index().astype('float')
+            data = data.reset_index().drop(columns=['index']).astype('float')
+        except:
+            pass
+        try:
+            data = data.drop(columns=['level_0']).astype('float')
+        except:
+            pass
+        try:
+            self.fib_display = self.fib_display.drop(columns=['level_0'])
+        except:
+            pass
+        try:
+            self.fib_display = self.fib_display.set_axis(['index','0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'], 1)
         except:
             self.fib_display = self.fib_display.set_axis(['index','0.202','0.236','0.241','0.273','0.283','0.316','0.382','0.5','0.618','0.796','1.556','3.43','3.83','5.44'], 1)
         # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.keltner_display.index) + 2)]
-        self.fib_display = self.fib_display.reset_index().astype('float')
         try:
             self.fib_display = self.fib_display.drop(['level_0'],axis=1)
         except:
             pass
-        self.fib_display['0.202'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col],color='green',x='0.202',y='0.202')
-        self.fib_display['0.236'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
-        self.fib_display['0.241'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
-        self.fib_display['0.273'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
-        self.fib_display['0.283'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
-        self.fib_display['0.316'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
-        self.fib_display['0.382'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
-        self.fib_display['0.5'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
-        self.fib_display['0.618'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
-        self.fib_display['0.796'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
-        self.fib_display['1.556'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
-        self.fib_display['3.43'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
-        self.fib_display['3.83'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
-        self.fib_display['5.44'].transpose().iloc[int(len(data.index)/1.33+1):].plot.line(ax=self.axes[row,col])
+        self.fib_display['0.202'].transpose().plot.line(ax=self.axes[row,col],color='green',x='0.202',y='0.202')
+        self.fib_display['0.236'].transpose().plot.line(ax=self.axes[row,col])
+        self.fib_display['0.241'].transpose().plot.line(ax=self.axes[row,col])
+        self.fib_display['0.273'].transpose().plot.line(ax=self.axes[row,col])
+        self.fib_display['0.283'].transpose().plot.line(ax=self.axes[row,col])
+        self.fib_display['0.316'].transpose().plot.line(ax=self.axes[row,col])
+        self.fib_display['0.382'].transpose().plot.line(ax=self.axes[row,col])
+        self.fib_display['0.5'].transpose().plot.line(ax=self.axes[row,col])
+        self.fib_display['0.618'].transpose().plot.line(ax=self.axes[row,col])
+        self.fib_display['0.796'].transpose().plot.line(ax=self.axes[row,col])
+        self.fib_display['1.556'].transpose().plot.line(ax=self.axes[row,col])
+        self.fib_display['3.43'].transpose().plot.line(ax=self.axes[row,col])
+        self.fib_display['3.83'].transpose().plot.line(ax=self.axes[row,col])
+        self.fib_display['5.44'].transpose().plot.line(ax=self.axes[row,col])
         if has_actuals:
-            data = data.astype('float')
-            data.iloc[int(len(data.index)/1.33+1):-1].transpose().boxplot(ax=self.axes[row,col],patch_artist=True,
+            data.transpose().boxplot(ax=self.axes[row,col],patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
                                                     capprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(data.iloc[-2]['Close']) else 'green' ),
                                                     showfliers=False,
@@ -80,7 +97,7 @@ class Display():
                                                     autorange=True)
         else:
             data = data.astype('float')
-            data.iloc[int(len(data.index)/1.33+1):].transpose().boxplot(ax=self.axes[row,col],patch_artist=True,
+            data.transpose().boxplot(ax=self.axes[row,col],patch_artist=True,
                                               boxprops=dict(facecolor=(0.1,0.5,0.4,0.5)),
                                                     capprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(data.iloc[-2]['Close']) else 'green' ),
                                                     showfliers=False,
