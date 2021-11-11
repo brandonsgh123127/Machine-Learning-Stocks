@@ -110,68 +110,70 @@ class Gather():
         with threading.Lock():
             return self.indicator    
     # retrieve pandas_datareader object of datetime
-    def set_data_from_range(self,start_date,end_date,_force_generate=False):
+    def set_data_from_range(self,start_date,end_date,_force_generate=False,skip_db=False):
         # Date range utilized for query...
         date_range =[d.strftime('%Y-%m-%d') for d in pd.date_range(start_date, end_date)] #start/end date list
-        holidays=USFederalHolidayCalendar().holidays(start=f'{start_date.year}-01-01',end=f'{end_date.year}-12-31').to_pydatetime()
-        # For each date, verify data is in the specified range by removing any unnecessary dates first
-        for date in date_range:
-            datetime_date=datetime.datetime.strptime(date,'%Y-%m-%d')
-            if datetime_date.weekday() == 5 or datetime_date in holidays:
-                date_range.remove(date)
-        # Second iteration needed to delete Sunday dates for some unknown reason...
-        for d in date_range:
-            datetime_date=datetime.datetime.strptime(d,'%Y-%m-%d')
-            if datetime_date.weekday() == 6:
-                date_range.remove(d)
-        # iterate through each data row and verify data is in place before continuing...
-        new_data= pd.DataFrame(columns=['Date','Open','High','Low','Close','Adj. Close'])
-        self.cnx = self.db_con.cursor()
-        self.cnx.autocommit = True
-        
-        # Before inserting data, check cached data, verify if there is data there...
-        check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date`,`stocks`.`data`.`open`,
-        `stocks`.`data`.`high`,`stocks`.`data`.`low`,
-        `stocks`.`data`.`close`,`stocks`.`data`.`adj-close`
-         FROM stocks.`data` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
-         ON `stock-id` = stocks.stock.`id` 
-          AND stocks.stock.`stock` = %(stock)s
-           AND `stocks`.`data`.`date` >= DATE(%(sdate)s)
-           AND `stocks`.`data`.`date` <= DATE(%(edate)s)
-           ORDER BY stocks.`data`.`date` ASC
-            """
-                
-        try:
-            check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
-                                                                            'sdate':start_date.strftime('%Y-%m-%d'),
-                                                                            'edate':end_date.strftime('%Y-%m-%d')},
-                                                                            multi=True)
-            # Retrieve date, verify it is in date range, remove from date range
-            for result in check_cache_studies_db_result:   
-                result= result.fetchall()
-                for res in result:
-                    # Convert datetime to str
-                    date=datetime.date.strftime(res[0],"%Y-%m-%d")
+
+        if not skip_db:
+            holidays=USFederalHolidayCalendar().holidays(start=f'{start_date.year}-01-01',end=f'{end_date.year}-12-31').to_pydatetime()
+            # For each date, verify data is in the specified range by removing any unnecessary dates first
+            for date in date_range:
+                datetime_date=datetime.datetime.strptime(date,'%Y-%m-%d')
+                if datetime_date.weekday() == 5 or datetime_date in holidays:
+                    date_range.remove(date)
+            # Second iteration needed to delete Sunday dates for some unknown reason...
+            for d in date_range:
+                datetime_date=datetime.datetime.strptime(d,'%Y-%m-%d')
+                if datetime_date.weekday() == 6:
+                    date_range.remove(d)
+            # iterate through each data row and verify data is in place before continuing...
+            new_data= pd.DataFrame(columns=['Date','Open','High','Low','Close','Adj. Close'])
+            self.cnx = self.db_con.cursor()
+            self.cnx.autocommit = True
             
-                    if date is None:
-                        print(f'[INFO] No prior data found for {self.indicator.upper()} from {start_date.strftime("%Y-%m-%d")} to {end_date.strftime("%Y-%m-%d")}... Generating data...!\n',flush=True)
-                    else:
-                        new_data = new_data.append({'Date':date,'Open':float(res[1]),'High':float(res[2]),
-                                         'Low':float(res[3]),'Close':float(res[4]),
-                                         'Adj. Close':float(res[5])},ignore_index=True) 
-                        # check if date is there, if not fail this
-                        if date in date_range:
-                            date_range.remove(date)
+            # Before inserting data, check cached data, verify if there is data there...
+            check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date`,`stocks`.`data`.`open`,
+            `stocks`.`data`.`high`,`stocks`.`data`.`low`,
+            `stocks`.`data`.`close`,`stocks`.`data`.`adj-close`
+             FROM stocks.`data` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
+             ON `stock-id` = stocks.stock.`id` 
+              AND stocks.stock.`stock` = %(stock)s
+               AND `stocks`.`data`.`date` >= DATE(%(sdate)s)
+               AND `stocks`.`data`.`date` <= DATE(%(edate)s)
+               ORDER BY stocks.`data`.`date` ASC
+                """
+                    
+            try:
+                check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,{'stock':self.indicator.upper(),    
+                                                                                'sdate':start_date.strftime('%Y-%m-%d'),
+                                                                                'edate':end_date.strftime('%Y-%m-%d')},
+                                                                                multi=True)
+                # Retrieve date, verify it is in date range, remove from date range
+                for result in check_cache_studies_db_result:   
+                    result= result.fetchall()
+                    for res in result:
+                        # Convert datetime to str
+                        date=datetime.date.strftime(res[0],"%Y-%m-%d")
+                
+                        if date is None:
+                            print(f'[INFO] No prior data found for {self.indicator.upper()} from {start_date.strftime("%Y-%m-%d")} to {end_date.strftime("%Y-%m-%d")}... Generating data...!\n',flush=True)
                         else:
-                            continue
-        except mysql.connector.errors.IntegrityError: # should not happen
-            self.cnx.close()
-            pass
-        except Exception as e:
-            print('[ERROR] Failed to check cached data!\nException:\n',str(e))
-            self.cnx.close()
-            raise mysql.connector.errors.DatabaseError()
-        if len(date_range) == 0 and not _force_generate: # If all dates are satisfied, set data
+                            new_data = new_data.append({'Date':date,'Open':float(res[1]),'High':float(res[2]),
+                                             'Low':float(res[3]),'Close':float(res[4]),
+                                             'Adj. Close':float(res[5])},ignore_index=True) 
+                            # check if date is there, if not fail this
+                            if date in date_range:
+                                date_range.remove(date)
+                            else:
+                                continue
+            except mysql.connector.errors.IntegrityError: # should not happen
+                self.cnx.close()
+                pass
+            except Exception as e:
+                print('[ERROR] Failed to check cached data!\nException:\n',str(e))
+                self.cnx.close()
+                raise mysql.connector.errors.DatabaseError()
+        if len(date_range) == 0 and not _force_generate and not skip_db: # If all dates are satisfied, set data
             self.data=new_data
             try:
                 self.data['Date'] = pd.to_datetime(self.data['Date'])
@@ -199,7 +201,10 @@ class Gather():
                             print(f'[WARN] Failed to gather data for {self.indicator}! {retries}/{max_retries} Retr(ies)...')
                             retries = retries + 1
                             time.sleep(2 * (retries/1.33))
-                            self.data = get_data(self.indicator.upper(),start_date=start_date.strftime("%Y-%m-%d"),end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
+                            try:
+                                self.data = get_data(self.indicator.upper(),start_date=start_date.strftime("%Y-%m-%d"),end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
+                            except AssertionError as a:
+                                raise Exception(f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
                         if retries > max_retries:
                             print('[ERROR] Failed to gather data!')
                             raise Exception()
@@ -208,32 +213,32 @@ class Gather():
                     if self.data.empty:
                         print(f'[ERROR] Data returned for {self.indicator} is empty!')
                         return 1
-                    # Retrieve query from database, confirm that stock is in database, else make new query
-        
-                    select_stmt = "SELECT `id` FROM stocks.stock WHERE stock like %(stock)s"
-                    resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
-                    for result in resultado:
-                        # print(len(result.fetchall()))
-                        # Query new stock, id
-                        res = result.fetchall()
-                        if len(res) == 0:
-                            insert_stmt = """INSERT INTO stocks.stock (id, stock) 
-                                        VALUES (AES_ENCRYPT(%(stock)s, %(stock)s),%(stock)s)"""
-                            try:
-                                insert_resultado = self.cnx.execute(insert_stmt, { 'stock': f'{self.indicator.upper()}'},multi=True)
-                                self.db_con.commit()
-                            except mysql.connector.errors.IntegrityError as e:
-                                print('[ERROR] Integrity Error.')
-                                pass
-                            except Exception as e:
-                                print(f'[ERROR] Failed to insert stock named {self.indicator.upper()} into database!\nException:\n',str(e))
-                                exc_type, exc_obj, exc_tb = sys.exc_info()
-                                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                                print(exc_type, fname, exc_tb.tb_lineno)
-        
-                        else:
-                            for r in res:
-                                self.new_uuid_gen = binascii.b2a_hex(str.encode(str(r[0]),"utf8"))
+                    if not skip_db:
+                        # Retrieve query from database, confirm that stock is in database, else make new query
+                        select_stmt = "SELECT `id` FROM stocks.stock WHERE stock like %(stock)s"
+                        resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
+                        for result in resultado:
+                            # print(len(result.fetchall()))
+                            # Query new stock, id
+                            res = result.fetchall()
+                            if len(res) == 0:
+                                insert_stmt = """INSERT INTO stocks.stock (id, stock) 
+                                            VALUES (AES_ENCRYPT(%(stock)s, %(stock)s),%(stock)s)"""
+                                try:
+                                    insert_resultado = self.cnx.execute(insert_stmt, { 'stock': f'{self.indicator.upper()}'},multi=True)
+                                    self.db_con.commit()
+                                except mysql.connector.errors.IntegrityError as e:
+                                    print('[ERROR] Integrity Error.')
+                                    pass
+                                except Exception as e:
+                                    print(f'[ERROR] Failed to insert stock named {self.indicator.upper()} into database!\nException:\n',str(e))
+                                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                                    print(exc_type, fname, exc_tb.tb_lineno)
+            
+                            else:
+                                for r in res:
+                                    self.new_uuid_gen = binascii.b2a_hex(str.encode(str(r[0]),"utf8"))
                     try:
                         self.data['Date']
                     except:
@@ -249,35 +254,35 @@ class Gather():
                         self.data['Date'] = pd.to_datetime(self.data['Date'])
                     except Exception as e:
                         print('[INFO] Could not convert Date col to datetime',str(e))
-
-                    #Append dates to database
-                    for index, row in self.data.iterrows():
-                        insert_date_stmt = """REPLACE INTO `stocks`.`data` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
-                        VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
-                        DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
-                        try: 
-                            # print(row.name)
-                            insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'data_id': f'{self.indicator}{row["Date"].strftime("%Y-%m-%d")}',
-                                                                                    'stock':f'{self.indicator.upper()}',
-                                                                                    'Date':row['Date'].strftime("%Y-%m-%d"),
-                                                                                    'Open':row['Open'],
-                                                                                    'High':row['High'],
-                                                                                    'Low':row['Low'],
-                                                                                    'Close':row['Close'],
-                                                                                    'Adj Close': row['Adj Close']},multi=True)
-        
-                        except mysql.connector.errors.IntegrityError as e:
-                                pass
+                    if not skip_db:
+                        #Append dates to database
+                        for index, row in self.data.iterrows():
+                            insert_date_stmt = """REPLACE INTO `stocks`.`data` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                            VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
+                            DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                            try: 
+                                # print(row.name)
+                                insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'data_id': f'{self.indicator}{row["Date"].strftime("%Y-%m-%d")}',
+                                                                                        'stock':f'{self.indicator.upper()}',
+                                                                                        'Date':row['Date'].strftime("%Y-%m-%d"),
+                                                                                        'Open':row['Open'],
+                                                                                        'High':row['High'],
+                                                                                        'Low':row['Low'],
+                                                                                        'Close':row['Close'],
+                                                                                        'Adj Close': row['Adj Close']},multi=True)
+            
+                            except mysql.connector.errors.IntegrityError as e:
+                                    pass
+                            except Exception as e:
+                                # print(self.data)
+                                print(f'[ERROR] Failed to insert date for {self.indicator} into database!\nDebug Info:{row}\n\nException:\n',str(e))
+                                exc_type, exc_obj, exc_tb = sys.exc_info()
+                                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                                print(exc_type, fname, exc_tb.tb_lineno)
+                        try:
+                            self.db_con.commit()
                         except Exception as e:
-                            # print(self.data)
-                            print(f'[ERROR] Failed to insert date for {self.indicator} into database!\nDebug Info:{row}\n\nException:\n',str(e))
-                            exc_type, exc_obj, exc_tb = sys.exc_info()
-                            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                            print(exc_type, fname, exc_tb.tb_lineno)
-                    try:
-                        self.db_con.commit()
-                    except Exception as e:
-                        print('[Error] Could not commit changes for insert day data!\nReason:\n',str(e))
+                            print('[Error] Could not commit changes for insert day data!\nReason:\n',str(e))
                         
         
                 except Exception as e:
@@ -288,7 +293,10 @@ class Gather():
                     print(exc_type, fname, exc_tb.tb_lineno)
                     self.cnx.close()
                     return 1
-        self.cnx.close()
+        try:
+            self.cnx.close()
+        except:
+            pass
         return 0
     
     def get_option_data(self):

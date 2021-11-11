@@ -90,22 +90,24 @@ class Network(Neural_Framework):
         self.nn = keras.Model(inputs=self.nn_input,outputs=[self.nn2])
         self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.0005,beta_1=0.95,beta_2=0.999), loss='mse',metrics=['MeanAbsoluteError','MeanAbsolutePercentageError'])
         return self.nn
-    
+    # Used for generation of data via the start
     def generate_sample(self,_has_actuals=False,rand_date=None):
         path = Path(os.getcwd()).parent.absolute()
+        self.sampler.reset_data()
         self.sampler.set_ticker(self.choose_random_ticker(f'{path}/data/watchlist/default.csv'))
         try:
             if self.model_choice < 4:
-                self.sampler.generate_sample(_has_actuals=_has_actuals,rand_date=rand_date)
+                self.sampler.generate_sample(_has_actuals=_has_actuals,rand_date=rand_date,skip_db=True)
             else:
-                self.sampler.generate_sample(_has_actuals=_has_actuals,out=2,rand_date=rand_date)
+                self.sampler.generate_sample(_has_actuals=_has_actuals,out=2,rand_date=rand_date,skip_db=True)
             self.sampler.data = self.sampler.data.drop(['High','Low'],axis=1)
         except Exception as e:
             print('[Error] Failed batch!\nException:\n',str(e))
-            raise Exception()
+            return 1
         except Exception as e:
             print(str(e))
-            raise Exception()
+            return 1
+        return 0
 
     def run_model(self,rand_date=False):
         self.sampler = Sample()
@@ -119,7 +121,10 @@ class Network(Neural_Framework):
             for j in range(1,self.BATCHES):
                 train= []
                 train_targets=[]
-                self.generate_sample(True, rand_date)
+                try:
+                    self.generate_sample(True, rand_date)
+                except:
+                    continue
                 try:
                     train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,140)))# Retrieve all except for last data to be analyzed/predicted
                     if self.model_choice <= 3:
@@ -131,11 +136,12 @@ class Network(Neural_Framework):
                 except Exception as e:
                     print('[ERROR] Failed to specify train_target value!\nException:\n',str(e))
                     continue
-                disp = self.nn.train_on_batch(np.stack(train), np.stack(train_targets))
+            for j in range(1,len(train)):
+                disp = self.nn.train_on_batch(np.stack(train[j]), np.stack(train_targets[j]))
                 model_info = {'model' : self.nn, 'history' : disp[1], 'loss' : disp[0]}
                 models[i] = (model_info['loss'] + models[i] )
                 try:
-                    self.nn.evaluate(np.stack(train),np.stack(train_targets),verbose=1)
+                    self.nn.evaluate(np.stack(train[j]),np.stack(train_targets[j]),verbose=1)
                     # print(f'loss : {loss}\t accuracy : {acc}')
                 except:
                     print('[ERROR] Could not evaluate model')
@@ -145,7 +151,7 @@ class Network(Neural_Framework):
 
         return models
     def save_model(self):
-        self.nn.save(f'{self.path}/data/{self.model_name}')
+        super().save_model()
     def load_model(self,name="model_relu"):
         self.model_choice = self.model_map_names.get(name)
         super().load_model(name)
@@ -195,7 +201,7 @@ def check_db_cache(cnx:mysql.connector.connect=None,ticker:str=None,has_actuals:
         if valid_date in holidays:
             valid_datetime = (valid_datetime - datetime.timedelta(days=1))
             valid_date = (valid_date - datetime.timedelta(days=1))
-
+    # print(valid_datetime,flush=True)
     retrieve_tdata_result = cnx.execute(check_cache_tdata_db_stmt,{'stock':f'{ticker.upper()}',
                                                             'date':valid_datetime.strftime('%Y-%m-%d')},multi=True)
     
@@ -433,9 +439,9 @@ def run(epochs,batch_size,name="model_relu"):
     neural_net.save_model()
 
 
-# run(10,50,"model_relu")
-# run(100,100,"model_leaky",2)
-# run(100,100,"model_sigmoid",3)
-# run(100,100,"model_relu2",4)
-# run(100,100,"model_leaky2",5)
-# run(100,100,"model_sigmoid2",6)
+run(100,100,"model_relu")
+run(100,100,"model_leaky")
+run(100,100,"model_sigmoid")
+# run(100,100,"model_relu2")
+# run(100,100,"model_leaky2")
+# run(100,100,"model_sigmoid2")

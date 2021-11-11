@@ -12,6 +12,7 @@ class Neural_Framework():
         self.EPOCHS=epochs
         self.BATCHES=batch_size
         self.path = Path(os.getcwd()).parent.absolute() 
+        self.model_name=None
         # tf.debugging.set_log_device_placement(True)
         # print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
         # print(device_lib.list_local_devices())
@@ -21,7 +22,7 @@ class Neural_Framework():
     def run_model(self):
         pass
     def save_model(self):
-        pass
+        self.nn.save(f'{self.path}/data/{self.model_name}')
     def choose_random_ticker(self,csv_file):
         with open(csv_file) as f:
             ticker = random.choice(f.readlines())
@@ -30,6 +31,7 @@ class Neural_Framework():
             return ticker
     def load_model(self,name=None):
         try:
+            self.model_name=name
             self.nn = keras.models.load_model(
                 f'{self.path}/data/{name}')
             for model_choice, name_loc in self.model_map_names.items():        
@@ -37,4 +39,3 @@ class Neural_Framework():
                     self.model_choice = model_choice
         except:
             print(f'[INFO] No model exists for {name}, creating new model...')
-            raise Exception()

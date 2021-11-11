@@ -22,7 +22,7 @@ class Sample(Normalizer):
         self.DAYS_SAMPLED = 15
         self.ticker=ticker
         self.path = Path(os.getcwd()).parent.absolute()
-    def generate_sample(self,out=8,_has_actuals=False,rand_date=False,is_divergence=False):
+    def generate_sample(self,out=8,_has_actuals=False,rand_date=False,is_divergence=False,skip_db=False):
         self.cnx = self.db_con.cursor(buffered=True)
         if not _has_actuals:
             # print("Predict Mode")
@@ -35,7 +35,7 @@ class Sample(Normalizer):
         else:
             # Read the current ticker data
             try:
-                self.read_data(self.ticker,rand_dates=rand_date) 
+                self.read_data(self.ticker,rand_dates=rand_date,skip_db=skip_db) 
             except Exception as e:
                 print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\nException:\n{str(e)}')
                 raise Exception(str(e))

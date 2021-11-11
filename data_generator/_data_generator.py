@@ -86,12 +86,12 @@ class Generator():
         except Exception as e:
             print(f'[ERROR] Failed to gather quick data for {ticker}...\nException:\n',str(e))
             return ['n/a','n/a']
-    def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,force_generate=False):
+    def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,force_generate=False,skip_db=False):
         self.studies = Studies(self.ticker,force_generate=force_generate)
         self.studies.date_set = (date1,date2)
         # Loop until valid data populates
         try:
-            self.studies.set_data_from_range(date1,date2,force_generate)
+            self.studies.set_data_from_range(date1,date2,force_generate,skip_db=skip_db)
             # self.studies.data = self.studies.data.reset_index()
         except Exception as e:
             print(f'[ERROR] Failed to generate data!\nException:\n',str(e))
@@ -123,14 +123,11 @@ class Generator():
         # print(self.studies.data)
         try:
             date_diff=self.studies.get_date_difference(self.studies.date_set[0],self.studies.date_set[1])
-
-            self.studies.apply_ema("14",date_diff)
+            self.studies.apply_ema("14",date_diff,skip_db=skip_db)
             # print(len(self.studies.data),len(self.studies.applied_studies['ema14']))
-            self.studies.apply_ema("30",date_diff)
-            self.studies.apply_fibonacci()
-
-            self.studies.keltner_channels(20, 1.3, None)
-
+            self.studies.apply_ema("30",date_diff,skip_db=skip_db)
+            self.studies.apply_fibonacci(skip_db=skip_db)
+            self.studies.keltner_channels(20, 1.3, None,skip_db=skip_db)
             # Final join
           
         except Exception as e:

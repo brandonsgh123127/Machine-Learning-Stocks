@@ -69,7 +69,7 @@ class Normalizer():
     '''
         Utilize mysql to gather data.  Gathers stock data from table.
     '''
-    def mysql_read_data(self,ticker,date=None,force_generate=False):
+    def mysql_read_data(self,ticker,date=None,force_generate=False,skip_db=False):
         try:
             self.cnx = self.db_con.cursor(buffered=True)
             self.cnx.autocommit = True
@@ -94,21 +94,27 @@ class Normalizer():
                 initial_date=valid_datetime
             else:
                 initial_date=date
-            vals=self.gen.generate_data_with_dates(initial_date - datetime.timedelta(days=40),initial_date,force_generate=force_generate)
+            self.gen.set_ticker(ticker)
+            vals=self.gen.generate_data_with_dates(initial_date - datetime.timedelta(days=40),initial_date,force_generate=force_generate,skip_db=skip_db)
             self.studies=vals[1]
             self.data=vals[0]
             self.fib=vals[2]
             self.keltner=vals[3]
         except Exception as e:
             print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}!\nException:\n',str(e))
-            raise RuntimeError
+            raise Exception
         self.cnx.close()
         return 
-    
+    def reset_data(self):
+        self.studies=None
+        self.data=None
+        self.fib=None
+        self.keltner=None
+
     '''
         utilize mysql to retrieve data and study data for later usage...
     '''
-    def read_data(self,ticker,rand_dates=False):
+    def read_data(self,ticker,rand_dates=False,skip_db=False):
         if rand_dates:
             # Get a random date for generation based on min/max date
             d2 = datetime.datetime.strptime(datetime.datetime.now().strftime('%m/%d/%Y %I:%M %p'), '%m/%d/%Y %I:%M %p')
@@ -122,7 +128,7 @@ class Normalizer():
         else:
             date=None
         try:
-            self.mysql_read_data(ticker,date=date)
+            self.mysql_read_data(ticker,date=date,skip_db=skip_db)
         except Exception as e:
             print('[ERROR] Failed to read data!\nException:\n',str(e))
             raise RuntimeError
@@ -143,6 +149,7 @@ class Normalizer():
         
         
     def convert_derivatives(self,out=8):
+        data = self.data
         try:
             data = self.data.drop(columns={'Date'})
         except:

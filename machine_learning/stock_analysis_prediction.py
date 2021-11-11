@@ -95,39 +95,22 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
     if (datetime.datetime.utcnow().hour <= 14 and datetime.datetime.utcnow().minute < 30): # if current time is before 9:30 AM EST, go back a day
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
-
-    if not has_actuals: #predict next day
-        dates = (datetime.datetime.utcnow().date() - datetime.timedelta(days = 75), valid_date  + datetime.timedelta(days = 1)) #month worth of data
-    else:
-        dates = (datetime.datetime.utcnow().date() - datetime.timedelta(days = 75), datetime.datetime.utcnow().date()) #month worth of data
         
-        if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
-            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-            valid_date = (valid_date - datetime.timedelta(days=1))
-        if valid_date.weekday()==5: # if saturday
-            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-            valid_date = (valid_date - datetime.timedelta(days=1))
-        if valid_date.weekday()==6: # if sunday
-            valid_datetime = (valid_datetime - datetime.timedelta(days=2))
-            valid_date = (valid_date - datetime.timedelta(days=2))
-        if valid_date in holidays:
-            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-            valid_date = (valid_date - datetime.timedelta(days=1))
-        if has_actuals: # go back a day
-            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-            valid_date = (valid_date - datetime.timedelta(days=1))
-            if valid_date.weekday()==5: # if saturday
-                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-                valid_date = (valid_date - datetime.timedelta(days=1))
-            if valid_date.weekday()==6: # if sunday
-                valid_datetime = (valid_datetime - datetime.timedelta(days=2))
-                valid_date = (valid_date - datetime.timedelta(days=2))
-            if valid_date in holidays:
-                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-                valid_date = (valid_date - datetime.timedelta(days=1))
-        e_date=valid_date
+    if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4: #week day holiday
+        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+        valid_date = (valid_date - datetime.timedelta(days=1))
+    if valid_date.weekday()==5: # if saturday
+        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+        valid_date = (valid_date - datetime.timedelta(days=1))
+    if valid_date.weekday()==6: # if sunday
+        valid_datetime = (valid_datetime - datetime.timedelta(days=2))
+        valid_date = (valid_date - datetime.timedelta(days=2))
+    if valid_date in holidays:
+        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+        valid_date = (valid_date - datetime.timedelta(days=1))
+    e_date=valid_date
         
-        dates = (e_date - datetime.timedelta(days = 75), e_date ) #month worth of data
+    dates = (e_date - datetime.timedelta(days = 75), e_date ) #month worth of data
     
     _has_actuals = has_actuals
     # Generate Data for usage in display_model
