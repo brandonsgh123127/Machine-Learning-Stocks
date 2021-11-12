@@ -372,6 +372,6 @@ class Gather():
         if response.status_code != 200:
             raise Exception(response.status_code, response.text)
         return response.json()
-d = Gather("SPY")
-d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=7),end_date=datetime.datetime.utcnow().date(),_force_generate=False)
-d.get_option_data(datetime.date(year=2021,month=11,day=12))
+# d = Gather("SPY")
+# d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=7),end_date=datetime.datetime.utcnow().date(),_force_generate=False)
+# d.get_option_data(datetime.date(year=2021,month=11,day=12))
