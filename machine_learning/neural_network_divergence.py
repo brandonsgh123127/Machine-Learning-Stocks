@@ -278,7 +278,7 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=Fals
             cnx.close()
             pass
         cnx.close()
-    return (sampler.unnormalize_divergence(predicted),sampler.unnormalized_data.iloc[-1:],sampler.keltner,sampler.fib)
+    return (sampler.unnormalize_divergence(predicted),sampler.unnormalized_data.iloc[-1:],sampler.keltner,sampler.fib,sampler.studies)
 def run(epochs,batch_size):
     neural_net = Neural_Divergence(epochs,batch_size)
     neural_net.load_model()

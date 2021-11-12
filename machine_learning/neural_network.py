@@ -421,7 +421,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
     # space = pd.DataFrame([[0,0]],columns=['Open','Close'])
     unnormalized_predict_values = sampler.data.append(pd.DataFrame([[unnormalized_prediction[0,0] + sampler.data['Open'].iloc[-1],unnormalized_prediction[0,1] + sampler.data['Close'].iloc[-1]]],columns=['Open','Close']),ignore_index=True)
     predicted_unnormalized = pd.concat([unnormalized_predict_values])
-    return (sampler.unnormalize(predicted),sampler.unnormalized_data.tail(1),predicted_unnormalized,sampler.keltner,sampler.fib)
+    return (sampler.unnormalize(predicted),sampler.unnormalized_data.tail(1),predicted_unnormalized,sampler.keltner,sampler.fib,sampler.studies)
 
 
 """

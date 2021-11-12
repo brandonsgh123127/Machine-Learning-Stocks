@@ -41,10 +41,10 @@ class launcher():
         # read data for loading into display portion
         if 'divergence' not in name:
             with self.listLock:
-                self.dis.read_studies_data(data[0],data[1],data[3],data[4])
+                self.dis.read_studies_data(data[0],data[1],data[3],data[4],data[5])
         else:
             with self.listLock:
-                self.dis.read_studies_data(data[0],data[1],data[2],data[3])
+                self.dis.read_studies_data(data[0],data[1],data[2],data[3],data[4])
         # display data
         if not _has_actuals: #if prediction, proceed
             if not unnormalized_data:

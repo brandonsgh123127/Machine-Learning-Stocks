@@ -31,12 +31,13 @@ class Display():
                         'yellow':'y',
                         'black':'k',
                         'white':'w'}
-    def read_studies_data(self,predicted=None,actual=None,keltner=None,fib=None):
+    def read_studies_data(self,predicted=None,actual=None,keltner=None,fib=None,studies=None):
         self.data_display = actual
         self.data_predict_display = predicted
         if keltner is not None and fib is not None:
             self.keltner_display=keltner
             self.fib_display = fib
+            self.studies = studies
         pd.set_option("display.max.columns", None)
     def display_box(self,data=None,row=0,col=0,has_actuals=False):
 
@@ -48,9 +49,11 @@ class Display():
             if has_actuals:
                 data = data.iloc[int(len(data.index)/1.33+1):-1]
                 self.fib_display = self.fib_display.iloc[int(len(data.index)/1.33+1):-1].reset_index().astype('float')
+                self.studies = self.studies.iloc[int(len(data.index)/1.33+1):-1].reset_index().astype('float')
             else:
                 data = data.iloc[int(len(data.index)/1.33+1):]
                 self.fib_display = self.fib_display.iloc[int(len(data.index)/1.33+1):].reset_index().astype('float')
+                self.studies = self.studies.iloc[int(len(data.index)/1.33+1):].reset_index().astype('float')
             data = data.reset_index().drop(columns=['index']).astype('float')
         except:
             pass
@@ -60,6 +63,10 @@ class Display():
             pass
         try:
             self.fib_display = self.fib_display.drop(columns=['level_0'])
+        except:
+            pass
+        try:
+            self.studies = self.studies.drop(columns=['level_0'])
         except:
             pass
         try:
@@ -110,6 +117,8 @@ class Display():
         self.keltner_display['middle'].transpose().plot.line(ax=self.axes[row,col])
         self.keltner_display['upper'].transpose().plot.line(ax=self.axes[row,col])
         self.keltner_display['lower'].transpose().plot.line(ax=self.axes[row,col])
+        self.studies['ema14'].transpose().plot.line(ax=self.axes[row,col])
+        self.studies['ema30'].transpose().plot.line(ax=self.axes[row,col])
         # self.fib_display.reindex_like(self.data_display).transpose().plot(ax=self.axes[0,0]).line()
 
     def display_divergence(self,color=None,has_actuals=False,row=1,col=1):
