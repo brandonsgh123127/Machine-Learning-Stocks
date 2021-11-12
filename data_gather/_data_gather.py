@@ -1,7 +1,9 @@
 from yahoo_fin.stock_info import *
+from yahoo_fin.options import get_options_chain
 import datetime
 from pandas_datareader import data as pdr
 import twitter
+import numpy as np
 import random
 import pytz
 import os,sys
@@ -299,43 +301,48 @@ class Gather():
             pass
         return 0
     
-    def get_option_data(self):
-        # with threading.Lock():
-            # try:
-                # # sys.stdout = open(os.devnull, 'w')
-                # ticker = yf.Ticker(self.indicator)
-                # exps = ticker.options
-                # # Get options for each expiration
-                # options = pd.DataFrame()
-                # for e in exps:
-                    # if (datetime.datetime.strptime(e,'%Y-%m-%d') - datetime.datetime.today()).days < 7:
-                        # opt = ticker.option_chain(e)
-                        # opt = pd.DataFrame().append(opt.calls).append(opt.puts)
-                        # opt['expirationDate'] = e
-                        # options = options.append(opt, ignore_index=True)
-                    # else:
-                        # break
-                # # Bizarre error in yfinance that gives the wrong expiration date
-                # # Add 1 day to get the correct expiration date
-                # options['expirationDate'] = pd.to_datetime(options['expirationDate']) + datetime.timedelta(days = 1)
-                # options['dte'] = (options['expirationDate'] - datetime.datetime.today()).dt.days / 365
-                #
-                # # Boolean column if the option is a CALL
-                # options['CALL'] = options['contractSymbol'].str[4:].apply(
-                    # lambda x: "C" in x)
-                    #
-                # options[['bid', 'ask', 'strike']] = options[['bid', 'ask', 'strike']].apply(pd.to_numeric)
-                # options['mark'] = (options['bid'] + options['ask']) / 2 # Calculate the midpoint of the bid-ask
-                #
-                # # Drop unnecessary and meaningless columns
-                # self.options = options.drop(columns = ['contractSize', 'currency', 'change', 'percentChange', 'lastTradeDate', 'lastPrice'])
-                # # sys.stdout = sys.__stdout__
-            # except Exception as e:
-                # exc_type, exc_obj, exc_tb = sys.exc_info()
-                # fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                # print(exc_type, fname, exc_tb.tb_lineno)
-                # print(str(e))
-                # time.sleep(300) # Sleep since API is does not want to communicate
+    def get_option_data(self,date:datetime.date=None):
+        with threading.Lock():
+            try:
+                # sys.stdout = open(os.devnull, 'w')
+                options = get_options_chain(self.indicator, date.strftime('%Y-%m-%d'))
+                """
+                ['Contract Name', 'Last Trade Date', 'Strike', 'Last Price', 'Bid',
+       'Ask', 'Change', '% Change', 'Volume', 'Open Interest',
+       'Implied Volatility']
+                """
+                put_opts=options['puts']
+                call_opts=options['calls']
+                put_strike_prices=put_opts['Strike'].to_numpy()
+                put_contract_name=put_opts['Contract Name'].to_numpy()
+                call_strike_prices=call_opts['Strike'].to_numpy()
+                call_contract_name=call_opts['Contract Name'].to_numpy()
+                put_bid=put_opts['Last Price'].to_numpy()
+                call_bid=call_opts['Last Price'].to_numpy()
+                price_dict={} # used to store only 1 time values, just in case
+
+                # Gather all available options within 4 percent of the current price of the stock
+                for idx,strike in enumerate(call_strike_prices):                        
+                    # If close value deducted 4 percent is less than the value
+                    # and close value added 4 percent is greater than value
+                    if (self.data['Close'].iloc[-1] - self.data['Close'].iloc[-1]*0.04) < strike and (self.data['Close'].iloc[-1] + self.data['Close'].iloc[-1]*0.04) > strike:
+                            price_dict[f'{strike}']=((put_contract_name[idx],strike,put_bid[idx]),)
+                # Gather all available options within 4 percent of the current price of the stock
+                for idx,strike in enumerate(call_strike_prices):                        
+                    # If close value deducted 4 percent is less than the value
+                    # and close value added 4 percent is greater than value
+                    if (self.data['Close'].iloc[-1] - self.data['Close'].iloc[-1]*0.04) < strike and (self.data['Close'].iloc[-1] + self.data['Close'].iloc[-1]*0.04) > strike:
+                            try:
+                                price_dict[f'{strike}']=price_dict[f'{strike}'] + ((call_contract_name[idx],strike,call_bid[idx]),)
+                            except:
+                                price_dict[f'{strike}']=((call_contract_name[idx],strike,call_bid[idx]),)
+                print(price_dict.values())
+            except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
+                print(str(e))
+                time.sleep(2) # Sleep since API does not want to communicate
         return 0
     # Generate random date for data generation
     def gen_random_dates(self):
@@ -365,5 +372,6 @@ class Gather():
         if response.status_code != 200:
             raise Exception(response.status_code, response.text)
         return response.json()
-# d = Gather("SPY")
-# d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=7),end_date=datetime.datetime.utcnow().date(),_force_generate=True)
+d = Gather("SPY")
+d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=7),end_date=datetime.datetime.utcnow().date(),_force_generate=False)
+d.get_option_data(datetime.date(year=2021,month=11,day=12))

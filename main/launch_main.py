@@ -6,7 +6,6 @@ import subprocess
 import tkinter as tk
 from multiprocessing import Process
 import os
-from dns.rdataclass import NONE
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 from pathlib import Path
 from tkinter import ttk
@@ -283,7 +282,7 @@ class GUI(Thread_Pool):
         self.generate_button = ttk.Button(self.content, text="Generate",command= self.generate_callback)
         self.generate_button.grid(column=3, row=2)
         # self.next_page_button.pack(side='bottom')
-        self.cache_queue.put(threading.Thread(target=self.load_dropdown,args=()))
+        # self.cache_queue.put(threading.Thread(target=self.load_dropdown,args=()))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True,False)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True,False)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True,False)))
@@ -352,7 +351,6 @@ class GUI(Thread_Pool):
                         else:
                             break
                     else:
-                        # pass
                         self.cache_queue.put(tmp_thread)
                         self.join_workers()
                 except Exception as e: # Already started the thread, just add back, ignoring error
