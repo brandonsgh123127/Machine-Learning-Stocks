@@ -181,8 +181,8 @@ class Studies(Gather):
                 self.applied_studies=pd.concat([self.applied_studies,study_data],axis=1)
             # Insert data into db if query above is not met
             else:
-                if not self._force_generate:
-                    print(f'[INFO] Did not query all specified dates within range for ema!  Remaining {date_range}')
+                # if not self._force_generate:
+                    # print(f'[INFO] Did not query all specified dates within range for ema!  Remaining {date_range}')
                 
                 # Calculate locally, then push to database
                 with threading.Lock():
@@ -464,8 +464,8 @@ val1    val3_________________________          vall2
         if len(date_range) == 0 and not self._force_generate and not skip_db: # continue loop if found cached data
             self.fibonacci_extension=fib_data
         else:
-            if not self._force_generate and not skip_db:
-                print(f'[INFO] Did not query all specified dates within range for fibonacci!  Remaining {date_range}')
+            # if not self._force_generate and not skip_db:
+                # print(f'[INFO] Did not query all specified dates within range for fibonacci!  Remaining {date_range}')
             
             """
             Do Calculations, then Insert new data to mysql...

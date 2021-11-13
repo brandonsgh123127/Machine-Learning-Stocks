@@ -119,13 +119,14 @@ class Network(Neural_Framework):
             train_targets=[]
             models[i] = 1
             for j in range(1,self.BATCHES):
-                train= []
-                train_targets=[]
                 try:
                     self.generate_sample(True, rand_date)
                 except:
+                    j=j-1
                     continue
                 try:
+                    # print(train)
+                    # print(len(self.sampler.normalized_data.iloc[:-1].to_numpy()))
                     train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,140)))# Retrieve all except for last data to be analyzed/predicted
                     if self.model_choice <= 3:
                         train_targets.append(np.reshape(self.sampler.normalized_data.iloc[-1:].to_numpy(),(1,10)))
@@ -134,19 +135,13 @@ class Network(Neural_Framework):
                         tmp = pd.concat([pd.DataFrame([tmp['Open'].to_numpy()]),pd.DataFrame([tmp['Close'].to_numpy()]),pd.DataFrame([tmp['Range'].to_numpy()])])
                         train_targets.append(np.reshape(tmp.to_numpy(),(1,3)))
                 except Exception as e:
-                    print('[ERROR] Failed to specify train_target value!\nException:\n',str(e))
+                    print('[ERROR] Failed to specify train_target value!\nException:\n',str(e),flush=True)
                     continue
-            for j in range(1,len(train)):
-                disp = self.nn.train_on_batch(np.stack(train[j]), np.stack(train_targets[j]))
-                model_info = {'model' : self.nn, 'history' : disp[1], 'loss' : disp[0]}
-                models[i] = (model_info['loss'] + models[i] )
-                try:
-                    self.nn.evaluate(np.stack(train[j]),np.stack(train_targets[j]),verbose=1)
-                    # print(f'loss : {loss}\t accuracy : {acc}')
                 except:
-                    print('[ERROR] Could not evaluate model')
+                    print('[ERROR] Unknown error has occurred while training!')
                     continue
-            models[i] = models[i] / self.BATCHES
+            # Use fit for generating with ease.  Validation data included for analysis of loss
+            disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets),batch_size=1,epochs=1,validation_split=0.177)
             self.save_model()
 
         return models
@@ -439,9 +434,11 @@ def run(epochs,batch_size,name="model_relu"):
     neural_net.save_model()
 
 
-run(100,100,"model_relu")
-# run(100,100,"model_leaky")
-# run(100,100,"model_sigmoid")
-# run(50,100,"model_relu2")
-# run(100,100,"model_leaky2")
-# run(100,100,"model_sigmoid2")
+# run(97,200,"model_relu")
+run(88,200,"model_leaky")
+run(100,200,"model_sigmoid")
+run(50,200,"model_relu2")
+run(100,200,"model_leaky2")
+run(100,200,"model_sigmoid2")
+# net=Network(1,1)
+load("SPY",False,"model_relu",True,device_opt='/device:GPU:0',rand_date=False,data=None)     

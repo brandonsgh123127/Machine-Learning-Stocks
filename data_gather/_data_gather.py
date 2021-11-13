@@ -183,10 +183,9 @@ class Gather():
                 print('[INFO] Could not convert Date col to datetime')
         # Actually gather data if query is not met
         else:
-            if not _force_generate:
-                print(f'[INFO] Did not query all specified dates within range for data retrieval!  Remaining {date_range}')
+            # if not _force_generate:
+                # print(f'[INFO] Did not query all specified dates within range for data retrieval!  Remaining {date_range}')
             with threading.Lock():
-                try:
                     try:
                         self.cnx.close()
                     except:
@@ -196,6 +195,8 @@ class Gather():
                     self.data = None
                     try:
                         self.data = get_data(self.indicator.upper(),start_date=start_date.strftime("%Y-%m-%d"),end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
+                    except AssertionError as a:
+                        raise AssertionError(f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
                     except:
                         retries=1
                         max_retries=4
@@ -287,14 +288,6 @@ class Gather():
                             print('[Error] Could not commit changes for insert day data!\nReason:\n',str(e))
                         
         
-                except Exception as e:
-                    sys.stdout = sys.__stdout__
-                    print('[ERROR] Unknown Exception (Oh No)!\nException:\n',str(e))
-                    exc_type, exc_obj, exc_tb = sys.exc_info()
-                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                    print(exc_type, fname, exc_tb.tb_lineno)
-                    self.cnx.close()
-                    return 1
         try:
             self.cnx.close()
         except:
