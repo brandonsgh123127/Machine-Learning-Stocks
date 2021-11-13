@@ -4,14 +4,11 @@ import keras
 import tensorflow as tf
 import numpy as np
 from data_generator.generate_sample import Sample
-import pandas as pd
 import threading
 from machine_learning.neural_framework import Neural_Framework
 import pandas as pd
 from pathlib import Path
 from mysql.connector import errorcode
-import binascii
-import uuid
 import mysql.connector
 import xml.etree.ElementTree as ET
 import datetime

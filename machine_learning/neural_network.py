@@ -15,7 +15,6 @@ from mysql.connector import errorcode
 import mysql.connector
 import xml.etree.ElementTree as ET
 import datetime
-import random
 
 class Network(Neural_Framework):
     def __init__(self,epochs,batch_size):

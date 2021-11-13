@@ -1,20 +1,17 @@
-from yahoo_fin.stock_info import *
+from yahoo_fin.stock_info import get_data
 from yahoo_fin.options import get_options_chain
 import datetime
 from pandas_datareader import data as pdr
 import twitter
-import numpy as np
-import random
-import pytz
-import os,sys
 import requests
+import random
+import os,sys
 import threading
 import mysql.connector
 import time
 import xml.etree.ElementTree as ET
 from mysql.connector import errorcode
 import binascii
-import uuid
 from pathlib import Path
 import pandas as pd
 from pandas.tseries.holiday import USFederalHolidayCalendar
