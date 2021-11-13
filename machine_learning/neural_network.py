@@ -11,7 +11,6 @@ import pandas as pd
 import threading
 from machine_learning.neural_framework import Neural_Framework
 from pandas.tseries.holiday import USFederalHolidayCalendar
-from pathlib import Path
 from mysql.connector import errorcode
 import mysql.connector
 import xml.etree.ElementTree as ET
