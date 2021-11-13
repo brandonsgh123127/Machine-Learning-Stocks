@@ -1,11 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-from data_gather.news_scraper import News_Scraper
-from data_gather.studies import Studies
 from pathlib import Path
 import os
-import gc
-import numpy as np
 import threading
 
 '''
