@@ -7,7 +7,6 @@ from pathlib import Path
 import os
 import matplotlib.pyplot as plt
 from machine_learning.neural_network import load
-from machine_learning.neural_network_divergence import load_divergence
 from data_generator.normalize_data import Normalizer
 from data_generator._data_generator import Generator
 from data_generator.display_data import Display
@@ -33,27 +32,16 @@ class launcher():
         self.listLock=threading.Lock()
     
     def display_model(self,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",color:str="blue",force_generation=False,unnormalized_data = False,row=0,col=1,data:tuple=None):
-        # Load machine learning model either based on divergence or not
-        if 'divergence' not in name:
-            data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:GPU:0',rand_date=False,data=data)
-        else:
-            data = load_divergence(f'{ticker.upper()}',has_actuals=_has_actuals,force_generation=force_generation,device_opt='/device:GPU:0',rand_date=False,data=data)
+        # Call machine learning model
+        data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:GPU:0',rand_date=False,data=data)
         # read data for loading into display portion
-        if 'divergence' not in name:
-            with self.listLock:
-                self.dis.read_studies_data(data[0],data[1],data[3],data[4],data[5])
-        else:
-            with self.listLock:
-                self.dis.read_studies_data(data[0],data[1],data[2],data[3],data[4])
+        with self.listLock:
+            self.dis.read_studies_data(data[0],data[1],data[3],data[4],data[5])
         # display data
         if not _has_actuals: #if prediction, proceed
             if not unnormalized_data:
-                if 'divergence' in name:
-                    with self.listLock:
-                        self.dis.display_divergence(color=f'{color}',row=1,col=1)
-                else:
-                    with self.listLock:
-                        self.dis.display_predict_only(color=f'{color}',row=row,col=col)
+                with self.listLock:
+                    self.dis.display_predict_only(color=f'{color}',row=row,col=col)
             else:
                 with self.listLock:
                     self.dis.display_box(data[2],has_actuals=_has_actuals)
@@ -62,12 +50,8 @@ class launcher():
                 with self.listLock:
                     self.dis.display_box(data[2],has_actuals=_has_actuals)
             else:
-                if 'divergence' in name:
-                    with self.listLock:
-                        self.dis.display_divergence(color=f'{color}',row=1,col=1)
-                else:
-                    with self.listLock:
-                        self.dis.display_line(color=f'{color}',row=row,col=col)
+                with self.listLock:
+                    self.dis.display_line(color=f'{color}',row=row,col=col)
     
 
 data_gen = Generator()
@@ -144,15 +128,6 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
                 thread_pool.join_workers()
     gc.collect()
     thread_pool.join_workers()
-    #
-    # DIVERGENCE LABEL
-    with listLock:
-        while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("divergence",_has_actuals,ticker,'magenta',force_generate,False,1,1,data))) == 1:
-            thread_pool.join_workers()
-        thread_pool.join_workers()
-        # dis.display_divergence(color=f'm',has_actuals=_has_actuals,row=1,col=1)
-    gc.collect()
-
     #
     # CHART LABEL
     launch.display_model("model_relu",has_actuals,ticker,'green',force_generate,True,0,0,data)
