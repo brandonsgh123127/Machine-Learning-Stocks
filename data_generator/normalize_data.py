@@ -32,7 +32,10 @@ class Normalizer():
         self.path = Path(os.getcwd()).parent.absolute() 
         self.min_max = MinMaxScaler()
         self.gen = Generator(ticker=ticker,force_generate=force_generate)
-
+        self.studies=None
+        self.data=None
+        self.fib=None
+        self.keltner=None
         '''
         Utilize a config file to establish a mysql connection to the database
         '''
@@ -164,7 +167,9 @@ class Normalizer():
                                                         'Open EMA14 Euclidean','Open EMA30 Euclidean',
                                                         'Close EMA14 Euclidean','Close EMA30 Euclidean',
                                                         'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
-                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff'])
+                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
+                                                        'Close'])
+        self.normalized_data['Close']=data['Close']
 
 
         
@@ -229,9 +234,17 @@ class Normalizer():
                                                         'Open EMA14 Euclidean','Open EMA30 Euclidean',
                                                         'Close EMA14 Euclidean','Close EMA30 Euclidean',
                                                         'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
-                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff']) #NORMALIZED DATA STORED IN NP ARRAY
+                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
+                                                        'Close']) #NORMALIZED DATA STORED IN NP ARRAY
             elif(out==2):
-                self.normalized_data = pd.DataFrame(scaler.fit_transform(self.normalized_data),columns=['Open','Close','Range']) #NORMALIZED DATA STORED IN NP ARRAY
+                # 'Open EMA Euclidean','Close EMA Euclidean','Prior Close Euclidean','Upper Keltner Close Diff', 'Lower Keltner Close Diff'
+                self.normalized_data = pd.DataFrame(scaler.fit_transform(self.normalized_data.drop(columns=['Open EMA14 Euclidean','Open EMA30 Euclidean',
+                                                        'Close EMA14 Euclidean','Close EMA30 Euclidean',
+                                                        'EMA14 EMA30 Euclidean'
+                                                        ])),columns=['Open EMA Euclidean','Close EMA Euclidean',
+                                                                     'Prior Close Euclidean','Upper Keltner Close Diff',
+                                                                      'Lower Keltner Close Diff',
+                                                                      'Close']) #NORMALIZED DATA STORED IN NP ARRAY
         except Exception as e:
             print('[ERROR] Failed to normalize!\nException:\n',str(e))
             return 1
@@ -252,25 +265,26 @@ class Normalizer():
     '''
     def unnormalize(self,data):
         scaler = self.min_max.fit(self.unnormalized_data) 
-        if len(data.columns) == 10:
+        if len(data.columns) == 11:
             return pd.DataFrame(scaler.inverse_transform((data.to_numpy())),columns=['Open EMA Euclidean','Close EMA Euclidean',
                                                         'Open EMA14 Euclidean','Open EMA30 Euclidean',
                                                         'Close EMA14 Euclidean','Close EMA30 Euclidean',
                                                         'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
-                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff']) #NORMALIZED DATA STORED IN NP ARRAY
-        elif len(data.columns) == 3:
+                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
+                                                        'Close']) #NORMALIZED DATA STORED IN NP ARRAY
+        elif len(data.columns) == 6:
             tmp_data = pd.DataFrame(columns=['Open EMA Euclidean','Close EMA Euclidean',
-                                                        'Open EMA14 Euclidean','Open EMA30 Euclidean',
-                                                        'Close EMA14 Euclidean','Close EMA30 Euclidean',
-                                                        'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
-                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff'])
+                                             'Prior Close Euclidean','Upper Keltner Close Diff',
+                                              'Lower Keltner Close Diff',
+                                              'Close'])
             new_data = pd.concat([data,tmp_data],axis=1)
             # print(new_data)
-            return pd.DataFrame(scaler.inverse_transform((new_data.to_numpy())),columns=['Open EMA Euclidean','Close EMA Euclidean',
-                                                        'Open EMA14 Euclidean','Open EMA30 Euclidean',
-                                                        'Close EMA14 Euclidean','Close EMA30 Euclidean',
-                                                        'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
-                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff']) #NORMALIZED DATA STORED IN NP ARRAY
+            return pd.DataFrame(scaler.inverse_transform((new_data.to_numpy())),columns=['Open EMA Euclidean',
+                                                                                         'Close EMA Euclidean',
+                                                                                         'Prior Close Euclidean',
+                                                                                         'Upper Keltner Close Diff',
+                                                                                          'Lower Keltner Close Diff',
+                                                                                          'Close']) #NORMALIZED DATA STORED IN NP ARRAY
     '''
         Unnormalize the divergence data
     '''

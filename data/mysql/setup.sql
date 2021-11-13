@@ -60,15 +60,23 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`NN-Data` (
   `from-date-id` VARBINARY(128) NOT NULL,
   `to-date-id` VARBINARY(128) NOT NULL,
   `model` VARCHAR(45) NULL,
-  `open` DOUBLE(6, 3) NULL,
   `close` DOUBLE(6, 3) NULL,
-  `range` DOUBLE(6, 3) NULL,
+  `open-ema-euclidean` DOUBLE(6, 3) NULL,
+  `open-ema30-euclidean` DOUBLE(6, 3) NULL,
   PRIMARY KEY (`nn-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`nn-data` (`nn-id`,`stock-id`,`from-date-id`,`to-date-id`);
 CREATE INDEX `from-to-model` ON stocks.`nn-data` (`from-date-id`,`to-date-id`,`model`);
 CREATE INDEX `stockid` ON stocks.`nn-data` (`stock-id`);
-
+ALTER TABLE stocks.`nn-data` DROP COLUMN `open`;
+ALTER TABLE stocks.`NN-Data` RENAME COLUMN `open-ema14-euclidean` TO `close-ema-euclidean`;
+ALTER TABLE stocks.`NN-Data` RENAME COLUMN `open-ema30-euclidean` TO `upper-keltner-close-diff`;
+ALTER TABLE stocks.`NN-Data` ADD COLUMN `lower-keltner-close-diff` DOUBLE(6, 3) NULL AFTER `upper-keltner-close-diff`;
+ALTER TABLE stocks.`NN-Data` ADD COLUMN `prior-close-euclidean` DOUBLE(6, 3) NULL AFTER `close-ema-euclidean`;
+ALTER TABLE stocks.`NN-Data` ADD COLUMN `close-ema-euclidean` DOUBLE(6, 3) NULL AFTER `upper-keltner-close-diff`;
+ALTER TABLE stocks.`NN-Data` ADD COLUMN `open-ema-euclidean` DOUBLE(6, 3) NULL AFTER `upper-keltner-close-diff`;
+ALTER TABLE stocks.`NN-Data` ADD COLUMN `close` DOUBLE(6, 3) NULL AFTER `upper-keltner-close-diff`;
+select * from `nn-data`;
 CREATE TABLE IF NOT EXISTS `Stocks`.`Options` (
   `option-id` VARBINARY(128) NOT NULL,
   `stock-id` VARBINARY(128) NOT NULL,
