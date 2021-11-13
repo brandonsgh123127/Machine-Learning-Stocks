@@ -1,25 +1,18 @@
 import keras
 import tensorflow as tf
 import numpy as np
-from data_generator.generate_sample import Sample
 from data_generator._data_generator import Generator
 from pathlib import Path
 import os
 import matplotlib.pyplot as plt
 from machine_learning.neural_network import load
-from data_generator.normalize_data import Normalizer
-from data_generator._data_generator import Generator
 from data_generator.display_data import Display
-import concurrent.futures
 import datetime
 import threading
 import sys
-# import json
 import time
-import queue
 import gc
 from threading_impl.Thread_Pool import Thread_Pool
-import PIL
 from pandas.tseries.holiday import USFederalHolidayCalendar
 
 
