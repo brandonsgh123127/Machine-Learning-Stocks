@@ -1,8 +1,4 @@
 import sys
-import subprocess
-# import machine_learning.stock_analysis_prediction as sp
-# import tensorflow
-# import keras
 import tkinter as tk
 from multiprocessing import Process
 import os
@@ -11,7 +7,6 @@ from pathlib import Path
 from tkinter import ttk
 import threading
 import queue
-from tkinter import messagebox
 import datetime
 import time
 from PIL import Image, ImageTk
@@ -22,7 +17,6 @@ import concurrent.futures
 from machine_learning.stock_analysis_prediction import main as analyze_stock
 from machine_learning.stock_analysis_prediction import get_preview_prices
 from tkinter import StringVar
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 class GUI(Thread_Pool):
