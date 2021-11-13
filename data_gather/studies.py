@@ -1,14 +1,10 @@
 from data_gather._data_gather import Gather
 import pandas as pd
 from pandas.tseries.holiday import USFederalHolidayCalendar
-import os
-import glob
 import datetime
 import threading
 import gc
-import uuid
 import mysql.connector
-from mysql.connector import errorcode
 import sys,os
 
 '''
