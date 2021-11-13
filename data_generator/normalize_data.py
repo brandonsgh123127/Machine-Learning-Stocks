@@ -156,44 +156,48 @@ class Normalizer():
             pass
         data = data.astype('float')
         self.studies = self.studies.astype('float')
-        self.normalized_data = pd.DataFrame((),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
-                                                                                                      'Close EMA30 Diff','EMA14 EMA30 Diff'])
-        self.normalized_data["Open"] = data["Open"]
-        self.normalized_data["Close"] = data["Close"]
-        self.normalized_data["Range"] = data["Open"]
-        self.normalized_data["Euclidean Open"] = data["Open"]
-        self.normalized_data["Euclidean Close"] =data["Close"]
+        self.normalized_data = pd.DataFrame((),columns=['Open EMA Euclidean','Close EMA Euclidean',
+                                                        'Open EMA14 Euclidean','Open EMA30 Euclidean',
+                                                        'Close EMA14 Euclidean','Close EMA30 Euclidean',
+                                                        'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
+                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff'])
+        self.normalized_data["Open EMA Euclidean"] = data["Open"]
+        self.normalized_data["Close EMA Euclidean"] =data["Close"]
         self.normalized_data["Open EMA14 Diff"] = self.studies["ema14"]
         self.normalized_data["Open EMA30 Diff"] = self.studies["ema30"]
         self.normalized_data["Close EMA14 Diff"] = self.studies["ema14"]
         self.normalized_data["Close EMA30 Diff"] = self.studies["ema30"]
         self.normalized_data["EMA14 EMA30 Diff"] = self.studies["ema14"]
+        self.normalized_data["EMA14 EMA30 Diff"] = data["Close"]
+        self.normalized_data["Upper Keltner Close Diff"] = data["Close"]
+        self.normalized_data["Lower Keltner Close Diff"] = data["Close"]
+        
 
         for index,row in data.iterrows():
             try:
                 if index == 0:
-                    self.normalized_data.loc[index,"Open"] = data["Open"].iloc[0]
-                    self.normalized_data.loc[index,"Close"] = data["Close"].iloc[0]
-                    self.normalized_data.loc[index,"Range"] = abs(data.at[index,"Close"] - data.at[index,"Open"])
-                    self.normalized_data.loc[index,"Euclidean Open"] = np.power(np.power(((data.at[index,"Open"] - self.studies.at[index,"ema14"])+(data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
-                    self.normalized_data.loc[index,"Euclidean Close"] = np.power(np.power(((data.at[index,"Close"] - self.studies.at[index,"ema14"])+(data.at[index,"Close"] - self.studies.at[index,"ema30"])),2),1/2)       
-                    self.normalized_data.loc[index,"Open EMA14 Diff"] = (data.at[index,"Open"] - self.studies.at[index,'ema14'])/data.at[index,"Open"]
-                    self.normalized_data.loc[index,"Open EMA30 Diff"] = (data.at[index,"Open"] - self.studies.at[index,'ema30'])/data.at[index,"Open"]
-                    self.normalized_data.loc[index,"Close EMA14 Diff"] = (data.at[index,"Close"] - self.studies.at[index,'ema14'])/data.at[index,"Close"]
-                    self.normalized_data.loc[index,"Close EMA30 Diff"] = (data.at[index,"Close"] - self.studies.at[index,'ema30'])/data.at[index,"Close"]
-                    self.normalized_data.loc[index,"EMA14 EMA30 Diff"] = (self.studies.at[index,"ema14"] - self.studies.at[index,'ema30'])/self.studies.at[index,"ema14"]
+                    self.normalized_data.loc[index,"Open EMA Euclidean"] = np.power(np.power(((data.at[index,"Open"] - self.studies.at[index,"ema14"])+(data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
+                    self.normalized_data.loc[index,"Close EMA Euclidean"] = np.power(np.power(((data.at[index,"Close"] - self.studies.at[index,"ema14"])+(data.at[index,"Close"] - self.studies.at[index,"ema30"])),2),1/2)       
+                    self.normalized_data.loc[index,"Open EMA14 Euclidean"] = np.power(np.power((((data.at[index,"Open"] - self.studies.at[index,'ema14']))),2),1/2)
+                    self.normalized_data.loc[index,"Open EMA30 Euclidean"] = np.power(np.power((((data.at[index,"Open"] - self.studies.at[index,'ema30']))),2),1/2)
+                    self.normalized_data.loc[index,"Close EMA14 Euclidean"] = np.power(np.power((((data.at[index,"Close"] - self.studies.at[index,'ema14']))),2),1/2)
+                    self.normalized_data.loc[index,"Close EMA30 Euclidean"] = np.power(np.power((((data.at[index,"Close"] - self.studies.at[index,'ema30']))),2),1/2)
+                    self.normalized_data.loc[index,"EMA14 EMA30 Euclidean"] = np.power(np.power((((self.studies.at[index,"ema14"] - self.studies.at[index,'ema30']))),2),1/2)
+                    self.normalized_data.loc[index,"Prior Close Euclidean"] = 0
+                    self.normalized_data.loc[index,"Upper Keltner Close Diff"] = data.at[index,"upper"] - self.studies.at[index,'Close']
+                    self.normalized_data.loc[index,"Lower Keltner Close Diff"] = data.at[index,"lower"] - self.studies.at[index,'Close']
     
                 else:
-                    self.normalized_data.loc[index,"Close"] = ((data.at[index,"Close"] - data.at[index-1,"Close"]))/(1)
-                    self.normalized_data.loc[index,"Open"] = ((data.at[index,"Open"] - data.at[index-1,"Open"]))/(1)
-                    self.normalized_data.loc[index,"Range"] = abs(data.at[index,"Close"] - data.at[index,"Open"])
-                    self.normalized_data.loc[index,"Euclidean Open"] = np.power(np.power(((data.at[index,"Open"] - self.studies.at[index,"ema14"])+(data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
-                    self.normalized_data.loc[index,"Euclidean Close"] = np.power(np.power(((data.at[index,"Close"] - self.studies.at[index,"ema14"])+(data.at[index,"Close"] - self.studies.at[index,"ema30"])),2),1/2)       
-                    self.normalized_data.loc[index,"Open EMA14 Diff"] = (data.at[index,"Open"] - self.studies.at[index,'ema14'])/data.at[index,"Open"]
-                    self.normalized_data.loc[index,"Open EMA30 Diff"] = (data.at[index,"Open"] - self.studies.at[index,'ema30'])/data.at[index,"Open"]
-                    self.normalized_data.loc[index,"Close EMA14 Diff"] = (data.at[index,"Close"] - self.studies.at[index,'ema14'])/data.at[index,"Close"]
-                    self.normalized_data.loc[index,"Close EMA30 Diff"] = (data.at[index,"Close"] - self.studies.at[index,'ema30'])/data.at[index,"Close"]
-                    self.normalized_data.loc[index,"EMA14 EMA30 Diff"] = (self.studies.at[index,"ema14"] - self.studies.at[index,'ema30'])/self.studies.at[index,"ema14"]
+                    self.normalized_data.loc[index,"Open EMA Euclidean"] = np.power(np.power(((data.at[index,"Open"] - self.studies.at[index,"ema14"])+(data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
+                    self.normalized_data.loc[index,"Close EMA Euclidean"] = np.power(np.power(((data.at[index,"Close"] - self.studies.at[index,"ema14"])+(data.at[index,"Close"] - self.studies.at[index,"ema30"])),2),1/2)       
+                    self.normalized_data.loc[index,"Open EMA14 Euclidean"] = (data.at[index,"Open"] - self.studies.at[index,'ema14'])/data.at[index,"Open"]
+                    self.normalized_data.loc[index,"Open EMA30 Euclidean"] = (data.at[index,"Open"] - self.studies.at[index,'ema30'])/data.at[index,"Open"]
+                    self.normalized_data.loc[index,"Close EMA14 Euclidean"] = (data.at[index,"Close"] - self.studies.at[index,'ema14'])/data.at[index,"Close"]
+                    self.normalized_data.loc[index,"Close EMA30 Euclidean"] = (data.at[index,"Close"] - self.studies.at[index,'ema30'])/data.at[index,"Close"]
+                    self.normalized_data.loc[index,"EMA14 EMA30 Euclidean"] = np.power(np.power((((self.studies.at[index,"ema14"] - self.studies.at[index,'ema30']))),2),1/2)
+                    self.normalized_data.loc[index,"Prior Close Euclidean"] = np.power(np.power((((data.at[index,"Close"] - self.studies.at[index-1,'Close']))),2),1/2)
+                    self.normalized_data.loc[index,"Upper Keltner Close Diff"] = data.at[index,"upper"] - self.studies.at[index,'Close']
+                    self.normalized_data.loc[index,"Lower Keltner Close Diff"] = data.at[index,"lower"] - self.studies.at[index,'Close']
             except:
                 pass
         # print(self.normalized_data,len(self.studies),len(data))
@@ -225,8 +229,11 @@ class Normalizer():
         try:
             scaler = self.min_max.fit(self.unnormalized_data) 
             if(out==8):
-                self.normalized_data = pd.DataFrame(scaler.fit_transform(self.normalized_data),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
-                                                                                                      'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED DATA STORED IN NP ARRAY
+                self.normalized_data = pd.DataFrame(scaler.fit_transform(self.normalized_data),columns=['Open EMA Euclidean','Close EMA Euclidean',
+                                                        'Open EMA14 Euclidean','Open EMA30 Euclidean',
+                                                        'Close EMA14 Euclidean','Close EMA30 Euclidean',
+                                                        'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
+                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff']) #NORMALIZED DATA STORED IN NP ARRAY
             elif(out==2):
                 self.normalized_data = pd.DataFrame(scaler.fit_transform(self.normalized_data),columns=['Open','Close','Range']) #NORMALIZED DATA STORED IN NP ARRAY
         except Exception as e:
@@ -250,15 +257,24 @@ class Normalizer():
     def unnormalize(self,data):
         scaler = self.min_max.fit(self.unnormalized_data) 
         if len(data.columns) == 10:
-            return pd.DataFrame(scaler.inverse_transform((data.to_numpy())),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
-                                                                                                          'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED DATA STORED IN NP ARRAY
+            return pd.DataFrame(scaler.inverse_transform((data.to_numpy())),columns=['Open EMA Euclidean','Close EMA Euclidean',
+                                                        'Open EMA14 Euclidean','Open EMA30 Euclidean',
+                                                        'Close EMA14 Euclidean','Close EMA30 Euclidean',
+                                                        'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
+                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff']) #NORMALIZED DATA STORED IN NP ARRAY
         elif len(data.columns) == 3:
-            tmp_data = pd.DataFrame(columns=['Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
-                                                                                                          'Close EMA30 Diff','EMA14 EMA30 Diff'])
+            tmp_data = pd.DataFrame(columns=['Open EMA Euclidean','Close EMA Euclidean',
+                                                        'Open EMA14 Euclidean','Open EMA30 Euclidean',
+                                                        'Close EMA14 Euclidean','Close EMA30 Euclidean',
+                                                        'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
+                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff'])
             new_data = pd.concat([data,tmp_data],axis=1)
             # print(new_data)
-            return pd.DataFrame(scaler.inverse_transform((new_data.to_numpy())),columns=['Open','Close','Range','Euclidean Open','Euclidean Close','Open EMA14 Diff','Open EMA30 Diff','Close EMA14 Diff',
-                                                                                                          'Close EMA30 Diff','EMA14 EMA30 Diff']) #NORMALIZED DATA STORED IN NP ARRAY
+            return pd.DataFrame(scaler.inverse_transform((new_data.to_numpy())),columns=['Open EMA Euclidean','Close EMA Euclidean',
+                                                        'Open EMA14 Euclidean','Open EMA30 Euclidean',
+                                                        'Close EMA14 Euclidean','Close EMA30 Euclidean',
+                                                        'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
+                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff']) #NORMALIZED DATA STORED IN NP ARRAY
     '''
         Unnormalize the divergence data
     '''

@@ -88,7 +88,7 @@ class Network(Neural_Framework):
             self.nn = keras.layers.Dense(8,activation='sigmoid')(self.nn)
             self.nn2 = keras.layers.Dense(3,activation='linear')(self.nn)
         self.nn = keras.Model(inputs=self.nn_input,outputs=[self.nn2])
-        self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.0005,beta_1=0.95,beta_2=0.999), loss='mse',metrics=['MeanAbsoluteError','MeanAbsolutePercentageError'])
+        self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.002,beta_1=0.95,beta_2=0.999), loss='mse',metrics=['MeanAbsoluteError','MeanAbsolutePercentageError'])
         return self.nn
     # Used for generation of data via the start
     def generate_sample(self,_has_actuals=False,rand_date=None):
@@ -439,7 +439,7 @@ def run(epochs,batch_size,name="model_relu"):
     neural_net.save_model()
 
 
-# run(50,100,"model_relu")
+run(100,100,"model_relu")
 # run(100,100,"model_leaky")
 # run(100,100,"model_sigmoid")
 # run(50,100,"model_relu2")
