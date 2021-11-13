@@ -1,16 +1,8 @@
 from data_generator.normalize_data import Normalizer
 import pandas as pd
-import numpy as np
-import os,random
-import datetime
+import os
 from pathlib import Path
-import pytz
 import sys
-import mysql.connector
-from mysql.connector import errorcode
-import binascii
-import uuid
-import xml.etree.ElementTree as ET
 
 
 '''
