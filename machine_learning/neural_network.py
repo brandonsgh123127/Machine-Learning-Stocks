@@ -100,7 +100,7 @@ class Network(Neural_Framework):
                 self.sampler.generate_sample(_has_actuals=_has_actuals,out=2,rand_date=rand_date,skip_db=True)
             self.sampler.data = self.sampler.data.drop(['High','Low'],axis=1)
         except Exception as e:
-            print('[Error] Failed batch!\nException:\n',str(e))
+            print('[Error] Failed batch!\n',str(e))
             return 1
         except Exception as e:
             print(str(e))
@@ -136,7 +136,7 @@ class Network(Neural_Framework):
                                          pd.DataFrame([tmp['Upper Keltner Close Diff'].to_numpy()]),pd.DataFrame([tmp['Lower Keltner Close Diff'].to_numpy()])])
                         train_targets.append(np.reshape(tmp.to_numpy(),(1,6)))
                 except Exception as e:
-                    print('[ERROR] Failed to specify train_target value!\nException:\n',str(e))
+                    print('[ERROR] Failed to specify train_target value!\n',str(e))
                     continue
                 except:
                     print('[ERROR] Unknown error has occurred while training!')
@@ -294,7 +294,7 @@ def check_db_cache(cnx:mysql.connector.connect=None,ticker:str=None,has_actuals:
         cnx.close()
         pass
     except Exception as e:
-        print('[ERROR] Failed to check cached nn-data!\nException:\n',str(e))
+        print('[ERROR] Failed to check cached nn-data!\n',str(e))
         cnx.close()
         raise mysql.connector.errors.DatabaseError()
     return None
@@ -425,7 +425,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
             cnx.close()
             pass
         except Exception as e:
-            print(f'[ERROR] Failed to insert nn-data element {predicted} for model {name}!\nException:\n',str(e))
+            print(f'[ERROR] Failed to insert nn-data element {predicted} for model {name}!\n',str(e))
             cnx.close()
             pass
         cnx.close()

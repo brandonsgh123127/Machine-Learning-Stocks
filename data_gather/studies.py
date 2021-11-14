@@ -97,7 +97,7 @@ class Studies(Gather):
                                 except mysql.connector.errors.IntegrityError:
                                     pass
                                 except Exception as e:
-                                    print(f'[ERROR] Failed to Insert study into stocks.study named ema{length}!\nException:\n',str(e))
+                                    print(f'[ERROR] Failed to Insert study into stocks.study named ema{length}!\n',str(e))
                                     raise mysql.connector.Error
                             
                             else:
@@ -152,7 +152,7 @@ class Studies(Gather):
                                 try:
                                     date=datetime.date.strftime(r[0],"%Y-%m-%d")
                                 except Exception as e:
-                                    print(f'[ERROR] No date found for study element!\nException:\n{str(e)}')
+                                    print(f'[ERROR] No date found for study element!\n{str(e)}')
                                     continue
                                 if date is None:
                                     print(f'[INFO] Not enough prior ema{length} found for {self.indicator.upper()} from {self.data["Date"].iloc[0]} to {self.data["Date"].iloc[-1]}... Generating ema{length} data...!\n',flush=True)
@@ -170,7 +170,7 @@ class Studies(Gather):
                         self.ema_cnx.close()
                         pass
                     except Exception as e:
-                        print('[ERROR] Failed to check for cached ema-data element!\nException:\n',str(e))
+                        print('[ERROR] Failed to check for cached ema-data element!\n',str(e))
                         self.ema_cnx.close()
                         raise mysql.connector.errors.DatabaseError()
             if len(date_range) == 0 and not self._force_generate and not skip_db: # continue loop if found cached data
@@ -230,7 +230,7 @@ class Studies(Gather):
                                     self.stock_ids.append(res[1].decode('latin1'))
                                     self.data_ids.append(res[0].decode('latin1'))
                                 except Exception as e:
-                                    print(f'[ERROR] failed to query stock id/data_id for ema insert!\nException:\n{str(e)}')
+                                    print(f'[ERROR] failed to query stock id/data_id for ema insert!\n{str(e)}')
                     # Execute insert for study-data
                     insert_studies_db_stmt = "REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"        
                     
@@ -253,11 +253,11 @@ class Studies(Gather):
                         self.ema_cnx.close()
                         pass
                     except TypeError as e:
-                        print(f'[ERROR] TypeError!\nException:\n{str(e)}')
+                        print(f'[ERROR] TypeError!\n{str(e)}')
                     except ValueError as e:
-                        print(f'[ERROR] ValueError!\nException:\n{str(e)}')
+                        print(f'[ERROR] ValueError!\n{str(e)}')
                     except Exception as e:
-                        print('[ERROR] Failed to insert ema-data element!\nException:\n',str(e))
+                        print('[ERROR] Failed to insert ema-data element!\n',str(e))
                         self.ema_cnx.close()
                         pass
         self.ema_cnx.close()
@@ -338,7 +338,7 @@ val1    val3_________________________          vall2
                             except mysql.connector.errors.IntegrityError:
                                 pass
                             except Exception as e:
-                                print(f'[ERROR] Failed to Insert study into stocks.study named fibonacci!\nException:\n',str(e))
+                                print(f'[ERROR] Failed to Insert study into stocks.study named fibonacci!\n',str(e))
                                 raise mysql.connector.Error
                         else:
                             # Get study_id
@@ -393,7 +393,7 @@ val1    val3_________________________          vall2
                             self.stock_ids.append(res[1].decode('latin1'))
                             self.data_ids.append(res[0].decode('latin1'))
                         except Exception as e:
-                            print(f'[ERROR] Failed to grab stock id/data id for {self.indicator} for fib retrieval!\nException:\n{str(e)}')
+                            print(f'[ERROR] Failed to grab stock id/data id for {self.indicator} for fib retrieval!\n{str(e)}')
                             break
                         
             # Before inserting data, check cached data, verify if there is data there...
@@ -430,7 +430,7 @@ val1    val3_________________________          vall2
                         try:
                             date=datetime.date.strftime(r[0],"%Y-%m-%d")
                         except Exception as e:
-                            print(f'[ERROR] Could not find a date for fib data for {self.indicator.upper()}!\nException:\n{str(e)}')
+                            print(f'[ERROR] Could not find a date for fib data for {self.indicator.upper()}!\n{str(e)}')
                             continue
                         if date is None:
                             print(f'[INFO] Not enough fib data found for {self.indicator.upper()}... Creating fib data...!\n',flush=True)
@@ -454,7 +454,7 @@ val1    val3_________________________          vall2
                 print('[ERROR] Integrity Error!')
                 pass
             except Exception as e:
-                print('[ERROR] Failed to check for cached fib-data element!\nException:\n',str(e))
+                print('[ERROR] Failed to check for cached fib-data element!\n',str(e))
                 self.fib_cnx.close()
                 raise mysql.connector.errors.DatabaseError()
         if len(date_range) == 0 and not self._force_generate and not skip_db: # continue loop if found cached data
@@ -551,7 +551,7 @@ val1    val3_________________________          vall2
                                 exc_type, exc_obj, exc_tb = sys.exc_info()
                                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                                 print(exc_type, fname, exc_tb.tb_lineno)
-                                print(f'[ERROR] Failed upwards fib!  This could be due to not finding a higher low...\nException:\n{str(e)}',flush=True)  
+                                print(f'[ERROR] Failed upwards fib!  This could be due to not finding a higher low...\n{str(e)}',flush=True)  
                                 raise Exception('[ERROR] Failed to generate fib!')
                         else:
                             # attempt downwards fib
@@ -636,7 +636,7 @@ val1    val3_________________________          vall2
                     self.fib_cnx.close()
                     pass
                 except Exception as e:
-                    print('[ERROR] Failed to insert study-data element fibonacci!\nException:\n',str(e))
+                    print('[ERROR] Failed to insert study-data element fibonacci!\n',str(e))
                     self.fib_cnx.close()
                     pass
                 try:
@@ -646,7 +646,7 @@ val1    val3_________________________          vall2
                     self.fib_cnx.close()
                     pass
                 except Exception as e:
-                    print('[ERROR] Failed to insert fib-data element fibonacci!\nException:\n',str(e))
+                    print('[ERROR] Failed to insert fib-data element fibonacci!\n',str(e))
                     self.fib_cnx.close()
                     pass
             else:
@@ -763,7 +763,7 @@ val1    val3_________________________          vall2
                             except mysql.connector.errors.IntegrityError:
                                 pass
                             except Exception as e:
-                                print(f'[ERROR] Failed to Insert study named keltner{length}-{factor}!\nException:\n',str(e))
+                                print(f'[ERROR] Failed to Insert study named keltner{length}-{factor}!\n',str(e))
                                 raise mysql.connector.Error
                         else:
                             # Get study_id
@@ -826,7 +826,7 @@ val1    val3_________________________          vall2
                 self.kelt_cnx.close()
                 pass
             except Exception as e:
-                print(f'[ERROR] Failed to insert study-data element keltner{length}{factor} !\nException:',str(e))
+                print(f'[ERROR] Failed to insert study-data element keltner{length}{factor} !\n',str(e))
                 self.kelt_cnx.close()
                 pass
         self.kelt_cnx.close()

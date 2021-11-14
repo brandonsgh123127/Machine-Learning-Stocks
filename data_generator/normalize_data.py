@@ -100,10 +100,10 @@ class Normalizer():
             self.fib=vals[2]
             self.keltner=vals[3]
         except Exception as e:
-            print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}!\nException:\n',str(e))
+            print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}!\n',str(e))
             raise AssertionError
         except:
-            print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}!\nException:\n',str(e))
+            print(f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}!\n',str(e))
             raise AssertionError
         self.cnx.close()
         return 
@@ -132,7 +132,7 @@ class Normalizer():
         try:
             self.mysql_read_data(ticker,date=date,skip_db=skip_db)
         except Exception as e:
-            print('[ERROR] Failed to read data!\nException:\n',str(e))
+            print('[ERROR] Failed to read data!\n',str(e))
             raise RuntimeError
         try:
             self.data = self.data.drop(['Adj Close'],axis=1)
@@ -242,7 +242,7 @@ class Normalizer():
                                                                       'Lower Keltner Close Diff',
                                                                       'Close']) #NORMALIZED DATA STORED IN NP ARRAY
         except Exception as e:
-            print('[ERROR] Failed to normalize!\nException:\n',str(e))
+            print('[ERROR] Failed to normalize!\n',str(e))
             return 1
         return 0
     '''

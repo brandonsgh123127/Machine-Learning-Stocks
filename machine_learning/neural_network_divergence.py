@@ -192,7 +192,7 @@ def check_db_cache(cnx=None,ticker:str=None,has_actuals:bool=False,force_generat
         cnx.close()
         pass
     except Exception as e:
-        print('[ERROR] Failed to check cached nn-data!\nException:\n',str(e))
+        print('[ERROR] Failed to check cached nn-data!\n',str(e))
         cnx.close()
         raise mysql.connector.errors.DatabaseError()
     return (None,None,None,None)
@@ -271,7 +271,7 @@ def load_divergence(ticker:str=None,has_actuals:bool=False,force_generation=Fals
             cnx.close()
             pass
         except Exception as e:
-            print(f'[ERROR] Failed to insert nn-data element {predicted} for model divergence!\nException:\n',str(e))
+            print(f'[ERROR] Failed to insert nn-data element {predicted} for model divergence!\n',str(e))
             cnx.close()
             pass
         cnx.close()

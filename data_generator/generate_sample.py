@@ -29,7 +29,7 @@ class Sample(Normalizer):
             try:
                 self.read_data(self.ticker,rand_dates=rand_date,skip_db=skip_db) 
             except Exception as e:
-                print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\nException:\n{str(e)}')
+                print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\n{str(e)}')
                 raise Exception(str(e))
         # Iterate through dataframe and retrieve random sample
         if not is_divergence:
@@ -50,7 +50,7 @@ class Sample(Normalizer):
                 raise Exception("[Error] Normalize did not return exit code 1")
 
         except Exception as e:
-            print('[ERROR] Failed to Normalize data!\nException:\n',str(e))
+            print('[ERROR] Failed to Normalize data!\n',str(e))
             raise Exception(e)
         try:
             if len(self.normalized_data) < self.DAYS_SAMPLED:
@@ -85,7 +85,7 @@ class Sample(Normalizer):
             try:
                 self.read_data(self.ticker,rand_dates=rand_date) # Get ticker and date from path
             except Exception as e:
-                print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\nException:\n{str(e)}')
+                print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\n{str(e)}')
                 raise Exception(str(e))
         # Iterate through dataframe and retrieve random sample
         self.convert_divergence()

@@ -58,13 +58,13 @@ class Generator():
             studies.apply_ema("30",self.studies.get_date_difference(dates[0],dates[1]))
             # studies.set_data_from_range(dates[0],dates[1])
         except Exception as e:
-            print(f'[ERROR] Failed to generate ema studies for {self.ticker}!\nException:\n{str(e)}')
+            print(f'[ERROR] Failed to generate ema studies for {self.ticker}!\n{str(e)}')
             return  
         try:
             studies.apply_fibonacci()
             studies.keltner_channels(20, 1.3, None)
         except Exception as e:
-            print(f'[ERROR] Failed to generate fib/keltner studies for {self.ticker}!\nException:\n{str(e)}')
+            print(f'[ERROR] Failed to generate fib/keltner studies for {self.ticker}!\n{str(e)}')
             return  
         del studies
         
@@ -84,7 +84,7 @@ class Generator():
         try:
             return [round(self.studies.data[['Close']].diff().iloc[1].to_list()[0],3),f'{round(self.studies.data[["Close"]].pct_change().iloc[1].to_list()[0]*100,3)}%']
         except Exception as e:
-            print(f'[ERROR] Failed to gather quick data for {ticker}...\nException:\n',str(e))
+            print(f'[ERROR] Failed to gather quick data for {ticker}...\n',str(e))
             return ['n/a','n/a']
     def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,force_generate=False,skip_db=False):
         self.studies = Studies(self.ticker,force_generate=force_generate)
@@ -94,7 +94,7 @@ class Generator():
             self.studies.set_data_from_range(date1,date2,force_generate,skip_db=skip_db)
             # self.studies.data = self.studies.data.reset_index()
         except Exception as e:
-            print(f'[ERROR] Failed to generate data!\nException:\n',str(e))
+            print(f'[ERROR] Failed to generate data!\n',str(e))
             raise Exception
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
         query_param1 = {"query": "{}".format(self.ticker)}
@@ -131,7 +131,7 @@ class Generator():
             # Final join
           
         except Exception as e:
-            print(f'[ERROR] Failed to generate studies for {self.ticker}!\nException:\n{str(e)}')
+            print(f'[ERROR] Failed to generate studies for {self.ticker}!\n{str(e)}')
             return 
         return (self.studies.data,self.studies.applied_studies,self.studies.fibonacci_extension,self.studies.keltner)
     def get_ticker(self):
