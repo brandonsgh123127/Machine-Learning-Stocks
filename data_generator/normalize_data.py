@@ -270,17 +270,24 @@ class Normalizer():
                                                         'Close']) #NORMALIZED DATA STORED IN NP ARRAY
         elif len(data.columns) == 6:
             tmp_data = pd.DataFrame(columns=['Open EMA Euclidean','Close EMA Euclidean',
-                                             'Prior Close Euclidean','Upper Keltner Close Diff',
-                                              'Lower Keltner Close Diff',
-                                              'Close'])
-            new_data = pd.concat([data,tmp_data],axis=1)
-            # print(new_data)
-            return pd.DataFrame(scaler.inverse_transform((new_data.to_numpy())),columns=['Open EMA Euclidean',
-                                                                                         'Close EMA Euclidean',
-                                                                                         'Prior Close Euclidean',
-                                                                                         'Upper Keltner Close Diff',
-                                                                                          'Lower Keltner Close Diff',
-                                                                                          'Close']) #NORMALIZED DATA STORED IN NP ARRAY
+                                                        'Open EMA14 Euclidean','Open EMA30 Euclidean',
+                                                        'Close EMA14 Euclidean','Close EMA30 Euclidean',
+                                                        'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
+                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
+                                                        'Close'])
+            # Set data manually to preserve order
+            tmp_data['Open EMA Euclidean'] = data['Open EMA Euclidean']
+            tmp_data['Close EMA Euclidean'] = data['Close EMA Euclidean']
+            tmp_data['Prior Close Euclidean'] = data['Prior Close Euclidean']
+            tmp_data['Upper Keltner Close Diff'] = data['Upper Keltner Close Diff']
+            tmp_data['Lower Keltner Close Diff'] = data['Lower Keltner Close Diff']
+            tmp_data['Close'] = data['Close']
+            return pd.DataFrame(scaler.inverse_transform((tmp_data.to_numpy())),columns=['Open EMA Euclidean','Close EMA Euclidean',
+                                                        'Open EMA14 Euclidean','Open EMA30 Euclidean',
+                                                        'Close EMA14 Euclidean','Close EMA30 Euclidean',
+                                                        'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
+                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
+                                                        'Close'])
     '''
         Unnormalize the divergence data
     '''

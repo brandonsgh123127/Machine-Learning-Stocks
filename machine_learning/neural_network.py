@@ -346,7 +346,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
         from_date_id=vals[2]
         to_date_id=vals[3]
     except Exception as e:
-        print('[INFO] Failed to gather predicted value from DB!')
+        print(f'[INFO] Failed to gather predicted value from DB!\n{str(e)}')
         pass
     
     # Start ML calculations

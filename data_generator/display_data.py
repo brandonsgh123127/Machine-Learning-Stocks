@@ -117,19 +117,35 @@ class Display():
         data = self.data_predict_display.reset_index()
         data.transpose().plot(ax=self.axes[row,col],kind='line',color=color)
     def display_line(self,color='g',row=0,col=1):
-        indices_dict = {0:'Open',1:'Close',2:'Range'}
+        indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
+                        3:'Open EMA30 Euclidean',4:'Close EMA14 Euclidean',5:'Close EMA30 Euclidean',
+                        6:'EMA14 EMA30 Euclidean',7:'Prior Close Euclidean',8:'Upper Keltner Close Diff',
+                        9:'Lower Keltner Close Diff',10:'Close'}
         self.data_display2 = pd.concat([self.data_display.reset_index(),self.data_predict_display.reset_index()],ignore_index=False).set_flags(allows_duplicate_labels=True)
         self.data_display2['index'] = [0,0]
         self.data_display2 = self.data_display2.set_index('index')
-        self.data_display2['Open'].plot(ax=self.axes[row,col],x='index',y='Open',style=f'{self.color_map.get(color)}x')
+        self.data_display2['Open EMA Euclidean'].plot(ax=self.axes[row,col],x='index',y='Open EMA Euclidean',style=f'{self.color_map.get(color)}x')
+        
         self.data_display2['index'] = [1,1]
         self.data_display2 = self.data_display2.set_index('index')
-        self.data_display2['Close'].plot(ax=self.axes[row,col],x='index',y='Close',style=f'{self.color_map.get(color)}o')
+        self.data_display2['Close EMA Euclidean'].plot(ax=self.axes[row,col],x='index',y='Close EMA Euclidean',style=f'{self.color_map.get(color)}o')
+        
         self.data_display2['index'] = [2,2]
         self.data_display2 = self.data_display2.set_index('index')
-        self.data_display2['Range'].plot(x='index',y='Range',style='mo', ax=self.axes[row,col])
+        self.data_display2['Prior Close Euclidean'].plot(x='index',y='Prior Close Euclidean',style='mo', ax=self.axes[row,col])
+        
         self.data_display2['index'] = [3,3]
-
+        self.data_display2 = self.data_display2.set_index('index')
+        self.data_display2['Upper Keltner Close Diff'].plot(x='index',y='Upper Keltner Close Diff',style='mo', ax=self.axes[row,col])
+        
+        self.data_display2['index'] = [4,4]
+        self.data_display2 = self.data_display2.set_index('index')
+        self.data_display2['Lower Keltner Close Diff'].plot(x='index',y='Lower Keltner Close Diff',style='mo', ax=self.axes[row,col])
+        
+        self.data_display2['index'] = [5,5]
+        self.data_display2 = self.data_display2.set_index('index')
+        self.data_display2['Close'].plot(x='index',y='Close',style='mo', ax=self.axes[row,col])
+        self.data_display2['index'] = [6,6]
         for i,row2 in enumerate(self.data_display2.index):
             for j,col2 in enumerate(self.data_display2.columns):
                 if i == 0:
@@ -139,18 +155,35 @@ class Display():
                     y = round(self.data_display2.iloc[i][j],2)
                     self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
     def display_predict_only(self,color=None,row=0,col=1):
-        indices_dict = {0:'Open',1:'Close',2:'Range'}
+        indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
+                        3:'Open EMA30 Euclidean',4:'Close EMA14 Euclidean',5:'Close EMA30 Euclidean',
+                        6:'EMA14 EMA30 Euclidean',7:'Prior Close Euclidean',8:'Upper Keltner Close Diff',
+                        9:'Lower Keltner Close Diff',10:'Close'}
         self.data_predict_display2 = self.data_predict_display
         self.data_predict_display2['index'] = [0]
         self.data_predict_display2 = self.data_predict_display2.set_index('index')
-        self.data_predict_display2['Open'].plot(ax=self.axes[row,col],x='index',y='Open',style=f'{self.color_map.get(color)}x')
+        self.data_predict_display2['Open EMA Euclidean'].plot(ax=self.axes[row,col],x='index',y='Open EMA Euclidean',style=f'{self.color_map.get(color)}x')
+        
         self.data_predict_display2['index'] = [1]
         self.data_predict_display2 = self.data_predict_display2.set_index('index')
-        self.data_predict_display2['Close'].plot(ax=self.axes[row,col],x='index',y='Close',style=f'{self.color_map.get(color)}o')
+        self.data_predict_display2['Close EMA Euclidean'].plot(ax=self.axes[row,col],x='index',y='Close EMA Euclidean',style=f'{self.color_map.get(color)}o')
+        
         self.data_predict_display2['index'] = [2]
+        self.data_predict_display2 = self.data_predict_display2.set_index('index')
+        self.data_predict_display2['Prior Close Euclidean'].plot(x='index',y='Prior Close Euclidean',style='mo', ax=self.axes[row,col])
+        
+        self.data_predict_display2['index'] = [3]
+        self.data_predict_display2 = self.data_predict_display2.set_index('index')
+        self.data_predict_display2['Upper Keltner Close Diff'].plot(x='index',y='Upper Keltner Close Diff',style='mo', ax=self.axes[row,col])
+        
+        self.data_predict_display2['index'] = [4]
+        self.data_predict_display2 = self.data_predict_display2.set_index('index')
+        self.data_predict_display2['Lower Keltner Close Diff'].plot(x='index',y='Lower Keltner Close Diff',style='mo', ax=self.axes[row,col])
+        
+        self.data_predict_display2['index'] = [5]
         data = self.data_predict_display2.set_index('index')
-        data['Range'].plot(x='index',y='Range',style='mo', ax=self.axes[row,col])
-        data['index'] = [3]
+        data['Close'].plot(x='index',y='Close',style='mo', ax=self.axes[row,col])
+        data['index'] = [6]
 
         for i,row2 in enumerate(self.data_predict_display2.index):
             for j,col2 in enumerate(self.data_predict_display2.columns):
