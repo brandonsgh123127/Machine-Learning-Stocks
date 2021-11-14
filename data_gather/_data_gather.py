@@ -169,7 +169,7 @@ class Gather():
                 self.cnx.close()
                 pass
             except Exception as e:
-                print('[ERROR] Failed to check cached data!\nException:\n',str(e))
+                print('[ERROR] Failed to check cached data!\n',str(e))
                 self.cnx.close()
                 raise mysql.connector.errors.DatabaseError()
         if len(date_range) == 0 and not _force_generate and not skip_db: # If all dates are satisfied, set data
@@ -231,7 +231,7 @@ class Gather():
                                     print('[ERROR] Integrity Error.')
                                     pass
                                 except Exception as e:
-                                    print(f'[ERROR] Failed to insert stock named {self.indicator.upper()} into database!\nException:\n',str(e))
+                                    print(f'[ERROR] Failed to insert stock named {self.indicator.upper()} into database!\n',str(e))
                                     exc_type, exc_obj, exc_tb = sys.exc_info()
                                     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                                     print(exc_type, fname, exc_tb.tb_lineno)
@@ -246,7 +246,7 @@ class Gather():
                             self.data['Date'] = self.data.index
                             self.data = self.data.reset_index()
                         except Exception as e:
-                            print('[Error] Failed to add \'Date\' column into data!\nException:\n{}'.format(str(e)))
+                            print('[Error] Failed to add \'Date\' column into data!\n{}'.format(str(e)))
                     # Rename rows back to original state
                     self.data = self.data.transpose().drop(['ticker'])
                     self.data=self.data.transpose().rename(columns={"open": "Open", "high":"High","low":"Low","close":"Close","adjclose":"Adj Close","volume":"Volume"})
@@ -275,7 +275,7 @@ class Gather():
                                     pass
                             except Exception as e:
                                 # print(self.data)
-                                print(f'[ERROR] Failed to insert date for {self.indicator} into database!\nDebug Info:{row}\n\nException:\n',str(e))
+                                print(f'[ERROR] Failed to insert date for {self.indicator} into database!\nDebug Info:{row}\n',str(e))
                                 exc_type, exc_obj, exc_tb = sys.exc_info()
                                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                                 print(exc_type, fname, exc_tb.tb_lineno)
