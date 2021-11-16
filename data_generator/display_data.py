@@ -117,18 +117,11 @@ class Display():
         data = self.data_predict_display.reset_index()
         data.transpose().plot(ax=self.axes[row,col],kind='line',color=color)
     def display_line(self,color='g',row=0,col=1):
-        self.data_display2 = pd.concat([self.data_display.reset_index(),self.data_predict_display.reset_index()],ignore_index=False).set_flags(allows_duplicate_labels=True)
-        if len(self.data_display2.columns) == 9:
-            indices_dict = {0:'Open EMA14 Euclidean',
-                        1:'Open EMA30 Euclidean',2:'Close EMA14 Euclidean',3:'Close EMA30 Euclidean',
-                        4:'Prior Close Euclidean',5:'Upper Keltner Close Diff',
-                        6:'Lower Keltner Close Diff',7:'Open',8:'Close'}
-        else:
-            indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
+        indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
                         3:'Open EMA30 Euclidean',4:'Close EMA14 Euclidean',5:'Close EMA30 Euclidean',
                         6:'EMA14 EMA30 Euclidean',7:'Prior Close Euclidean',8:'Upper Keltner Close Diff',
                         9:'Lower Keltner Close Diff',10:'Open',11:'Close'}
-
+        self.data_display2 = pd.concat([self.data_display.reset_index(),self.data_predict_display.reset_index()],ignore_index=False).set_flags(allows_duplicate_labels=True)
         self.data_display2['index'] = [0,0]
         self.data_display2 = self.data_display2.set_index('index')
         self.data_display2['Open'].plot(ax=self.axes[row,col],x='index',y='Open',style=f'{self.color_map.get(color)}x')
@@ -145,13 +138,7 @@ class Display():
                     y = round(self.data_display2.iloc[i][j],2)
                     self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
     def display_predict_only(self,color=None,row=0,col=1):
-        if len(self.data_display2.columns) == 9:
-            indices_dict = {0:'Open EMA14 Euclidean',
-                        1:'Open EMA30 Euclidean',2:'Close EMA14 Euclidean',3:'Close EMA30 Euclidean',
-                        4:'Prior Close Euclidean',5:'Upper Keltner Close Diff',
-                        6:'Lower Keltner Close Diff',7:'Open',8:'Close'}
-        else:
-            indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
+        indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
                         3:'Open EMA30 Euclidean',4:'Close EMA14 Euclidean',5:'Close EMA30 Euclidean',
                         6:'EMA14 EMA30 Euclidean',7:'Prior Close Euclidean',8:'Upper Keltner Close Diff',
                         9:'Lower Keltner Close Diff',10:'Open',11:'Close'}
