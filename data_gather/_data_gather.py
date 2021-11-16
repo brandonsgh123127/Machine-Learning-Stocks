@@ -183,62 +183,63 @@ class Gather():
             # if not _force_generate:
                 # print(f'[INFO] Did not query all specified dates within range for data retrieval!  Remaining {date_range}')
             with threading.Lock():
-                    try:
-                        self.cnx.close()
-                    except:
+                try:
+                    self.cnx.close()
+                except:
+                    pass
+                self.cnx = self.db_con.cursor(buffered=True)
+                self.cnx.autocommit = True
+                self.data = None
+                try:
+                    self.data = get_data(self.indicator.upper(),start_date=start_date.strftime("%Y-%m-%d"),end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
+
+                except AssertionError as a:
+                    raise AssertionError(f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
+                except:
+                    retries=1
+                    max_retries=4
+                    while retries <= max_retries:
+                        print(f'[WARN] Failed to gather data for {self.indicator}! {retries}/{max_retries} Retr(ies)...')
+                        retries = retries + 1
+                        time.sleep(2 * (retries/1.33))
+                        try:
+                            self.data = get_data(self.indicator.upper(),start_date=start_date.strftime("%Y-%m-%d"),end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
+                        except AssertionError as a:
+                            raise Exception(f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
+                    if retries > max_retries:
+                        print('[ERROR] Failed to gather data!')
+                        raise Exception()
+                    else:
                         pass
-                    self.cnx = self.db_con.cursor(buffered=True)
-                    self.cnx.autocommit = True
-                    self.data = None
-                    try:
-                        self.data = get_data(self.indicator.upper(),start_date=start_date.strftime("%Y-%m-%d"),end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
-                    except AssertionError as a:
-                        raise AssertionError(f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
-                    except:
-                        retries=1
-                        max_retries=4
-                        while retries <= max_retries:
-                            print(f'[WARN] Failed to gather data for {self.indicator}! {retries}/{max_retries} Retr(ies)...')
-                            retries = retries + 1
-                            time.sleep(2 * (retries/1.33))
+                if self.data.empty:
+                    print(f'[ERROR] Data returned for {self.indicator} is empty!')
+                    return 1
+                if not skip_db:
+                    # Retrieve query from database, confirm that stock is in database, else make new query
+                    select_stmt = "SELECT `id` FROM stocks.stock WHERE stock like %(stock)s"
+                    resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
+                    for result in resultado:
+                        # print(len(result.fetchall()))
+                        # Query new stock, id
+                        res = result.fetchall()
+                        if len(res) == 0:
+                            insert_stmt = """INSERT INTO stocks.stock (id, stock) 
+                                        VALUES (AES_ENCRYPT(%(stock)s, %(stock)s),%(stock)s)"""
                             try:
-                                self.data = get_data(self.indicator.upper(),start_date=start_date.strftime("%Y-%m-%d"),end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
-                            except AssertionError as a:
-                                raise Exception(f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
-                        if retries > max_retries:
-                            print('[ERROR] Failed to gather data!')
-                            raise Exception()
+                                insert_resultado = self.cnx.execute(insert_stmt, { 'stock': f'{self.indicator.upper()}'},multi=True)
+                                self.db_con.commit()
+                            except mysql.connector.errors.IntegrityError as e:
+                                print('[ERROR] Integrity Error.')
+                                pass
+                            except Exception as e:
+                                print(f'[ERROR] Failed to insert stock named {self.indicator.upper()} into database!\n',str(e))
+                                exc_type, exc_obj, exc_tb = sys.exc_info()
+                                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                                print(exc_type, fname, exc_tb.tb_lineno)
+        
                         else:
-                            pass
-                    if self.data.empty:
-                        print(f'[ERROR] Data returned for {self.indicator} is empty!')
-                        return 1
-                    if not skip_db:
-                        # Retrieve query from database, confirm that stock is in database, else make new query
-                        select_stmt = "SELECT `id` FROM stocks.stock WHERE stock like %(stock)s"
-                        resultado = self.cnx.execute(select_stmt, { 'stock': self.indicator},multi=True)
-                        for result in resultado:
-                            # print(len(result.fetchall()))
-                            # Query new stock, id
-                            res = result.fetchall()
-                            if len(res) == 0:
-                                insert_stmt = """INSERT INTO stocks.stock (id, stock) 
-                                            VALUES (AES_ENCRYPT(%(stock)s, %(stock)s),%(stock)s)"""
-                                try:
-                                    insert_resultado = self.cnx.execute(insert_stmt, { 'stock': f'{self.indicator.upper()}'},multi=True)
-                                    self.db_con.commit()
-                                except mysql.connector.errors.IntegrityError as e:
-                                    print('[ERROR] Integrity Error.')
-                                    pass
-                                except Exception as e:
-                                    print(f'[ERROR] Failed to insert stock named {self.indicator.upper()} into database!\n',str(e))
-                                    exc_type, exc_obj, exc_tb = sys.exc_info()
-                                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                                    print(exc_type, fname, exc_tb.tb_lineno)
-            
-                            else:
-                                for r in res:
-                                    self.new_uuid_gen = binascii.b2a_hex(str.encode(str(r[0]),"utf8"))
+                            for r in res:
+                                self.new_uuid_gen = binascii.b2a_hex(str.encode(str(r[0]),"utf8"))
                     try:
                         self.data['Date']
                     except:

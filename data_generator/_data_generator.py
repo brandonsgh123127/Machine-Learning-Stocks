@@ -89,9 +89,11 @@ class Generator():
     def generate_data_with_dates(self,date1=None,date2=None,is_not_closed=False,force_generate=False,skip_db=False):
         self.studies = Studies(self.ticker,force_generate=force_generate)
         self.studies.date_set = (date1,date2)
+
         # Loop until valid data populates
         try:
             self.studies.set_data_from_range(date1,date2,force_generate,skip_db=skip_db)
+
             # self.studies.data = self.studies.data.reset_index()
         except Exception as e:
             print(f'[ERROR] Failed to generate data!\n',str(e))

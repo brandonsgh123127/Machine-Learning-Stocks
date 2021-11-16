@@ -28,10 +28,18 @@ class Network(Neural_Framework):
     def create_model(self,model_choice="model_relu"):
         self.model_name = model_choice
         self.model_choice = self.model_map_names.get(model_choice)
-        self.nn_input = keras.Input(shape=(1,1,154)) # 14 * 11 cols
+        if self.model_choice < 4:
+            self.nn_input = keras.Input(shape=(1,1,168)) # 14 * 12 cols
+        else:
+            self.nn_input = keras.Input(shape=(1,1,126)) # 14 * 9 cols
+        
+        #######
+        ###### 12 col * 14 rows
+        #######
+        
         # Relu Model
         if self.model_choice == 1:
-            self.nn = keras.layers.Dense(154, activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dense(168, activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             # self.nn = keras.layers.Dropout(0.1)(self.nn)
             keras.regularizers.l1(0.09)
             keras.regularizers.l2(0.1)
@@ -39,18 +47,18 @@ class Network(Neural_Framework):
             self.nn = keras.layers.Dense(48,activation='relu')(self.nn)
             self.nn = keras.layers.Dropout(0.5)(self.nn)
             self.nn = keras.layers.Dense(24,activation='relu')(self.nn)
-            self.nn2 = keras.layers.Dense(11,activation='linear')(self.nn)
+            self.nn2 = keras.layers.Dense(2,activation='linear')(self.nn)
         #  Leaky Relu no Dropout
         elif self.model_choice == 2:
-            self.nn = keras.layers.Dense(154, activation=keras.layers.LeakyReLU(alpha=0.3),kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dense(168, activation=keras.layers.LeakyReLU(alpha=0.3),kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             self.nn = keras.layers.Dense(140, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
             self.nn = keras.layers.Dense(48,activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
             self.nn = keras.layers.Dense(24,activation=keras.layers.LeakyReLU(alpha=0.74))(self.nn)
             self.nn = keras.layers.Dense(24,activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn2 = keras.layers.Dense(11,activation='linear')(self.nn)
+            self.nn2 = keras.layers.Dense(2,activation='linear')(self.nn)
         # Sigmoid 
         elif self.model_choice == 3:
-            self.nn = keras.layers.Dense(154, activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dense(168, activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             # self.nn = keras.layers.Dropout(0.1)(self.nn)
             keras.regularizers.l1(0.01)
             keras.regularizers.l2(0.04)
@@ -58,33 +66,37 @@ class Network(Neural_Framework):
             self.nn = keras.layers.Dropout(0.5)(self.nn) # Residual layer
             self.nn = keras.layers.Dense(48,activation='sigmoid')(self.nn)
             self.nn = keras.layers.Dense(20,activation='sigmoid')(self.nn)
-            self.nn2 = keras.layers.Dense(11,activation='linear')(self.nn)        
+            self.nn2 = keras.layers.Dense(2,activation='linear')(self.nn)        
+        #######
+        ###### 9 col * 14 rows
+        #######
+        
         # Relu - Out 5
         elif self.model_choice == 4:
-            self.nn = keras.layers.Dense(154, activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dense(126, activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             keras.regularizers.l1(0.02 )
             keras.regularizers.l2(0.07)
             self.nn = keras.layers.Dense(48,activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
             self.nn = keras.layers.Dropout(0.5)(self.nn)
-            self.nn2 = keras.layers.Dense(6,activation='linear')(self.nn)
+            self.nn2 = keras.layers.Dense(2,activation='linear')(self.nn)
         # Leaky Relu - Out 5
         elif self.model_choice == 5:
-            self.nn = keras.layers.Dense(154, activation=keras.layers.LeakyReLU(alpha=0.3),kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dense(126, activation=keras.layers.LeakyReLU(alpha=0.3),kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             keras.regularizers.l1(0.01)
             keras.regularizers.l2(0.04)
             self.nn = keras.layers.Dense(48,activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
             self.nn = keras.layers.Dense(24,activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn2 = keras.layers.Dense(6,activation='linear')(self.nn)
+            self.nn2 = keras.layers.Dense(2,activation='linear')(self.nn)
         # Sigmoid - Out 5
         elif self.model_choice == 6:
-            self.nn = keras.layers.Dense(154, activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
-            self.nn = keras.layers.Dense(154, activation='sigmoid')(self.nn)
+            self.nn = keras.layers.Dense(126, activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dense(126, activation='sigmoid')(self.nn)
             self.nn = keras.layers.Dropout(0.6)(self.nn) # Residual
             keras.regularizers.l1(0.01)
             keras.regularizers.l2(0.04)
             self.nn = keras.layers.Dense(48,activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
             self.nn = keras.layers.Dense(8,activation='sigmoid')(self.nn)
-            self.nn2 = keras.layers.Dense(6,activation='linear')(self.nn)
+            self.nn2 = keras.layers.Dense(2,activation='linear')(self.nn)
         self.nn = keras.Model(inputs=self.nn_input,outputs=[self.nn2])
         self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.002,beta_1=0.95,beta_2=0.999), loss='mse',metrics=['MeanAbsoluteError','MeanAbsolutePercentageError'])
         return self.nn
@@ -124,17 +136,18 @@ class Network(Neural_Framework):
                 except:
                     continue
                 try:
-                    # print(train)
-                    # print(len(self.sampler.normalized_data.iloc[:-1].to_numpy()))
-                    train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,154)))# Retrieve all except for last data to be analyzed/predicted
                     if self.model_choice <= 3:
+                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,168)))
                         train_targets.append(np.reshape(self.sampler.normalized_data.iloc[-1:].to_numpy(),(1,11)))
                     else:
+                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,126)))
                         tmp = self.sampler.normalized_data.iloc[-1:]
-                        tmp = pd.concat([pd.DataFrame([tmp['Close'].to_numpy()]),pd.DataFrame([tmp['Open EMA Euclidean'].to_numpy()]),
-                                         pd.DataFrame([tmp['Close EMA Euclidean'].to_numpy()]),pd.DataFrame([tmp['Prior Close Euclidean'].to_numpy()]),
+                        tmp = pd.concat([pd.DataFrame([tmp['Open'].to_numpy()]),pd.DataFrame([tmp['Close'].to_numpy()]),
+                                         pd.DataFrame([tmp['Open EMA14 Euclidean'].to_numpy()]),pd.DataFrame([tmp['Open EMA30 Euclidean'].to_numpy()]),
+                                         pd.DataFrame([tmp['Close EMA14 Euclidean'].to_numpy()]),pd.DataFrame([tmp['Close EMA30 Euclidean'].to_numpy()]),
+                                         pd.DataFrame([tmp['Prior Close Euclidean'].to_numpy()]),
                                          pd.DataFrame([tmp['Upper Keltner Close Diff'].to_numpy()]),pd.DataFrame([tmp['Lower Keltner Close Diff'].to_numpy()])])
-                        train_targets.append(np.reshape(tmp.to_numpy(),(1,6)))
+                        train_targets.append(np.reshape(tmp.to_numpy(),(1,9)))
                 except Exception as e:
                     print('[ERROR] Failed to specify train_target value!\n',str(e))
                     continue
@@ -264,9 +277,7 @@ def check_db_cache(cnx:mysql.connector.connect=None,ticker:str=None,has_actuals:
         else:
             from_date_id = id_res[0][0].decode('latin1')
     # Check nn-data table after retrieval of from-date and to-date id's
-    check_cache_nn_db_stmt = """SELECT `stocks`.`nn-data`.`close`,`stocks`.`nn-data`.`open-ema-euclidean`,
-    `stocks`.`nn-data`.`close-ema-euclidean`,`stocks`.`nn-data`.`prior-close-euclidean`,
-    `stocks`.`nn-data`.`upper-keltner-close-diff`,`stocks`.`nn-data`.`lower-keltner-close-diff` 
+    check_cache_nn_db_stmt = """SELECT `stocks`.`nn-data`.`close`,`stocks`.`nn-data`.`open` 
      FROM stocks.`nn-data` USE INDEX (`from-to-model`,`stockid`) WHERE
     `stock-id` = %(stock-id)s
        AND `stocks`.`nn-data`.`from-date-id` = %(from-date-id)s
@@ -287,9 +298,7 @@ def check_db_cache(cnx:mysql.connector.connect=None,ticker:str=None,has_actuals:
             for res in result:        
                 # Set predicted value
                 if not force_generation:
-                    return (pd.DataFrame({'Close':float(res[0]),'open-ema-euclidean':float(res[1]),
-                                          'close-ema-euclidean':float(res[2]),'prior-close-euclidean':float(res[3]),
-                                          'upper-keltner-close-diff':float(res[4]),'lower-keltner-close-diff':float(res[5])},index=[0]),stock_id,from_date_id,to_date_id)
+                    return (pd.DataFrame({'Close':float(res[0]),'Open':float(res[1])},index=[0]),stock_id,from_date_id,to_date_id)
     except mysql.connector.errors.IntegrityError: # should not happen
         cnx.close()
         pass
@@ -401,12 +410,9 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
         # Upload data to DB given prediction has finished
         check_cache_nn_db_stmt = """REPLACE INTO `stocks`.`nn-data` (`nn-id`, `stock-id`, 
                                                                 `from-date-id`,`to-date-id`,
-                                                                `model`,`close`,`open-ema-euclidean`,
-                                                                `close-ema-euclidean`,`prior-close-euclidean`,
-                                                                `upper-keltner-close-diff`,`lower-keltner-close-diff`)
+                                                                `model`,`close`,`open` 
                                                         VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(stock-id)s,%(from-date-id)s,
-                                                        %(to-date-id)s,%(model)s,%(close)s,%(open-ema-euclidean)s,%(close-ema-euclidean)s,
-                                                        %(prior-close-euclidean)s,%(upper-keltner-close-diff)s,%(lower-keltner-close-diff)s)
+                                                        %(to-date-id)s,%(model)s,%(close)s,%(open)s)
             """        
         try:
             check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,{'id':f'{from_date_id}{to_date_id}{ticker.upper()}{name}',
@@ -415,11 +421,7 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
                                                                             'to-date-id':to_date_id,
                                                                                 'model':name,
                                                                                 'close':str(predicted['Close'].iloc[0]),
-                                                                                'open-ema-euclidean':str(predicted['Open EMA Euclidean'].iloc[0]),
-                                                                                'close-ema-euclidean':str(predicted['Close EMA Euclidean'].iloc[0]),
-                                                                                'prior-close-euclidean':str(predicted['Prior Close Euclidean'].iloc[0]),
-                                                                                'upper-keltner-close-diff':str(predicted['Upper Keltner Close Diff'].iloc[0]),
-                                                                                'lower-keltner-close-diff':str(predicted['Lower Keltner Close Diff'].iloc[0])})
+                                                                                'open':str(predicted['Open'].iloc[0])})
             db_con.commit()
         except mysql.connector.errors.IntegrityError:
             cnx.close()
@@ -454,7 +456,7 @@ def run(epochs,batch_size,name="model_relu"):
     neural_net.save_model()
 
 
-# run(200,50,"model_relu")
+run(200,50,"model_relu")
 # run(200,50,"model_leaky")
 # run(200,50,"model_sigmoid")
 # run(200,50,"model_relu2")
