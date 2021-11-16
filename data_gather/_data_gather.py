@@ -196,21 +196,7 @@ class Gather():
                 except AssertionError as a:
                     raise AssertionError(f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
                 except:
-                    retries=1
-                    max_retries=4
-                    while retries <= max_retries:
-                        print(f'[WARN] Failed to gather data for {self.indicator}! {retries}/{max_retries} Retr(ies)...')
-                        retries = retries + 1
-                        time.sleep(2 * (retries/1.33))
-                        try:
-                            self.data = get_data(self.indicator.upper(),start_date=start_date.strftime("%Y-%m-%d"),end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
-                        except AssertionError as a:
-                            raise Exception(f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
-                    if retries > max_retries:
-                        print('[ERROR] Failed to gather data!')
-                        raise Exception()
-                    else:
-                        pass
+                    raise Exception(f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
                 if self.data.empty:
                     print(f'[ERROR] Data returned for {self.indicator} is empty!')
                     return 1
@@ -240,46 +226,46 @@ class Gather():
                         else:
                             for r in res:
                                 self.new_uuid_gen = binascii.b2a_hex(str.encode(str(r[0]),"utf8"))
+                try:
+                    self.data['Date']
+                except:
                     try:
-                        self.data['Date']
-                    except:
-                        try:
-                            self.data['Date'] = self.data.index
-                            self.data = self.data.reset_index()
-                        except Exception as e:
-                            print('[Error] Failed to add \'Date\' column into data!\n{}'.format(str(e)))
-                    # Rename rows back to original state
-                    self.data = self.data.transpose().drop(['ticker'])
-                    self.data=self.data.transpose().rename(columns={"open": "Open", "high":"High","low":"Low","close":"Close","adjclose":"Adj Close","volume":"Volume"})
-                    try:
-                        self.data['Date'] = pd.to_datetime(self.data['Date'])
+                        self.data['Date'] = self.data.index
+                        self.data = self.data.reset_index()
                     except Exception as e:
-                        print('[INFO] Could not convert Date col to datetime',str(e))
-                    if not skip_db:
-                        #Append dates to database
-                        for index, row in self.data.iterrows():
-                            insert_date_stmt = """REPLACE INTO `stocks`.`data` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
-                            VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
-                            DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
-                            try: 
-                                # print(row.name)
-                                insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'data_id': f'{self.indicator}{row["Date"].strftime("%Y-%m-%d")}',
-                                                                                        'stock':f'{self.indicator.upper()}',
-                                                                                        'Date':row['Date'].strftime("%Y-%m-%d"),
-                                                                                        'Open':row['Open'],
-                                                                                        'High':row['High'],
-                                                                                        'Low':row['Low'],
-                                                                                        'Close':row['Close'],
-                                                                                        'Adj Close': row['Adj Close']},multi=True)
-            
-                            except mysql.connector.errors.IntegrityError as e:
-                                    pass
-                            except Exception as e:
-                                # print(self.data)
-                                print(f'[ERROR] Failed to insert date for {self.indicator} into database!\nDebug Info:{row}\n',str(e))
-                                exc_type, exc_obj, exc_tb = sys.exc_info()
-                                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                                print(exc_type, fname, exc_tb.tb_lineno)
+                        print('[Error] Failed to add \'Date\' column into data!\n{}'.format(str(e)))
+                # Rename rows back to original state
+                self.data = self.data.transpose().drop(['ticker'])
+                self.data=self.data.transpose().rename(columns={"open": "Open", "high":"High","low":"Low","close":"Close","adjclose":"Adj Close","volume":"Volume"})
+                try:
+                    self.data['Date'] = pd.to_datetime(self.data['Date'])
+                except Exception as e:
+                    print('[INFO] Could not convert Date col to datetime',str(e))
+                if not skip_db:
+                    #Append dates to database
+                    for index, row in self.data.iterrows():
+                        insert_date_stmt = """REPLACE INTO `stocks`.`data` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                        VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
+                        DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                        try: 
+                            # print(row.name)
+                            insert_date_resultado = self.cnx.execute(insert_date_stmt, { 'data_id': f'{self.indicator}{row["Date"].strftime("%Y-%m-%d")}',
+                                                                                    'stock':f'{self.indicator.upper()}',
+                                                                                    'Date':row['Date'].strftime("%Y-%m-%d"),
+                                                                                    'Open':row['Open'],
+                                                                                    'High':row['High'],
+                                                                                    'Low':row['Low'],
+                                                                                    'Close':row['Close'],
+                                                                                    'Adj Close': row['Adj Close']},multi=True)
+        
+                        except mysql.connector.errors.IntegrityError as e:
+                                pass
+                        except Exception as e:
+                            # print(self.data)
+                            print(f'[ERROR] Failed to insert date for {self.indicator} into database!\nDebug Info:{row}\n',str(e))
+                            exc_type, exc_obj, exc_tb = sys.exc_info()
+                            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                            print(exc_type, fname, exc_tb.tb_lineno)
                         try:
                             self.db_con.commit()
                         except Exception as e:

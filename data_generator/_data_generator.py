@@ -7,6 +7,7 @@ from threading_impl.Thread_Pool import Thread_Pool
 import threading
 import time
 import datetime
+import sys
 
 '''
     This class allows for unification of data, studies and news for future machine learning training.
@@ -133,6 +134,9 @@ class Generator():
             # Final join
           
         except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
             print(f'[ERROR] Failed to generate studies for {self.ticker}!\n{str(e)}')
             return 
         return (self.studies.data,self.studies.applied_studies,self.studies.fibonacci_extension,self.studies.keltner)

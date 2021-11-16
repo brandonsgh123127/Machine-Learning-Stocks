@@ -39,7 +39,7 @@ class Sample(Normalizer):
         self.normalized_data = self.normalized_data.iloc[-(self.DAYS_SAMPLED):]
         try:
             if not is_divergence:
-                rc = self.normalize()
+                rc = self.normalize(out=out)
             else:
                 rc = self.normalize_divergence()
             if rc == 1:

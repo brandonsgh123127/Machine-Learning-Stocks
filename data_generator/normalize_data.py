@@ -248,7 +248,8 @@ class Normalizer():
                                                         'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
                                                         'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
                                                         'Open',
-                                                        'Close']).drop(columns=['EMA14 EMA30 Euclidean','Open EMA Euclidean','Close EMA Euclidean']) #NORMALIZED DATA STORED IN NP ARRAY
+                                                        'Close'])
+                self.normalized_data = self.normalized_data.drop(columns=['EMA14 EMA30 Euclidean','Open EMA Euclidean','Close EMA Euclidean'])
         except Exception as e:
             print('[ERROR] Failed to normalize!\n',str(e))
             return 1

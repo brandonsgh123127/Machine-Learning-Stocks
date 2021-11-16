@@ -4,9 +4,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import keras
 import tensorflow as tf
 import numpy as np
+import sys
 from data_generator.generate_sample import Sample
 from pathlib import Path
-import os
 import pandas as pd
 import threading
 from machine_learning.neural_framework import Neural_Framework
@@ -107,7 +107,7 @@ class Network(Neural_Framework):
         self.sampler.set_ticker(self.choose_random_ticker(f'{path}/data/watchlist/default.csv'))
         try:
             if self.model_choice < 4:
-                self.sampler.generate_sample(_has_actuals=_has_actuals,rand_date=rand_date,skip_db=True)
+                self.sampler.generate_sample(_has_actuals=_has_actuals,out=8,rand_date=rand_date,skip_db=True)
             else:
                 self.sampler.generate_sample(_has_actuals=_has_actuals,out=2,rand_date=rand_date,skip_db=True)
             self.sampler.data = self.sampler.data.drop(['High','Low'],axis=1)
@@ -136,9 +136,9 @@ class Network(Neural_Framework):
                 except:
                     continue
                 try:
-                    if self.model_choice <= 3:
+                    if self.model_choice < 4:
                         train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,168)))
-                        train_targets.append(np.reshape(self.sampler.normalized_data.iloc[-1:].to_numpy(),(1,11)))
+                        train_targets.append(np.reshape(self.sampler.normalized_data.iloc[-1:].to_numpy(),(1,12)))
                     else:
                         train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,126)))
                         tmp = self.sampler.normalized_data.iloc[-1:]
@@ -149,6 +149,10 @@ class Network(Neural_Framework):
                                          pd.DataFrame([tmp['Upper Keltner Close Diff'].to_numpy()]),pd.DataFrame([tmp['Lower Keltner Close Diff'].to_numpy()])])
                         train_targets.append(np.reshape(tmp.to_numpy(),(1,9)))
                 except Exception as e:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(exc_type, fname, exc_tb.tb_lineno)
+
                     print('[ERROR] Failed to specify train_target value!\n',str(e))
                     continue
                 except:
@@ -456,10 +460,10 @@ def run(epochs,batch_size,name="model_relu"):
     neural_net.save_model()
 
 
-run(100,100,"model_relu")
+# run(100,100,"model_relu")
 # run(100,100,"model_leaky")
 # run(100,100,"model_sigmoid")
-# run(100,100,"model_relu2")
+run(100,100,"model_relu2")
 # run(100,100,"model_leaky2")
 # run(100,100,"model_sigmoid2")
 # net=Network(1,1)
