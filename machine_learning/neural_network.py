@@ -127,7 +127,6 @@ class Network(Neural_Framework):
             print(f'\n\n\nEPOCH {i} -- {self.model_choice}')
             train= []
             train_targets=[]
-            models[i] = 1
             BATCHES= self.BATCHES
             j=1
             while j < BATCHES:
@@ -138,16 +137,11 @@ class Network(Neural_Framework):
                 try:
                     if self.model_choice < 4:
                         train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,168)))
-                        train_targets.append(np.reshape(self.sampler.normalized_data.iloc[-1:].to_numpy(),(1,12)))
                     else:
                         train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,126)))
-                        tmp = self.sampler.normalized_data.iloc[-1:]
-                        tmp = pd.concat([pd.DataFrame([tmp['Open'].to_numpy()]),pd.DataFrame([tmp['Close'].to_numpy()]),
-                                         pd.DataFrame([tmp['Open EMA14 Euclidean'].to_numpy()]),pd.DataFrame([tmp['Open EMA30 Euclidean'].to_numpy()]),
-                                         pd.DataFrame([tmp['Close EMA14 Euclidean'].to_numpy()]),pd.DataFrame([tmp['Close EMA30 Euclidean'].to_numpy()]),
-                                         pd.DataFrame([tmp['Prior Close Euclidean'].to_numpy()]),
-                                         pd.DataFrame([tmp['Upper Keltner Close Diff'].to_numpy()]),pd.DataFrame([tmp['Lower Keltner Close Diff'].to_numpy()])])
-                        train_targets.append(np.reshape(tmp.to_numpy(),(1,9)))
+                    tmp = self.sampler.normalized_data.iloc[-1:]
+                    tmp = pd.concat([pd.DataFrame([tmp['Open'].to_numpy()]),pd.DataFrame([tmp['Close'].to_numpy()])])
+                    train_targets.append(np.reshape(tmp.to_numpy(),(1,2)))
                 except Exception as e:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -161,6 +155,7 @@ class Network(Neural_Framework):
                 j=j+1
             # Use fit for generating with ease.  Validation data included for analysis of loss
             disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets),batch_size=20,epochs=1,validation_split=0.177)
+            models[i] = disp.history
             self.save_model()
 
         return models
@@ -464,7 +459,7 @@ def run(epochs,batch_size,name="model_relu"):
 # run(100,100,"model_leaky")
 # run(100,100,"model_sigmoid")
 run(100,100,"model_relu2")
-# run(100,100,"model_leaky2")
-# run(100,100,"model_sigmoid2")
+run(100,100,"model_leaky2")
+run(100,100,"model_sigmoid2")
 # net=Network(1,1)
 # load("SPY",False,"model_relu",True)     
