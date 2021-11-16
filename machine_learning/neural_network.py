@@ -156,7 +156,7 @@ class Network(Neural_Framework):
                     continue
                 j=j+1
             # Use fit for generating with ease.  Validation data included for analysis of loss
-            disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets),batch_size=1,epochs=1,validation_split=0.177)
+            disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets),batch_size=20,epochs=1,validation_split=0.177)
             self.save_model()
 
         return models
