@@ -98,7 +98,7 @@ class Network(Neural_Framework):
             self.nn = keras.layers.Dense(8,activation='sigmoid')(self.nn)
             self.nn2 = keras.layers.Dense(2,activation='linear')(self.nn)
         self.nn = keras.Model(inputs=self.nn_input,outputs=[self.nn2])
-        self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.002,beta_1=0.95,beta_2=0.999), loss='mse',metrics=['MeanAbsoluteError','MeanAbsolutePercentageError'])
+        self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.002,beta_1=0.85,beta_2=0.997), loss='mse',metrics=['MeanAbsoluteError','MeanAbsolutePercentageError'])
         return self.nn
     # Used for generation of data via the start
     def generate_sample(self,_has_actuals=False,rand_date=None):
@@ -154,7 +154,7 @@ class Network(Neural_Framework):
                     continue
                 j=j+1
             # Use fit for generating with ease.  Validation data included for analysis of loss
-            disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets),batch_size=20,epochs=1,validation_split=0.177)
+            disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets),batch_size=4,epochs=1,validation_split=0.177)
             models[i] = disp.history
             self.save_model()
 
@@ -458,8 +458,8 @@ def run(epochs,batch_size,name="model_relu"):
 # run(100,100,"model_relu")
 # run(100,100,"model_leaky")
 # run(100,100,"model_sigmoid")
-run(100,100,"model_relu2")
-run(100,100,"model_leaky2")
-run(100,100,"model_sigmoid2")
+# run(100,100,"model_relu2")
+# run(100,100,"model_leaky2")
+# run(100,100,"model_sigmoid2")
 # net=Network(1,1)
 # load("SPY",False,"model_relu",True)     
