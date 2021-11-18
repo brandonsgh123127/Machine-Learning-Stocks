@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 import matplotlib.pyplot as plt
 from machine_learning.neural_network import load
+from machine_learning.neural_network_divergence import load as load_divergence
 from data_generator.display_data import Display
 import datetime
 import threading
@@ -24,9 +25,12 @@ class launcher():
         self.dis:Display = Display()
         self.listLock=threading.Lock()
     
-    def display_model(self,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",color:str="blue",force_generation=False,unnormalized_data = False,row=0,col=1,data:tuple=None):
+    def display_model(self,name:str= "model_relu",_has_actuals:bool=False,ticker:str="spy",color:str="blue",force_generation=False,unnormalized_data = False,row=0,col=1,data:tuple=None,is_divergence=False):
         # Call machine learning model
-        data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:GPU:0',rand_date=False,data=data)
+        if not is_divergence:
+            data = load(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:GPU:0',rand_date=False,data=data)
+        else:
+            data = load_divergence(f'{ticker.upper()}',has_actuals=_has_actuals,name=f'{name}',force_generation=force_generation,device_opt='/device:GPU:0',rand_date=False,data=data)
         # read data for loading into display portion
         with self.listLock:
             self.dis.read_studies_data(data[0],data[1],data[3],data[4],data[5])
@@ -130,23 +134,23 @@ def main(ticker:str = "SPY",has_actuals:bool = True,force_generate=False):
     # Model_Out_2 LABEL
     if _has_actuals:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,'green',force_generate,False,0,1,data))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,'green',force_generate,False,0,1,data,True))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",_has_actuals,ticker,'black',force_generate,False,0,1,data))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",_has_actuals,ticker,'black',force_generate,False,0,1,data,True))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",_has_actuals,ticker,'magenta',force_generate,False,0,1,data))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",_has_actuals,ticker,'magenta',force_generate,False,0,1,data,True))) == 1:
                 thread_pool.join_workers()
     else:
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,'green',force_generate,False,0,1,data))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_relu2",_has_actuals,ticker,'green',force_generate,False,0,1,data,True))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",_has_actuals,ticker,'black',force_generate,False,0,1,data))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_leaky2",_has_actuals,ticker,'black',force_generate,False,0,1,data,True))) == 1:
                 thread_pool.join_workers()
         with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",_has_actuals,ticker,'magenta',force_generate,False,0,1,data))) == 1:
+            while thread_pool.start_worker(threading.Thread(target=launch.display_model,args=("model_sigmoid2",_has_actuals,ticker,'magenta',force_generate,False,0,1,data,True))) == 1:
                 thread_pool.join_workers()
 
     gc.collect()

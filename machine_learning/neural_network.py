@@ -29,9 +29,9 @@ class Network(Neural_Framework):
         self.model_name = model_choice
         self.model_choice = self.model_map_names.get(model_choice)
         if self.model_choice < 4:
-            self.nn_input = keras.Input(shape=(1,1,168)) # 14 * 12 cols
+            self.nn_input = keras.Input(shape=(1,1,126)) # 14 * 12 cols
         else:
-            self.nn_input = keras.Input(shape=(1,1,126)) # 14 * 9 cols
+            self.nn_input = keras.Input(shape=(1,1,84)) # 14 * 9 cols
         
         #######
         ###### 12 col * 14 rows
@@ -39,18 +39,18 @@ class Network(Neural_Framework):
         
         # Relu Model
         if self.model_choice == 1:
-            self.nn = keras.layers.Dense(168, activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dense(154, activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             # self.nn = keras.layers.Dropout(0.1)(self.nn)
             keras.regularizers.l1(0.09)
             keras.regularizers.l2(0.1)
-            self.nn = keras.layers.Dense(48,activation='relu',kernel_initializer=tf.keras.initializers.GlorotUniform())(self.nn)
+            self.nn = keras.layers.Dense(124,activation='relu',kernel_initializer=tf.keras.initializers.GlorotUniform())(self.nn)
             self.nn = keras.layers.Dense(48,activation='relu')(self.nn)
             self.nn = keras.layers.Dropout(0.5)(self.nn)
             self.nn = keras.layers.Dense(24,activation='relu')(self.nn)
             self.nn2 = keras.layers.Dense(2,activation='linear')(self.nn)
         #  Leaky Relu no Dropout
         elif self.model_choice == 2:
-            self.nn = keras.layers.Dense(168, activation=keras.layers.LeakyReLU(alpha=0.3),kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dense(154, activation=keras.layers.LeakyReLU(alpha=0.3),kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             self.nn = keras.layers.Dense(140, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
             self.nn = keras.layers.Dense(48,activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
             self.nn = keras.layers.Dense(24,activation=keras.layers.LeakyReLU(alpha=0.74))(self.nn)
@@ -58,10 +58,11 @@ class Network(Neural_Framework):
             self.nn2 = keras.layers.Dense(2,activation='linear')(self.nn)
         # Sigmoid 
         elif self.model_choice == 3:
-            self.nn = keras.layers.Dense(168, activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dense(154, activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             # self.nn = keras.layers.Dropout(0.1)(self.nn)
             keras.regularizers.l1(0.01)
             keras.regularizers.l2(0.04)
+            self.nn = keras.layers.Dense(56,activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
             self.nn = keras.layers.Dense(56,activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
             self.nn = keras.layers.Dropout(0.5)(self.nn) # Residual layer
             self.nn = keras.layers.Dense(48,activation='sigmoid')(self.nn)
@@ -73,29 +74,31 @@ class Network(Neural_Framework):
         
         # Relu - Out 5
         elif self.model_choice == 4:
-            self.nn = keras.layers.Dense(126, activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dense(84, activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             keras.regularizers.l1(0.02 )
             keras.regularizers.l2(0.07)
             self.nn = keras.layers.Dense(48,activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
+            self.nn = keras.layers.Dense(16,activation='relu',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
             self.nn = keras.layers.Dropout(0.5)(self.nn)
             self.nn2 = keras.layers.Dense(2,activation='linear')(self.nn)
         # Leaky Relu - Out 5
         elif self.model_choice == 5:
-            self.nn = keras.layers.Dense(126, activation=keras.layers.LeakyReLU(alpha=0.3),kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dense(84, activation=keras.layers.LeakyReLU(alpha=0.3),kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
             keras.regularizers.l1(0.01)
             keras.regularizers.l2(0.04)
-            self.nn = keras.layers.Dense(48,activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
+            self.nn = keras.layers.Dense(64,activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
+            self.nn = keras.layers.Dense(24,activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
             self.nn = keras.layers.Dense(24,activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
             self.nn2 = keras.layers.Dense(2,activation='linear')(self.nn)
         # Sigmoid - Out 5
         elif self.model_choice == 6:
-            self.nn = keras.layers.Dense(126, activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
-            self.nn = keras.layers.Dense(126, activation='sigmoid')(self.nn)
+            self.nn = keras.layers.Dense(84, activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn_input)
+            self.nn = keras.layers.Dense(84, activation='sigmoid')(self.nn)
             self.nn = keras.layers.Dropout(0.6)(self.nn) # Residual
             keras.regularizers.l1(0.01)
             keras.regularizers.l2(0.04)
-            self.nn = keras.layers.Dense(48,activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
-            self.nn = keras.layers.Dense(8,activation='sigmoid')(self.nn)
+            self.nn = keras.layers.Dense(52,activation='sigmoid',kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
+            self.nn = keras.layers.Dense(22,activation='sigmoid')(self.nn)
             self.nn2 = keras.layers.Dense(2,activation='linear')(self.nn)
         self.nn = keras.Model(inputs=self.nn_input,outputs=[self.nn2])
         self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.002,beta_1=0.85,beta_2=0.997), loss='mse',metrics=['MeanAbsoluteError','MeanAbsolutePercentageError'])
@@ -136,9 +139,9 @@ class Network(Neural_Framework):
                     continue
                 try:
                     if self.model_choice < 4:
-                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,168)))
-                    else:
                         train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,126)))
+                    else:
+                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),(1,1,84)))
                     tmp = self.sampler.normalized_data.iloc[-1:]
                     tmp = pd.concat([pd.DataFrame([tmp['Open'].to_numpy()]),pd.DataFrame([tmp['Close'].to_numpy()])])
                     train_targets.append(np.reshape(tmp.to_numpy(),(1,2)))
@@ -154,7 +157,7 @@ class Network(Neural_Framework):
                     continue
                 j=j+1
             # Use fit for generating with ease.  Validation data included for analysis of loss
-            disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets),batch_size=4,epochs=1,validation_split=0.177)
+            disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets),batch_size=2,epochs=1,validation_split=0.177)
             models[i] = disp.history
             self.save_model()
 
@@ -392,9 +395,9 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
         with listLock:
             if neural_net.model_choice < 4:
                 if has_actuals:
-                    train.append(np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(),(1,1,168)))
+                    train.append(np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(),(1,1,126)))
                 else:
-                    train.append(np.reshape(sampler.normalized_data[-14:].to_numpy(),(1,1,168)))
+                    train.append(np.reshape(sampler.normalized_data[-14:].to_numpy(),(1,1,126)))
             else:
                 if has_actuals:
                     train.append(np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(),(1,1,126)))
@@ -456,8 +459,9 @@ def run(epochs,batch_size,name="model_relu"):
 # run(100,100,"model_relu")
 # run(100,100,"model_leaky")
 # run(100,100,"model_sigmoid")
-# run(100,100,"model_relu2")
-# run(100,100,"model_leaky2")
-# run(100,100,"model_sigmoid2")
+
+run(100,100,"model_relu2")
+run(100,100,"model_leaky2")
+run(100,100,"model_sigmoid2")
 # net=Network(1,1)
 # load("SPY",False,"model_relu2",True)     

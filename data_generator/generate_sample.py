@@ -41,7 +41,7 @@ class Sample(Normalizer):
             if not is_divergence:
                 rc = self.normalize(out=out)
             else:
-                rc = self.normalize_divergence()
+                rc = self.normalize_divergence(out=out)
             if rc == 1:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]

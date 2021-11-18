@@ -117,10 +117,15 @@ class Display():
         data = self.data_predict_display.reset_index()
         data.transpose().plot(ax=self.axes[row,col],kind='line',color=color)
     def display_line(self,color='g',row=0,col=1):
-        indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
-                        3:'Open EMA30 Euclidean',4:'Close EMA14 Euclidean',5:'Close EMA30 Euclidean',
-                        6:'EMA14 EMA30 Euclidean',7:'Prior Close Euclidean',8:'Upper Keltner Close Diff',
-                        9:'Lower Keltner Close Diff',10:'Open',11:'Close'}
+        if len(self.data_predict_display.columns) == 12:
+            indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
+                            3:'Open EMA30 Euclidean',4:'Close EMA14 Euclidean',5:'Close EMA30 Euclidean',
+                            6:'EMA14 EMA30 Euclidean',7:'Prior Close Euclidean',8:'Upper Keltner Close Diff',
+                            9:'Lower Keltner Close Diff',10:'Open',11:'Close'}
+        else:
+            indices_dict = {0:'Open',1:'Close',2:'Range'}
+
+
         self.data_display2 = pd.concat([self.data_display.reset_index(),self.data_predict_display.reset_index()],ignore_index=False).set_flags(allows_duplicate_labels=True)
         self.data_display2['index'] = [0,0]
         self.data_display2 = self.data_display2.set_index('index')
@@ -129,21 +134,40 @@ class Display():
         self.data_display2['index'] = [1,1]
         self.data_display2 = self.data_display2.set_index('index')
         self.data_display2['Close'].plot(x='index',y='Close',style='mo', ax=self.axes[row,col])
+        
+        if len(self.data_predict_display.columns) != 12:
+            self.data_display2['index'] = [2,2]
+            self.data_display2 = self.data_display2.set_index('index')
+            self.data_display2['Range'].plot(x='index',y='Range',style='mo', ax=self.axes[row,col])
         for i,row2 in enumerate(self.data_display2.index):
             for j,col2 in enumerate(self.data_display2.columns):
-                if i == 0:
-                    if j == 10 or j == 11:
-                        y = round(self.data_display2.iloc[i][j],2)
-                        self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - A {y}',size='x-small')
+                if len(self.data_predict_display.columns) == 12:
+                    if i == 0:
+                        if j == 10 or j == 11:
+                            y = round(self.data_display2.iloc[i][j],2)
+                            self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - A {y}',size='x-small')
+                    else:
+                        if j == 10 or j == 11:
+                            y = round(self.data_display2.iloc[i][j],2)
+                            self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
                 else:
-                    if j == 10 or j == 11:
-                        y = round(self.data_display2.iloc[i][j],2)
-                        self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
+                    if i == 0:
+                        if j == 0 or j == 1:
+                            y = round(self.data_display2.iloc[i][j],2)
+                            self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - A {y}',size='x-small')
+                    else:
+                        if j == 0 or j == 1:
+                            y = round(self.data_display2.iloc[i][j],2)
+                            self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
     def display_predict_only(self,color=None,row=0,col=1):
-        indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
-                        3:'Open EMA30 Euclidean',4:'Close EMA14 Euclidean',5:'Close EMA30 Euclidean',
-                        6:'EMA14 EMA30 Euclidean',7:'Prior Close Euclidean',8:'Upper Keltner Close Diff',
-                        9:'Lower Keltner Close Diff',10:'Open',11:'Close'}
+        if len(self.data_predict_display.columns) == 12:
+            indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
+                            3:'Open EMA30 Euclidean',4:'Close EMA14 Euclidean',5:'Close EMA30 Euclidean',
+                            6:'EMA14 EMA30 Euclidean',7:'Prior Close Euclidean',8:'Upper Keltner Close Diff',
+                            9:'Lower Keltner Close Diff',10:'Open',11:'Close'}
+        else:
+            indices_dict = {0:'Open',1:'Close',2:'Range'}
+        
         self.data_predict_display2 = self.data_predict_display
         self.data_predict_display2['index'] = [0]
         self.data_predict_display2 = self.data_predict_display2.set_index('index')
@@ -153,7 +177,12 @@ class Display():
         data = self.data_predict_display2.set_index('index')
         data['Close'].plot(x='index',y='Close',style='mo', ax=self.axes[row,col])
         data['index'] = [6]
-
+        if len(self.data_predict_display.columns) != 12:
+            self.data_predict_display2['index'] = [2]
+            data = self.data_predict_display2.set_index('index')
+            data['Range'].plot(x='index',y='Range',style='mo', ax=self.axes[row,col])
+            data['index'] = [3]
+        
         for i,row2 in enumerate(self.data_predict_display2.index):
             for j,col2 in enumerate(self.data_predict_display2.columns):
                 y = round(data.iloc[i][j],2)

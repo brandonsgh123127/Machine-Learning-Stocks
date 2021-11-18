@@ -62,12 +62,17 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`NN-Data` (
   `model` VARCHAR(45) NULL,
   `open` DOUBLE(6, 3) NULL,
   `close` DOUBLE(6, 3) NULL,
+  `range` DOUBLE(6,3) NULL,
   PRIMARY KEY (`nn-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`nn-data` (`nn-id`,`stock-id`,`from-date-id`,`to-date-id`);
 CREATE INDEX `from-to-model` ON stocks.`nn-data` (`from-date-id`,`to-date-id`,`model`);
 CREATE INDEX `stockid` ON stocks.`nn-data` (`stock-id`);
 select * from `nn-data`;
+Alter table stocks.`nn-data` add column `range` DOUBLE(6,3) NULL after close;
+
+
+
 CREATE TABLE IF NOT EXISTS `Stocks`.`Options` (
   `option-id` VARBINARY(128) NOT NULL,
   `stock-id` VARBINARY(128) NOT NULL,
