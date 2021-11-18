@@ -369,8 +369,10 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
         if data is not None:
             sampler.set_sample_data(data[0],data[1],data[2],data[3])
         train = []
-        sampler.generate_sample(_has_actuals=has_actuals,rand_date=rand_date)
-    
+        if neural_net.model_choice < 4:
+            sampler.generate_sample(_has_actuals=has_actuals,out=8,rand_date=rand_date)
+        else:
+            sampler.generate_sample(_has_actuals=has_actuals,out=2,rand_date=rand_date)
         try: # verify there is no extra 'index' column
             sampler.data = sampler.data.drop(['index'],axis=1)
         except Exception as e:
@@ -388,22 +390,18 @@ def load(ticker:str=None,has_actuals:bool=False,name:str="model_relu",force_gene
         if not force_generation:
             print(f'[INFO] Did not query all specified dates within range for nn-data retrieval!')
         with listLock:
-            if has_actuals:
-                train.append(np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(),(1,1,154)))
+            if neural_net.model_choice < 4:
+                if has_actuals:
+                    train.append(np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(),(1,1,168)))
+                else:
+                    train.append(np.reshape(sampler.normalized_data[-14:].to_numpy(),(1,1,168)))
             else:
-                train.append(np.reshape(sampler.normalized_data[-14:].to_numpy(),(1,1,154)))
+                if has_actuals:
+                    train.append(np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(),(1,1,126)))
+                else:
+                    train.append(np.reshape(sampler.normalized_data[-14:].to_numpy(),(1,1,126)))
             prediction = neural_net.nn.predict(np.stack(train))
-        if neural_net.model_choice <= 3:
-            predicted = pd.DataFrame((np.reshape((prediction),(1,11))),columns=['Open EMA Euclidean','Close EMA Euclidean',
-                                                        'Open EMA14 Euclidean','Open EMA30 Euclidean',
-                                                        'Close EMA14 Euclidean','Close EMA30 Euclidean',
-                                                        'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
-                                                        'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
-                                                        'Close']) #NORMALIZED
-        else:
-            predicted = pd.DataFrame((np.reshape((prediction),(1,6))),columns=['Open EMA Euclidean','Close EMA Euclidean',
-                                             'Prior Close Euclidean','Upper Keltner Close Diff',
-                                              'Lower Keltner Close Diff',
+        predicted = pd.DataFrame((np.reshape((prediction),(1,2))),columns=['Open',
                                               'Close']) #NORMALIZED
             
         # Upload data to DB given prediction has finished
@@ -462,4 +460,4 @@ def run(epochs,batch_size,name="model_relu"):
 # run(100,100,"model_leaky2")
 # run(100,100,"model_sigmoid2")
 # net=Network(1,1)
-# load("SPY",False,"model_relu",True)     
+# load("SPY",False,"model_relu2",True)     

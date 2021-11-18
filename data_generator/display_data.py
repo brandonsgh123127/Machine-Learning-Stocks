@@ -132,11 +132,13 @@ class Display():
         for i,row2 in enumerate(self.data_display2.index):
             for j,col2 in enumerate(self.data_display2.columns):
                 if i == 0:
-                    y = round(self.data_display2.iloc[i][j],2)
-                    self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - A {y}',size='x-small')
+                    if j == 10 or j == 11:
+                        y = round(self.data_display2.iloc[i][j],2)
+                        self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - A {y}',size='x-small')
                 else:
-                    y = round(self.data_display2.iloc[i][j],2)
-                    self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
+                    if j == 10 or j == 11:
+                        y = round(self.data_display2.iloc[i][j],2)
+                        self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
     def display_predict_only(self,color=None,row=0,col=1):
         indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
                         3:'Open EMA30 Euclidean',4:'Close EMA14 Euclidean',5:'Close EMA30 Euclidean',
