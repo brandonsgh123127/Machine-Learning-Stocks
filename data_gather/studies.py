@@ -280,8 +280,139 @@ class Studies(Gather):
     def fib_help(self,val1,val2,val3,fib_val):
         if val1<val2: # means val 3 is higher low -- upwards
             return ( val3 + ((val2-val1)*fib_val))
-        else: # val 3 is a lower high -- downards
+        else: # val 3 is a lower high -- downwards
             return ( val3 - ((val2-val1)*-(fib_val)))
+    def upwards_fib(self,new_set):
+        # After this, iterate new list and find which direction stock may go
+        val1=None;val2=None;val3=None
+
+        for i,row in new_set['Vals'].iloc[::-1].iteritems(): # val 1 
+            if i == len(new_set.index) -1: # if last element, skip
+                continue
+            # if the last value is greater than 15 days prior , do upwards fib, else downwards
+            if new_set['Vals'].iloc[i] > new_set['Vals'].iloc[-15]:
+                if row < float(new_set['Vals'].iloc[i + 1]) and not float(new_set['Vals'].iloc[i - 1]) < row : # if low is found, jump to this value
+                    val1 =  row
+                    # find val2 by finding next local high
+                    for j,sub in new_set['Vals'].iloc[::-1].iteritems():
+                        if j >= i:
+                            continue
+                        else: # find val2 by making sure next local high is valid
+                            if sub > float(new_set['Vals'].iloc[j + 1]) and not float(new_set['Vals'].iloc[j - 1]) > sub:
+                                val2 = sub
+                                # find val3 by getting next low
+                                for k,low in new_set['Vals'].iloc[::-1].iteritems():
+                                    if k >= j:
+                                        continue
+                                    else:
+                                        if low < float(new_set['Vals'].iloc[k + 1]) and not float(new_set['Vals'].iloc[k - 1]) < low:
+                                            val3 = low
+                                            return (val1,val2,val3)
+                                        else:
+                                            continue
+                                break
+                            else:
+                                continue
+                    break
+                else:
+                    continue
+            else:
+                raise Exception("Did not find upwards fib value")
+        return (val1,val2,val3)
+            
+    def downwards_fib(self,new_set):
+        # After this, iterate new list and find which direction stock may go
+        val1=None;val2=None;val3=None
+        for i,row in new_set['Vals'].iloc[::-2].iteritems(): # val 1 
+            if i == len(new_set.index) -1: # if last element, skip
+                continue
+            # if the last value is greater than 15 days prior , do upwards fib, else downwards
+            if new_set['Vals'].iloc[-1] < new_set['Vals'].iloc[-15]:
+                # attempt downwards fib
+                if row > float(new_set['Vals'].iloc[i + 1]) and not float(new_set['Vals'].iloc[i - 1]) > row : # if low is found, jump to this value
+                    val1 =  row
+                    # find val2 by finding next local high
+                    for j,sub in new_set['Vals'].iloc[::-1].iteritems():
+                        if j >= i:
+                            continue
+                        else: # find val2 by making sure next local low is valid
+                            if sub < float(new_set['Vals'].iloc[j + 1]) and not float(new_set['Vals'].iloc[j - 1]) < sub:
+                                val2 = sub
+                                # find val3 by getting next high
+                                for k,low in new_set['Vals'].iloc[::-1].iteritems():
+                                    if k >= j:
+                                        continue
+                                    else:
+                                        if low > float(new_set['Vals'].iloc[k + 1]) and not float(new_set['Vals'].iloc[k - 1]) > low:
+                                            val3 = low
+                                            return (val1,val2,val3)
+                                        else:
+                                            continue
+                                break
+                            else:
+                                continue
+                    break
+                else:
+                    continue
+            else:
+                raise Exception("Did not find downwards fib value")
+        return (val1,val2,val3)
+    
+    def insert_fib_vals(self,skip_db):
+        # Insert data if not in db...
+        if not skip_db:
+            insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
+                                        `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """
+            insert_list=[]
+            self.fibonacci_extension= self.fibonacci_extension.reset_index().astype(float)
+            for index,row in self.data.iterrows():
+                insert_tuple=(f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",512)))',
+                f'{self.stock_ids[index]}',
+                f'{self.data_ids[index]}',
+                f'{self.study_id}',
+                self.fibonacci_extension.at[0,"0.202"],
+                self.fibonacci_extension.at[0,"0.236"],
+                self.fibonacci_extension.at[0,"0.241"],
+                self.fibonacci_extension.at[0,"0.273"],
+                self.fibonacci_extension.at[0,"0.283"],
+                self.fibonacci_extension.at[0,"0.316"],
+                self.fibonacci_extension.at[0,"0.382"],
+                self.fibonacci_extension.at[0,"0.5"],
+                self.fibonacci_extension.at[0,"0.618"],
+                self.fibonacci_extension.at[0,"0.796"],
+                self.fibonacci_extension.at[0,"1.556"],
+                self.fibonacci_extension.at[0,"3.43"],
+                self.fibonacci_extension.at[0,"3.83"],
+                self.fibonacci_extension.at[0,"5.44"])
+                insert_list.append(insert_tuple) # add tuple to list
+                # duplicate row by 1
+                self.fibonacci_extension = self.fibonacci_extension.append([self.fibonacci_extension.iloc[0]]*1,ignore_index=True)
+
+            try:
+                insert_studies_db_result = self.fib_cnx.executemany(insert_studies_db_stmt,insert_list)
+            except mysql.connector.errors.IntegrityError:
+                self.fib_cnx.close()
+                pass
+            except Exception as e:
+                print('[ERROR] Failed to insert study-data element fibonacci!\n',str(e))
+                self.fib_cnx.close()
+                pass
+            try:
+                self.db_con.commit()
+            except mysql.connector.errors.IntegrityError:
+                print('Integrity Error!')
+                self.fib_cnx.close()
+                pass
+            except Exception as e:
+                print('[ERROR] Failed to insert fib-data element fibonacci!\n',str(e))
+                self.fib_cnx.close()
+                pass
+        else:
+            for index,row in self.data.iterrows():
+                self.fibonacci_extension = self.fibonacci_extension.append([self.fibonacci_extension.iloc[0]]*1,ignore_index=True)
+
         '''
         Fibonacci extensions utilized for predicting key breaking points
         val2 ------------------------                 val3
@@ -515,142 +646,45 @@ val1    val3_________________________          vall2
                 
                 # After this, iterate new list and find which direction stock may go
                 val1=None;val2=None;val3=None
-                for i,row in new_set['Vals'].iloc[int(len(new_set.index)/1.33):].iteritems(): # val 1 
-                    if i != 0:
-                        # if the first value is lower than the close , do upwards fib, else downwards
-                        if new_set.at[0,'Vals'] < new_set.at[len(new_set.index)-1,'Vals']:
-                            # attempt upwards fib
-                            try:
-                                if row < float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) < row : # if low is found, jump to this value
-                                    val1 =  row
-                                    # find val2 by finding next local high
-                                    for j,sub in new_set['Vals'].iloc[int(i):].iteritems():
-                                        if j < i:
-                                            continue
-                                        else: # find val2 by making sure next local high is valid
-                                            if sub > float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) > sub:
-                                                val2 = sub
-                                                # find val3 by getting next low
-                                                for k,low in new_set['Vals'].iloc[int(j):].iteritems():
-                                                    if k < j:
-                                                        continue
-                                                    else:
-                                                        if low < float(new_set.at[k - 1,'Vals']) and not float(new_set.at[k + 1,'Vals']) < low:
-                                                            val3 = low
-                                                            break 
-                                                        else:
-                                                            continue
-                                                break
-                                            else:
-                                                continue
-                                    break
-                                else:
-                                    continue
-                                            
-                            except Exception as e:
-                                exc_type, exc_obj, exc_tb = sys.exc_info()
-                                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                                print(exc_type, fname, exc_tb.tb_lineno)
-                                print(f'[ERROR] Failed upwards fib!  This could be due to not finding a higher low...\n{str(e)}',flush=True)  
-                                raise Exception('[ERROR] Failed to generate fib!')
-                        else:
-                            # attempt downwards fib
-                            try:
-                                if row > float(new_set.at[i - 1,'Vals']) and not float(new_set.at[i + 1,'Vals']) > row : # if low is found, jump to this value
-                                    val1 =  row
-                                    # find val2 by finding next local high
-                                    for j,sub in new_set['Vals'].iloc[int(i):].iteritems():
-                                        if j < i:
-                                            continue
-                                        else: # find val2 by making sure next local low is valid
-                                            if sub < float(new_set.at[j + 1,'Vals']) and not float(new_set.at[j - 1,'Vals']) < sub:
-                                                val2 = sub
-                                                # find val3 by getting next high
-                                                for k,low in new_set['Vals'].iloc[int(j):].iteritems():
-                                                    if k < j:
-                                                        continue
-                                                    else:
-                                                        if low > float(new_set.at[k - 1,'Vals']) and not float(new_set.at[k + 1,'Vals']) > low:
-                                                            val3 = low
-                                                            break 
-                                                        else:
-                                                            continue
-                                                break
-                                            else:
-                                                continue
-                                    break
-                                else:
-                                    continue
-                                            
-                            except Exception as e:
-                                exc_type, exc_obj, exc_tb = sys.exc_info()
-                                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                                print(exc_type, fname, exc_tb.tb_lineno)
-                                raise Exception(f"[ERROR] Failed downwards fib!\n{str(e)}")
-                    else:
-                        val1=float(row)
-                        continue
-    
-                # calculate values  -- 14 vals
-                self.fibonacci_extension= pd.DataFrame({'0.202':[self.fib_help(val1,val2,val3,0.202)],'0.236':[self.fib_help(val1,val2,val3,0.236)],'0.241':[self.fib_help(val1,val2,val3,0.241)],
+                # attempt upwards fib
+                try:
+                    val1,val2,val3=self.upwards_fib(new_set)
+                    # calculate values  -- 14 vals
+                    self.fibonacci_extension= pd.DataFrame({'0.202':[self.fib_help(val1,val2,val3,0.202)],'0.236':[self.fib_help(val1,val2,val3,0.236)],'0.241':[self.fib_help(val1,val2,val3,0.241)],
                                                                   '0.273':[self.fib_help(val1,val2,val3,0.273)],'0.283':[self.fib_help(val1,val2,val3,0.283)],'0.316':[self.fib_help(val1,val2,val3,0.316)],
                                                                   '0.382':[self.fib_help(val1,val2,val3,0.382)],'0.5':[self.fib_help(val1,val2,val3,0.5)],'0.618':[self.fib_help(val1,val2,val3,0.618)],
                                                                   '0.796':[self.fib_help(val1,val2,val3,0.796)],'1.556':[self.fib_help(val1,val2,val3,1.556)],'3.43':[self.fib_help(val1,val2,val3,3.43)],
                                                                   '3.83':[self.fib_help(val1,val2,val3,3.83)],'5.44':[self.fib_help(val1,val2,val3,5.44)]})
-           
-            # Insert data if not in db...
-            if not skip_db:
-                insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                    """
-                insert_list=[]
-                self.fibonacci_extension= self.fibonacci_extension.reset_index().astype(float)
-                for index,row in self.data.iterrows():
-                    insert_tuple=(f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",512)))',
-                    f'{self.stock_ids[index]}',
-                    f'{self.data_ids[index]}',
-                    f'{self.study_id}',
-                    self.fibonacci_extension.at[0,"0.202"],
-                    self.fibonacci_extension.at[0,"0.236"],
-                    self.fibonacci_extension.at[0,"0.241"],
-                    self.fibonacci_extension.at[0,"0.273"],
-                    self.fibonacci_extension.at[0,"0.283"],
-                    self.fibonacci_extension.at[0,"0.316"],
-                    self.fibonacci_extension.at[0,"0.382"],
-                    self.fibonacci_extension.at[0,"0.5"],
-                    self.fibonacci_extension.at[0,"0.618"],
-                    self.fibonacci_extension.at[0,"0.796"],
-                    self.fibonacci_extension.at[0,"1.556"],
-                    self.fibonacci_extension.at[0,"3.43"],
-                    self.fibonacci_extension.at[0,"3.83"],
-                    self.fibonacci_extension.at[0,"5.44"])
-                    insert_list.append(insert_tuple) # add tuple to list
-                    # duplicate row by 1
-                    self.fibonacci_extension = self.fibonacci_extension.append([self.fibonacci_extension.iloc[0]]*1,ignore_index=True)
+                    self.insert_fib_vals(skip_db=skip_db) # insert to db
+                except Exception as e:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(exc_type, fname, exc_tb.tb_lineno)
+                    print(f'[Info] Failed upwards fib!\n{str(e)}',flush=True)  
+                
     
                 try:
-                    insert_studies_db_result = self.fib_cnx.executemany(insert_studies_db_stmt,insert_list)
-                except mysql.connector.errors.IntegrityError:
-                    self.fib_cnx.close()
-                    pass
+                    val1,val2,val3=self.downwards_fib(new_set)
+                    if self.fibonacci_extension.empty: # If upwards fails, initialize here
+                        # calculate values  -- 14 vals
+                        self.fibonacci_extension= pd.DataFrame({'0.202':[self.fib_help(val1,val2,val3,0.202)],'0.236':[self.fib_help(val1,val2,val3,0.236)],'0.241':[self.fib_help(val1,val2,val3,0.241)],
+                                                                          '0.273':[self.fib_help(val1,val2,val3,0.273)],'0.283':[self.fib_help(val1,val2,val3,0.283)],'0.316':[self.fib_help(val1,val2,val3,0.316)],
+                                                                          '0.382':[self.fib_help(val1,val2,val3,0.382)],'0.5':[self.fib_help(val1,val2,val3,0.5)],'0.618':[self.fib_help(val1,val2,val3,0.618)],
+                                                                          '0.796':[self.fib_help(val1,val2,val3,0.796)],'1.556':[self.fib_help(val1,val2,val3,1.556)],'3.43':[self.fib_help(val1,val2,val3,3.43)],
+                                                                          '3.83':[self.fib_help(val1,val2,val3,3.83)],'5.44':[self.fib_help(val1,val2,val3,5.44)]})
+                    else: # else, append
+                        self.fibonacci_extension= self.fibonacci_extension.append({'0.202':[self.fib_help(val1,val2,val3,0.202)],'0.236':[self.fib_help(val1,val2,val3,0.236)],'0.241':[self.fib_help(val1,val2,val3,0.241)],
+                                                                      '0.273':[self.fib_help(val1,val2,val3,0.273)],'0.283':[self.fib_help(val1,val2,val3,0.283)],'0.316':[self.fib_help(val1,val2,val3,0.316)],
+                                                                      '0.382':[self.fib_help(val1,val2,val3,0.382)],'0.5':[self.fib_help(val1,val2,val3,0.5)],'0.618':[self.fib_help(val1,val2,val3,0.618)],
+                                                                      '0.796':[self.fib_help(val1,val2,val3,0.796)],'1.556':[self.fib_help(val1,val2,val3,1.556)],'3.43':[self.fib_help(val1,val2,val3,3.43)],
+                                                                      '3.83':[self.fib_help(val1,val2,val3,3.83)],'5.44':[self.fib_help(val1,val2,val3,5.44)]})
+
                 except Exception as e:
-                    print('[ERROR] Failed to insert study-data element fibonacci!\n',str(e))
-                    self.fib_cnx.close()
-                    pass
-                try:
-                    self.db_con.commit()
-                except mysql.connector.errors.IntegrityError:
-                    print('Integrity Error!')
-                    self.fib_cnx.close()
-                    pass
-                except Exception as e:
-                    print('[ERROR] Failed to insert fib-data element fibonacci!\n',str(e))
-                    self.fib_cnx.close()
-                    pass
-            else:
-                for index,row in self.data.iterrows():
-                    self.fibonacci_extension = self.fibonacci_extension.append([self.fibonacci_extension.iloc[0]]*1,ignore_index=True)
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(exc_type, fname, exc_tb.tb_lineno)
+                    print(f'[ERROR] Failed downwards fib!\n{str(e)}',flush=True)  
+                
         self.fib_cnx.close()
         return 0
     
