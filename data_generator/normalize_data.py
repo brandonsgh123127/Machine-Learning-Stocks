@@ -173,18 +173,17 @@ class Normalizer():
                 if index == 0:
                     self.normalized_data.loc[index,"Open"] = data["Open"].iloc[0]
                     self.normalized_data.loc[index,"Close"] = data["Close"].iloc[0]
-                    self.normalized_data.loc[index,"Keltner Pos"] = np.power(np.power(((data.at[index,"Open"] - self.studies.at[index,"ema14"])+(data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
                     self.normalized_data.loc[index,"Close EMA14 Euclidean"] = np.power(np.power((((data.at[index,"Close"] - self.studies.at[index,'ema14']))),2),1/2)
                     self.normalized_data.loc[index,"Close EMA30 Euclidean"] = np.power(np.power((((data.at[index,"Close"] - self.studies.at[index,'ema30']))),2),1/2)
                     self.normalized_data.loc[index,"EMA14 EMA30 Euclidean"] = np.power(np.power((((self.studies.at[index,"ema14"] - self.studies.at[index,'ema30']))),2),1/2)
                     self.normalized_data.loc[index,"Prior Close Euclidean"] = (0)
-                    self.normalized_data.loc[index,"Upper Keltner Close Diff"] = (self.keltner.at[index,"upper"] - data.at[index,'Close'])
-                    self.normalized_data.loc[index,"Lower Keltner Close Diff"] = (self.keltner.at[index,"lower"] - data.at[index,'Close'])
-    
+                    self.normalized_data.loc[index,"Upper Keltner Close Diff"] = (data.at[index,'Close'] - self.keltner.at[index,"upper"])
+                    self.normalized_data.loc[index,"Lower Keltner Close Diff"] = (data.at[index,'Close'] - self.keltner.at[index,"lower"])
+                    self.normalized_data.loc[index,"Keltner Pos"] = (self.normalized_data.at[index,"Upper Keltner Close Diff"] - self.normalized_data.at[index,"Lower Keltner Close Diff"])
                 else:
                     self.normalized_data.loc[index,"Close"] = ((data.at[index,"Close"] - data.at[index-1,"Close"]))/(1)
                     self.normalized_data.loc[index,"Open"] = ((data.at[index,"Open"] - data.at[index-1,"Open"]))/(1)
-                    self.normalized_data.loc[index,"Keltner Pos"] = np.power(np.power(((data.at[index,"Open"] - self.studies.at[index,"ema14"])+(data.at[index,"Open"] - self.studies.at[index,"ema30"])),2),1/2)
+                    self.normalized_data.loc[index,"Keltner Pos"] = (self.normalized_data.at[index,"Upper Keltner Close Diff"] - self.normalized_data.at[index,"Lower Keltner Close Diff"])
                     self.normalized_data.loc[index,"Close EMA14 Euclidean"] = np.power(np.power((((data.at[index,"Close"] - self.studies.at[index,'ema14']))),2),1/2)
                     self.normalized_data.loc[index,"Close EMA30 Euclidean"] = np.power(np.power((((data.at[index,"Close"] - self.studies.at[index,'ema30']))),2),1/2)
                     self.normalized_data.loc[index,"EMA14 EMA30 Euclidean"] = np.power(np.power((((self.studies.at[index,"ema14"] - self.studies.at[index,'ema30']))),2),1/2)
