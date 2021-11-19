@@ -117,12 +117,11 @@ class Display():
         data = self.data_predict_display.reset_index()
         data.transpose().plot(ax=self.axes[row,col],kind='line',color=color)
     def display_line(self,color='g',row=0,col=1):
-        if len(self.data_predict_display.columns) == 12:
-            indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
-                            3:'Open EMA30 Euclidean',4:'Close EMA14 Euclidean',5:'Close EMA30 Euclidean',
-                            6:'EMA14 EMA30 Euclidean',7:'Prior Close Euclidean',8:'Upper Keltner Close Diff',
-                            9:'Lower Keltner Close Diff',10:'Open',11:'Close'}
-        else:
+        if len(self.data_predict_display.columns) == 9:
+            indices_dict = {0:'Keltner Pos',1:'Close EMA14 Euclidean',2:'Close EMA30 Euclidean',
+                            3:'EMA14 EMA30 Euclidean',4:'Prior Close Euclidean',5:'Upper Keltner Close Diff',
+                            6:'Lower Keltner Close Diff',7:'Open',8:'Close'}
+        elif len(self.data_predict_display.columns) == 10:
             indices_dict = {0:'Open',1:'Close',2:'Range'}
 
 
@@ -136,13 +135,17 @@ class Display():
         self.data_display2['Close'].plot(x='index',y='Close',style='mo', ax=self.axes[row,col])
         
         # if divergence, add range label
-        if len(self.data_predict_display.columns) == 10:
-            self.data_display2['index'] = [2,2]
-            self.data_display2 = self.data_display2.set_index('index')
-            self.data_display2['Range'].plot(x='index',y='Range',style='mo', ax=self.axes[row,col])
+        try:
+            if len(self.data_display2.columns) == 11:
+                self.data_display2['index'] = [2,2]
+                self.data_display2 = self.data_display2.set_index('index')
+                self.data_display2['Range'].plot(x='index',y='Range',style='mo', ax=self.axes[row,col])
+        except Exception as e:
+            raise Exception(f'[INFO] Failed to draw "Range" column!\n{len(self.data_predict_display2.columns)}\n{self.data_predict_display2.columns}\n{str(e)}')
+
         for i,row2 in enumerate(self.data_display2.index):
             for j,col2 in enumerate(self.data_display2.columns):
-                if len(self.data_predict_display.columns) == 9:
+                if len(self.data_display2.columns) == 10:
                     if i == 0:
                         if j == 7 or j == 8:
                             y = round(self.data_display2.iloc[i][j],2)
@@ -151,7 +154,7 @@ class Display():
                         if j == 7 or j == 8:
                             y = round(self.data_display2.iloc[i][j],2)
                             self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
-                elif len(self.data_predict_display.columns) == 10: # divergence
+                elif len(self.data_display2.columns) == 11: # divergence
                     if i == 0:
                         if j == 0 or j == 1 or j == 2:
                             y = round(self.data_display2.iloc[i][j],2)
@@ -161,12 +164,11 @@ class Display():
                             y = round(self.data_display2.iloc[i][j],2)
                             self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
     def display_predict_only(self,color=None,row=0,col=1):
-        if len(self.data_predict_display.columns) == 12:
-            indices_dict = {0:'Open EMA Euclidean',1:'Close EMA Euclidean',2:'Open EMA14 Euclidean',
-                            3:'Open EMA30 Euclidean',4:'Close EMA14 Euclidean',5:'Close EMA30 Euclidean',
-                            6:'EMA14 EMA30 Euclidean',7:'Prior Close Euclidean',8:'Upper Keltner Close Diff',
-                            9:'Lower Keltner Close Diff',10:'Open',11:'Close'}
-        else:
+        if len(self.data_predict_display.columns) == 9:
+            indices_dict = {0:'Keltner Pos',1:'Close EMA14 Euclidean',2:'Close EMA30 Euclidean',
+                            3:'EMA14 EMA30 Euclidean',4:'Prior Close Euclidean',5:'Upper Keltner Close Diff',
+                            6:'Lower Keltner Close Diff',7:'Open',8:'Close'}
+        elif len(self.data_predict_display.columns) == 10:
             indices_dict = {0:'Open',1:'Close',2:'Range'}
         
         self.data_predict_display2 = self.data_predict_display
@@ -179,19 +181,22 @@ class Display():
         data['Close'].plot(x='index',y='Close',style='mo', ax=self.axes[row,col])
         data['index'] = [6]
         # Under divergence print range label
-        if len(self.data_predict_display.columns) == 9:
-            self.data_predict_display2['index'] = [2]
-            data = self.data_predict_display2.set_index('index')
-            data['Range'].plot(x='index',y='Range',style='mo', ax=self.axes[row,col])
-            data['index'] = [3]
-        
+        try:
+            if len(self.data_predict_display2.columns) == 11:
+                self.data_predict_display2['index'] = [2]
+                data = self.data_predict_display2.set_index('index')
+                data['Range'].plot(x='index',y='Range',style='mo', ax=self.axes[row,col])
+                data['index'] = [3]
+        except Exception as e:
+            raise Exception(f'[INFO] Failed to draw "Range" column!\n{len(self.data_predict_display2.columns)}\n{self.data_predict_display2.columns}\n{str(e)}')
+            
         for i,row2 in enumerate(self.data_predict_display2.index):
             for j,col2 in enumerate(self.data_predict_display2.columns):
-                if len(self.data_predict_display2.columns) == 9: # regular
+                if len(self.data_predict_display2.columns) == 10: # regular
                     if j == 7 or j == 8:
                         y = round(data.iloc[i][j],2)
                         self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
-                elif len(self.data_predict_display2.columns) == 10: # divergence
+                elif len(self.data_predict_display2.columns) == 11: # divergence
                     if j == 0 or j == 1 or j == 2:
                         y = round(data.iloc[i][j],2)
                         self.axes[row,col].text(j, y, f'{indices_dict.get(j)} - P {y}',size='x-small')
