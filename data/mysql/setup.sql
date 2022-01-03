@@ -115,6 +115,9 @@ DELETE FROM data;
 DELETE FROM `study-data`;
 DELETE FROM study;
 DELETE FROM `nn-data`;
+DELETE FROM `options`;
+DELETE FROM `options-data`;
+DELETE FROM `options-expiry`;
 
 -- SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
 --                         ON `stocks`.`data`.`stock-id` = `stocks`.`stock`.`id` 
@@ -142,7 +145,7 @@ DELETE FROM `nn-data`;
 --                             stocks.stock.`id` = stocks.`study-data`.`stock-id`
 --                             AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`;
 SHOW TABLES FROM stocks;
-EXPLAIN select * from stocks.`data` USE INDEX (`id-and-date`) ;
+select * from stocks.`data` USE INDEX (`id-and-date`) ;
 select `open`,`high`,`low`,`close` from stocks.`data` USE INDEX (`id-and-date`,`date`) INNER JOIN stocks.`stock` USE INDEX(`stockid`) on `date` = DATE('2021-11-04') and `id` = stocks.`data`.`stock-id`;
 select * from stocks.`stock` USE INDEX (`stockid`);
 select * from stocks.study USE INDEX (`studyid`);
