@@ -37,7 +37,7 @@ class Generator():
             try:
                 if studies.set_data_from_range(studies.date_set[0], studies.date_set[1],
                                                _force_generate=True) != 0 or studies.data.isnull().values.any() or len(
-                        studies.data) < 16:
+                    studies.data) < 16:
                     print(f'[ERROR] Failed to generate data for {self.ticker}')
                     return 1
             except RuntimeError:
@@ -81,18 +81,28 @@ class Generator():
         self.studies.set_indicator(ticker)
         if ticker is not None:
             self.ticker = ticker
-        if datetime.datetime.utcnow().date().weekday() == 5:
-            self.studies.set_data_from_range(datetime.datetime.utcnow() - datetime.timedelta(days=1),
-                                             datetime.datetime.utcnow(), _force_generate=force_generation)
-        elif datetime.datetime.utcnow().date().weekday() == 6:
-            self.studies.set_data_from_range(datetime.datetime.utcnow() - datetime.timedelta(days=2),
-                                             datetime.datetime.utcnow(), _force_generate=force_generation)
-        elif datetime.datetime.utcnow().date().weekday() == 0:  # monday
-            self.studies.set_data_from_range(datetime.datetime.utcnow() - datetime.timedelta(days=3),
-                                             datetime.datetime.utcnow(), _force_generate=force_generation)
+        # When UTC time is past 9AM EST, we would like to stay until UTC goes to the next day
+        if 14 > datetime.datetime.utcnow().hour < 24:
+            start = datetime.datetime.utcnow() - datetime.timedelta(
+                days=1)
+            end = datetime.datetime.utcnow()
         else:
-            self.studies.set_data_from_range(datetime.datetime.utcnow() - datetime.timedelta(days=1),
-                                             datetime.datetime.utcnow(), _force_generate=force_generation)
+            start = datetime.datetime.utcnow() - datetime.timedelta(
+                days=2)
+            end = datetime.datetime.utcnow() - datetime.timedelta(
+                days=1)
+        if end.date().weekday() == 5:
+            self.studies.set_data_from_range(start - datetime.timedelta(days=1),
+                                             end, _force_generate=force_generation)
+        elif end.date().weekday() == 6:
+            self.studies.set_data_from_range(start - datetime.timedelta(days=2),
+                                             end, _force_generate=force_generation)
+        elif end.date().weekday() == 0:  # monday
+            self.studies.set_data_from_range(start - datetime.timedelta(days=3),
+                                             end, _force_generate=force_generation)
+        else:
+            self.studies.set_data_from_range(start - datetime.timedelta(days=1),
+                                             end, _force_generate=force_generation)
         try:
             return [round(self.studies.data[['Close']].diff().iloc[1].to_list()[0], 3),
                     f'{round(self.studies.data[["Close"]].pct_change().iloc[1].to_list()[0] * 100, 3)}%']

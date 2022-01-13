@@ -188,13 +188,10 @@ def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False):
 def get_preview_prices(ticker: str, force_generation=False):
     try:
         res = data_gen.generate_quick_data(ticker, force_generation)
-    except:
-        time.sleep(3)
-        print(ticker)
-        res = data_gen.generate_quick_data(ticker, force_generation)
-
-    return data_gen.generate_quick_data(ticker, force_generation)
-
+        return res
+    except Exception as e:
+        print(f'[ERROR] No data generated for {ticker}!  Continuing...')
+        return ['nan'], ['nan']
 
 if __name__ == "__main__":
     _type = sys.argv[1]

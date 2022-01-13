@@ -214,15 +214,19 @@ class Gather:
                         try:
                             self.data = get_data(self.indicator.upper(), start_date=start_date.strftime("%Y-%m-%d"),
                                                  end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
+                            break
                         except AssertionError as a:
                             raise Exception(
                                 f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
+                        except KeyError as ke:
+                            raise Exception(f'[ERROR] specific key could not be retrieved in order to complete request for {self.indicator}'+
+                                            f' from {start_date.strftime("%Y-%m-%d")} to {end_date.strftime("%Y-%m-%d")}!\n{str(ke)}')
                     if retries > max_retries:
-                        print('[ERROR] Failed to gather data!')
+                        print('[ERROR] Failed to gather data!',flush=True)
                         raise Exception()
                     else:
                         pass
-                if self.data.empty:
+                if type(self.data) is pd.DataFrame and self.data.empty:
                     print(f'[ERROR] Data returned for {self.indicator} is empty!')
                     return 1
                 if not skip_db:
