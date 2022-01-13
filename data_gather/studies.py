@@ -305,11 +305,11 @@ class Studies(Gather):
         val2 = None;
         val3 = None
 
-        for i, row in new_set['Vals'].iloc[::-1].iteritems():  # val 1
+        for i, row in new_set['Vals'].iloc[::-1].iteritems():  # reverse order iteration
             if i == len(new_set.index) - 1:  # if last element, skip
                 continue
-            # if the last value is greater than 15 days prior , do upwards fib, else downwards
-            if new_set['Vals'].iloc[i] > new_set['Vals'].iloc[-15]:
+            # if the last value is greater than 10 days prior , do upwards fib, else downwards
+            if new_set['Vals'].iloc[i] > new_set['Vals'].iloc[-10]:
                 if row < float(new_set['Vals'].iloc[i + 1]) and not float(
                         new_set['Vals'].iloc[i - 1]) < row:  # if low is found, jump to this value
                     val1 = row
@@ -344,14 +344,14 @@ class Studies(Gather):
 
     def downwards_fib(self, new_set):
         # After this, iterate new list and find which direction stock may go
-        val1 = None;
-        val2 = None;
+        val1 = None
+        val2 = None
         val3 = None
-        for i, row in new_set['Vals'].iloc[::-2].iteritems():  # val 1
+        for i, row in new_set['Vals'].iloc[::-1].iteritems():  # val 1
             if i == len(new_set.index) - 1:  # if last element, skip
                 continue
-            # if the last value is greater than 15 days prior , do upwards fib, else downwards
-            if new_set['Vals'].iloc[-1] < new_set['Vals'].iloc[-15]:
+            # if the last value is greater than 10 days prior , do downwards fib
+            if new_set['Vals'].iloc[-1] < new_set['Vals'].iloc[-10]:
                 # attempt downwards fib
                 if row > float(new_set['Vals'].iloc[i + 1]) and not float(
                         new_set['Vals'].iloc[i - 1]) > row:  # if low is found, jump to this value
@@ -372,7 +372,7 @@ class Studies(Gather):
                                         if low > float(new_set['Vals'].iloc[k + 1]) and not float(
                                                 new_set['Vals'].iloc[k - 1]) > low:
                                             val3 = low
-                                            return (val1, val2, val3)
+                                            return val1, val2, val3
                                         else:
                                             continue
                                 break
@@ -383,7 +383,7 @@ class Studies(Gather):
                     continue
             else:
                 raise Exception("Did not find downwards fib value")
-        return (val1, val2, val3)
+        return val1, val2, val3
 
     def insert_fib_vals(self, skip_db):
         # Insert data if not in db...
@@ -706,10 +706,6 @@ val1    val3_________________________          vall2
                 new_set.columns = ['Index', 'Vals']
                 new_set = new_set.drop(['Index'], axis=1)
 
-                # After this, iterate new list and find which direction stock may go
-                val1 = None;
-                val2 = None;
-                val3 = None
                 # attempt upwards fib
                 try:
                     val1, val2, val3 = self.upwards_fib(new_set)
@@ -732,7 +728,7 @@ val1    val3_________________________          vall2
                 except Exception as e:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                    # print(exc_type, fname, exc_tb.tb_lineno)
+                    # print(exc_type, fname, exc_tb.tb_lineno,flush=True)
 
                 try:
                     val1, val2, val3 = self.downwards_fib(new_set)

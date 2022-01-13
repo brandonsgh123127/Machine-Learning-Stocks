@@ -487,8 +487,7 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
                                                                      sampler.data['Close'].iloc[-1]]],
                                                                    columns=['Open', 'Close']), ignore_index=True)
     predicted_unnormalized = pd.concat([unnormalized_predict_values])
-    return (sampler.unnormalize(predicted), sampler.unnormalized_data.tail(1), predicted_unnormalized, sampler.keltner,
-            sampler.fib, sampler.studies)
+    return sampler.unnormalize(predicted), sampler.unnormalized_data.tail(1), predicted_unnormalized, sampler.keltner, sampler.fib, sampler.studies
 
 
 """
