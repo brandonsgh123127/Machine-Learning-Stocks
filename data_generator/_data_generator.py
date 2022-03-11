@@ -82,7 +82,8 @@ class Generator():
         if ticker is not None:
             self.ticker = ticker
         # When UTC time is past 9AM EST, we would like to stay until UTC goes to the next day
-        if 14 > datetime.datetime.utcnow().hour < 24:
+        market_hour = 14 < datetime.datetime.utcnow().hour < 24
+        if market_hour:
             start = datetime.datetime.utcnow() - datetime.timedelta(
                 days=1)
             end = datetime.datetime.utcnow()
@@ -101,11 +102,12 @@ class Generator():
             self.studies.set_data_from_range(start - datetime.timedelta(days=3),
                                              end, _force_generate=force_generation)
         else:
-            self.studies.set_data_from_range(start - datetime.timedelta(days=1),
-                                             end, _force_generate=force_generation)
+            self.studies.set_data_from_range(start,
+                                             end - datetime.timedelta(
+                                                 days=1), _force_generate=force_generation)
         try:
-            return [round(self.studies.data[['Close']].diff().iloc[1].to_list()[0], 3),
-                    f'{round(self.studies.data[["Close"]].pct_change().iloc[1].to_list()[0] * 100, 3)}%']
+            return [round(self.studies.data[['Close']].iloc[-2:].diff().iloc[1].to_list()[0], 3),
+                    f'{round(self.studies.data[["Close"]].iloc[-2:].pct_change().iloc[1].to_list()[0] * 100, 3)}%']
         except Exception as e:
             print(f'[ERROR] Failed to gather quick data for {ticker}...\n', str(e))
             return ['n/a', 'n/a']
@@ -138,6 +140,7 @@ class Generator():
             self.studies.data = self.studies.data.drop(['Volume'], axis=1)
         except:
             pass
+
         try:
             self.studies.data = self.studies.data.drop(['Adj Close'], axis=1)
         except:
@@ -172,6 +175,8 @@ class Generator():
         return self.ticker
 
     def set_ticker(self, ticker):
+        self.studies.set_indicator(ticker)
+        self.news.set_indicator(ticker)
         self.ticker = ticker
 
 

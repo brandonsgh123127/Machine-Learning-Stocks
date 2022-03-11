@@ -167,7 +167,10 @@ class Normalizer():
             pass
         data = data.astype('float')
         self.studies = self.studies.astype('float')
-        self.keltner = self.keltner.astype('float')
+        try:
+            self.keltner = self.keltner.astype('float')
+        except:
+            print('[INFO] Couldn\'t convert keltner to type <float>')
         self.normalized_data = pd.DataFrame((), columns=['Keltner Pos',
                                                          'Close EMA14 Euclidean', 'Close EMA30 Euclidean',
                                                          'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',

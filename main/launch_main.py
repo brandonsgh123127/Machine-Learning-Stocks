@@ -16,6 +16,7 @@ from threading_impl.Thread_Pool import Thread_Pool
 import gc
 import concurrent.futures
 from machine_learning.stock_analysis_prediction import main as analyze_stock
+from machine_learning.stock_analysis_prediction import find_all_big_moves
 from machine_learning.stock_analysis_prediction import get_preview_prices
 from tkinter import StringVar
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -26,6 +27,8 @@ class GUI(Thread_Pool):
     # Initialize necessary data for GUI
     def __init__(self):
         super().__init__(amount_of_threads=1)
+        self.noted_dropdown = None
+        self.noted_str = []
         self.obj = None
         self.force_refresh = None
         self.watchlist_file = None
@@ -46,7 +49,7 @@ class GUI(Thread_Pool):
         w, h = self.window.winfo_screenwidth(), self.window.winfo_screenheight()
         self.window.geometry("%dx%d+0+0" % (w, h))
 
-        self.content = ttk.Frame(self.window, width=100, height=100)
+        self.content = ttk.Frame(self.window, width=300, height=200)
         self.boolean1 = tk.BooleanVar()
         self.force_bool = tk.BooleanVar()
 
@@ -61,6 +64,7 @@ class GUI(Thread_Pool):
 
         self.window.bind('<Return>', self.generate_callback)
         self.window.bind('<F5>', self.dropdown_callback)
+        self.window.bind('<F9>', self.find_biggest_moves_callback)
         s = ttk.Style(self.window)
         self.page_loc = 1  # Map page number to location
         try:  # if image exists, don't recreate
@@ -94,6 +98,12 @@ class GUI(Thread_Pool):
         if isinstance(event, tk.Event):
             self.cache_queue.put(threading.Thread(target=self.load_dropdown, args=(type(event),)))
 
+    def find_biggest_moves_callback(self, event=None):
+        if isinstance(event, tk.Event):
+            self.cache_queue.put(threading.Thread(target=self.search_big_moves, args=(type(event),self.force_bool.get(),
+                                                                                      self.boolean1.get(),
+                                                                                      0.02)))
+
     """
         Loads the dropdown bar with current prices for all stocks located under 'default.csv'.
     """
@@ -122,6 +132,37 @@ class GUI(Thread_Pool):
         self.stock_dropdown = tk.OptionMenu(self.content, self.quick_select, *self.watchlist)
         self.stock_dropdown.grid(column=4, row=0)
         self.watchlist_file.close()
+
+    """
+        Finds the biggest moves for all stocks located under 'default.csv'.
+    """
+
+    def search_big_moves(self, event=None,_force_generation: bool = False, _has_actuals: bool = False, percent: float = 0.03):
+
+        watchlist_file = open(f'{self.path}/data/watchlist/default.csv', 'r')
+        lines = watchlist_file.readlines()
+        tickers = []
+        self.noted_str = ['']
+        for line in lines:
+            try:
+                ticker = line[0:line.find(",")].strip().upper()
+            except:
+                ticker = line.strip().upper()
+            tickers.append(ticker)
+        noted_moves = find_all_big_moves(tickers, force_generation=_force_generation, _has_actuals=_has_actuals, percent=percent)
+        # After setting noted moves, populate self noted to str
+        for note in noted_moves:
+            self.noted_str.append(f'{note[0]} >>> {round((((note[2] + note[1]) / note[2]) -1) * 100,2)}%')
+
+        # destroy object before proceeding
+        try:
+            self.noted_dropdown.destroy()
+        except:
+            pass
+
+        self.noted_dropdown = tk.OptionMenu(self.content, self.quick_select, *self.noted_str)
+        self.noted_dropdown.grid(column=5, row=0)
+        watchlist_file.close()
 
     def quick_gen(self, event, *args, **vargs):
         self.stock_input.delete(0, tk.END)
@@ -303,7 +344,7 @@ class GUI(Thread_Pool):
         self.generate_button = ttk.Button(self.content, text="Generate", command=self.generate_callback)
         self.generate_button.grid(column=3, row=2)
         # self.next_page_button.pack(side='bottom')
-        # self.cache_queue.put(threading.Thread(target=self.load_dropdown,args=()))
+        self.cache_queue.put(threading.Thread(target=self.load_dropdown, args=()))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True,False)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True,False)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True,False)))

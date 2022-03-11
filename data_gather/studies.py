@@ -242,6 +242,8 @@ class Studies(Gather):
                                                                  self.data["Date"].iloc[-1]}, multi=True)
                     self.stock_ids = []
                     self.data_ids = []
+                    stock_id=''
+                    data_id=''
                     for retrieve_result in retrieve_data_result:
                         id_res = retrieve_result.fetchall()
                         for res in id_res:
@@ -250,10 +252,16 @@ class Studies(Gather):
                                 raise Exception()
                             else:
                                 try:
+                                    stock_id=res[1].decode('latin1')
+                                    data_id=res[0].decode('latin1')
                                     self.stock_ids.append(res[1].decode('latin1'))
                                     self.data_ids.append(res[0].decode('latin1'))
                                 except Exception as e:
                                     print(f'[ERROR] failed to query stock id/data_id for ema insert!\n{str(e)}')
+                    # Add one more, as there is a bug where the lengths don't match data, causing failure
+                    self.stock_ids.append(stock_id)
+                    self.data_ids.append(data_id)
+
                     # Execute insert for study-data
                     insert_studies_db_stmt = "REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"
 
@@ -769,6 +777,10 @@ val1    val3_________________________          vall2
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                     # print(exc_type, fname, exc_tb.tb_lineno)
+        try:
+            self.fibonacci_extension = self.fibonacci_extension.drop(['index'],axis=1)
+        except:
+            pass
         self.fib_cnx.close()
         return 0
 
@@ -799,30 +811,33 @@ val1    val3_________________________          vall2
 
                     # iterate through keltner and calculate ATR
             for index, row in self.data_cp.iterrows():
-                if index == 0 or index <= length or index == len(self.data_cp.index) - 1:
-                    avg_true_range = avg_true_range.append({'AvgTrueRange': 1.33},
-                                                           ignore_index=True)  # add blank values
-                else:
-                    end_atr = None
-                    for i in range(index - length - 1, index):  # go to range from index - length to index
-                        if end_atr is None:
-                            end_atr = int(true_range['trueRange'][i:i + 1].to_numpy())
-                        else:
-                            # summation of all values
-                            end_atr = int(end_atr + true_range['trueRange'][i:i + 1].to_numpy())
-                    end_atr = end_atr / length
-                    avg_true_range = avg_true_range.append({'AvgTrueRange': end_atr}, ignore_index=True)
+                try:
+                    if index == 0 or index <= length or index == len(self.data_cp.index) - 1:
+                        avg_true_range = avg_true_range.append({'AvgTrueRange': 1.33},
+                                                               ignore_index=True)  # add blank values
+                    else:
+                        end_atr = None
+                        for i in range(index - length - 1, index):  # go to range from index - length to index
+                            if end_atr is None:
+                                end_atr = int(true_range['trueRange'][i:i + 1].to_numpy())
+                            else:
+                                # summation of all values
+                                end_atr = int(end_atr + true_range['trueRange'][i:i + 1].to_numpy())
+                        end_atr = end_atr / length
+                        avg_true_range = avg_true_range.append({'AvgTrueRange': end_atr}, ignore_index=True)
+                except Exception as e:
+                    raise Exception("[Error] Failed to calculate Keltner ATR...\n", str(e))
             # now, calculate upper and lower bands given all data
             for index, row in avg_true_range.iterrows():
                 try:
                     if index == len(self.data_cp.index) - 1:  # if last element
-                        self.keltner = self.keltner.append({'middle': (self.applied_studies[f'ema14'][index - 1:index]),
-                                                            'upper': self.applied_studies[f'ema14'][index - 1:index]
+                        self.keltner = self.keltner.append({'middle': (self.applied_studies[f'ema14'][index - 1]),
+                                                            'upper': self.applied_studies[f'ema14'][index - 1]
                                                                      + (factor * avg_true_range['AvgTrueRange'][
-                                                                                 index - 1:index]),
-                                                            'lower': self.applied_studies[f'ema14'][index - 1:index]
+                                                                                 index - 1]),
+                                                            'lower': self.applied_studies[f'ema14'][index - 1]
                                                                      - (factor * avg_true_range['AvgTrueRange'][
-                                                                                 index - 1:index])}
+                                                                                 index - 1])}
                                                            , ignore_index=True)
 
                     else:  # else
@@ -835,7 +850,7 @@ val1    val3_________________________          vall2
                                                                                  index:index + 1])}
                                                            , ignore_index=True)
                 except Exception as e:
-                    raise Exception("[Error] Failed to calculate Keltner...\n", str(e))
+                    raise Exception("[Error] Failed to calculate Keltner Bands...\n", str(e))
         try:
             self.kelt_cnx = self.db_con.cursor()
         except:
@@ -929,6 +944,8 @@ val1    val3_________________________          vall2
                                                          multi=True)
             self.stock_ids = []
             self.data_ids = []
+            stock_id=''
+            data_id=''
             # self.data=self.data.drop(['Date'],axis=1)
             for retrieve_result in retrieve_data_result:
                 id_res = retrieve_result.fetchall()
@@ -938,22 +955,31 @@ val1    val3_________________________          vall2
                     raise Exception('[ERROR] Failed to locate a data-id when parsing keltner data!')
                 else:
                     for res in id_res:
+                        stock_id=res[1].decode('latin1')
+                        data_id=res[0].decode('latin1')
                         self.stock_ids.append(res[1].decode('latin1'))
                         self.data_ids.append(res[0].decode('latin1'))
-                        # Execute insert for study-data
+            # Add once more since there is currently a bug where stock id, data id len doesnt match data len
+            self.stock_ids.append(stock_id)
+            self.data_ids.append(data_id)
+
+            # Execute insert for study-data
             insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,`val2`,`val3`) 
                 VALUES (%s,%s,%s,%s,%s,%s,%s)
                 """
             insert_list = []
             for index, row in self.keltner.iterrows():
-                insert_tuple = (
-                    f'AES_ENCRYPT("{self.data_cp.loc[index, :]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}", UNHEX(SHA2("{self.data_cp.loc[index, :]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}",512)))',
-                    f'{self.stock_ids[index]}',
-                    f'{self.data_ids[index]}',
-                    f'{self.study_id}',
-                    row["middle"].values[0],
-                    row["upper"].values[0],
-                    row["lower"].values[0])
+                try:
+                    insert_tuple = (
+                        f'AES_ENCRYPT("{self.data_cp.loc[index, :]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}", UNHEX(SHA2("{self.data_cp.loc[index, :]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}",512)))',
+                        f'{self.stock_ids[index]}',
+                        f'{self.data_ids[index]}',
+                        f'{self.study_id}',
+                        row["middle"],
+                        row["upper"],
+                        row["lower"])
+                except Exception as e:
+                    print('[ERROR] Failed to set keltner tuple',e,flush=True)
                 insert_list.append(insert_tuple)
             try:
                 insert_studies_db_result = self.kelt_cnx.executemany(insert_studies_db_stmt, insert_list)
