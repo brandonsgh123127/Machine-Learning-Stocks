@@ -102,7 +102,7 @@ class GUI(Thread_Pool):
         if isinstance(event, tk.Event):
             self.cache_queue.put(threading.Thread(target=self.search_big_moves, args=(type(event),self.force_bool.get(),
                                                                                       self.boolean1.get(),
-                                                                                      0.02)))
+                                                                                      0.015)))
 
     """
         Loads the dropdown bar with current prices for all stocks located under 'default.csv'.

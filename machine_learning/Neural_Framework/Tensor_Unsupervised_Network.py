@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from enum import Enum
 import os
 from pathlib import Path
@@ -17,12 +17,24 @@ class Unsupervised_Models(Enum):
     FP_GROWTH = 2
 
 
-class Unsupervised_Framework:
-    def __init__(self, algorithm: str):
-        self.algorithm =  Unsupervised_Models.KNN and print("[INFO] KNN Initialized!") if algorithm == Unsupervised_Models.KNN.name else \
-        self.algorithm =  Unsupervised_Models.KMEANS  and print("[INFO] KMEANS Initialized!") if algorithm == Unsupervised_Models.KMEANS.name else \
-        self.algorithm =  Unsupervised_Models.FP_GROWTH  and print("[INFO] FP_GROWTH Initialized!") if algorithm == Unsupervised_Models.FP_GROWTH.name else None
+class Unsupervised_Framework(ABC):
+    """
+        Current class construction, set n_layers
+    """
+    def __init__(self, algorithm: str, n_layers: int):
+        """
+        :param algorithm: current unsupervised algorithm
+        :param n_layers: number of nodes in each layer of the network
+        """
+        self.algorithm = Unsupervised_Models.KNN and print(
+            "[INFO] KNN Initialized!") if algorithm == Unsupervised_Models.KNN.name else \
+            self.algorithm = Unsupervised_Models.KMEANS and print(
+            "[INFO] KMEANS Initialized!") if algorithm == Unsupervised_Models.KMEANS.name else \
+            self.algorithm = Unsupervised_Models.FP_GROWTH and print(
+            "[INFO] FP_GROWTH Initialized!") if algorithm == Unsupervised_Models.FP_GROWTH.name else \
+            self.algorithm = algorithm
         self.path = Path(os.getcwd()).parent.absolute()
+        self.n_layers = n_layers
         self.model = None
 
     @abstractmethod
