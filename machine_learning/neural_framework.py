@@ -14,7 +14,7 @@ class Neural_Framework(ABC):
         self.nn = None
         self.EPOCHS = epochs
         self.BATCHES = batch_size
-        self.path = Path(os.getcwd()).parent.absolute()
+        self.path = Path(os.getcwd()).absolute()
         self.model_name = None
         # tf.debugging.set_log_device_placement(True)
         # print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))

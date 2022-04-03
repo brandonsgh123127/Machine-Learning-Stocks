@@ -26,7 +26,7 @@ class Generator():
         if path is not None:
             self.path = path
         else:
-            self.path = Path(os.getcwd()).parent.absolute()
+            self.path = Path(os.getcwd()).absolute()
 
     def generate_data(self):
         # studies.__init__()
@@ -191,7 +191,7 @@ def choose_random_ticker(csv_file):
 def main():
     MAX_TICKERS = 300
     MAX_ITERS = 2
-    path = Path(os.getcwd()).parent.absolute()
+    path = Path(os.getcwd()).absolute()
     for i in range(MAX_TICKERS):
         ticker = choose_random_ticker(f'{path}/data/watchlist/default.csv')
         generator = Generator(ticker, path)

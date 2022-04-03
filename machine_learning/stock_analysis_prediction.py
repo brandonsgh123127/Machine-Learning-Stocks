@@ -87,7 +87,7 @@ def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False):
         ticker = ticker
     else:
         raise ValueError("Failed to find ticker name!")
-    path = Path(os.getcwd()).parent.absolute()
+    path = Path(os.getcwd()).absolute()
 
     gen = Generator(ticker.upper(), path, force_generate)
     # if current trading day, set prediction for tomorrow in date name
@@ -252,7 +252,7 @@ def find_all_big_moves(tickers: list, force_generation=False,_has_actuals: bool 
 
     dates = (e_date - datetime.timedelta(days=75), e_date)  # month worth of data
 
-    path = Path(os.getcwd()).parent.absolute()
+    path = Path(os.getcwd()).absolute()
     gen = Generator(None, path, force_generation)
     for ticker in tickers:
         try:
@@ -284,7 +284,7 @@ if __name__ == "__main__":
     # print(_type,_has_actuals,_is_not_closed)
     main(ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate)
 
-    # path = Path(os.getcwd()).parent.absolute()
+    # path = Path(os.getcwd()).absolute()
     # watchlist_file = open(f'{path}/data/watchlist/test.csv', 'r')
     # lines = watchlist_file.readlines()
     # noted_str = []

@@ -21,7 +21,7 @@ class Display:
         self.fig, self.axes = plt.subplots(2, 2)  # plot 4 max
         self.fig.set_size_inches(10.5, 10.5)
         self.fib_display = pd.DataFrame()
-        self.path = Path(os.getcwd()).parent.absolute()
+        self.path = Path(os.getcwd()).absolute()
         self.color_map = {'blue': 'b',
                           'green': 'g',
                           'red': 'r',

@@ -24,7 +24,7 @@ class Normalizer():
         self.studies = pd.DataFrame(columns=['ema14', 'ema30'])
         self.normalized_data = pd.DataFrame()
         self.unnormalized_data = pd.DataFrame()
-        self.path = Path(os.getcwd()).parent.absolute()
+        self.path = Path(os.getcwd()).absolute()
         self.min_max = MinMaxScaler()
         self.gen = Generator(ticker=ticker, force_generate=force_generate)
         self.studies = None
@@ -35,7 +35,7 @@ class Normalizer():
         Utilize a config file to establish a mysql connection to the database
         '''
         self.new_uuid_gen = None
-        self.path = Path(os.getcwd()).parent.absolute()
+        self.path = Path(os.getcwd()).absolute()
         tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(self.path))
         root = tree.getroot()
         # Connect

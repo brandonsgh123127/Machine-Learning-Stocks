@@ -36,7 +36,7 @@ class GUI(Thread_Pool):
         self.dates = None
         self.canvas = None
         self.stop_threads = False
-        self.path = Path(os.getcwd()).parent.absolute()
+        self.path = Path(os.getcwd()).absolute()
         self.job_queue = queue.Queue()
         self.cache_queue = queue.Queue()
         self.threads = []

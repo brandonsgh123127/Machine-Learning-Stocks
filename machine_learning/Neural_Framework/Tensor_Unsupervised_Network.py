@@ -33,7 +33,7 @@ class Unsupervised_Framework(ABC):
             self.algorithm = Unsupervised_Models.FP_GROWTH and print(
             "[INFO] FP_GROWTH Initialized!") if algorithm == Unsupervised_Models.FP_GROWTH.name else \
             self.algorithm = algorithm
-        self.path = Path(os.getcwd()).parent.absolute()
+        self.path = Path(os.getcwd()).absolute()
         self.n_layers = n_layers
         self.model = None
 

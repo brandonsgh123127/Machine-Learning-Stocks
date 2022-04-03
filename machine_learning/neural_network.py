@@ -130,7 +130,7 @@ class Network(Neural_Framework):
 
     # Used for generation of data via the start
     def generate_sample(self, _has_actuals=False, rand_date=None):
-        path = Path(os.getcwd()).parent.absolute()
+        path = Path(os.getcwd()).absolute()
         self.sampler.reset_data()
         self.sampler.set_ticker(self.choose_random_ticker(Neural_Framework,csv_file=f'{path}/data/watchlist/default.csv'))
         try:
@@ -182,9 +182,13 @@ class Network(Neural_Framework):
                     print('[ERROR] Unknown error has occurred while training!')
                     continue
                 j = j + 1
+            # Profile a range of batches, e.g. from 2 to 5.
+            tensorboard_callback = tf.keras.callbacks.TensorBoard(
+                log_dir='./logs', profile_batch=(2, 5))
             # Use fit for generating with ease.  Validation data included for analysis of loss
-            disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets), batch_size=2, epochs=1,
-                               validation_split=0.177)
+            disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets), batch_size=BATCHES, epochs=1,
+                               validation_split=0.177,
+                               callbacks=[tensorboard_callback])
             models[i] = disp.history
             self.save_model()
 
@@ -359,7 +363,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu", force_generation=False,
          device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = None):
     # Connect to local DB
-    path = Path(os.getcwd()).parent.absolute()
+    path = Path(os.getcwd()).absolute()
     tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
     root = tree.getroot()
     try:
@@ -429,16 +433,6 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
         with listLock:
             with tf.device(device_opt):
                 if neural_net.model_choice < 4:
-                #     if has_actuals:
-                #         train = tf.convert_to_tensor(sampler.normalized_data.iloc[-15:-1].to_numpy())
-                #     else:
-                #         train = tf.convert_to_tensor(sampler.normalized_data[-14:])
-                # else:
-                #     if has_actuals:
-                #         train = tf.convert_to_tensor(sampler.normalized_data.iloc[-15:-1])
-                #     else:
-                #         train = tf.convert_to_tensor(sampler.normalized_data[-14:])
-                # prediction = neural_net.nn.predict(train)
                     if has_actuals:
                         train=(np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(), (1, 1, 126)))
                     else:
@@ -459,23 +453,24 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
                                                         VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(stock-id)s,%(from-date-id)s,
                                                         %(to-date-id)s,%(model)s,%(close)s,%(open)s)
             """
-        try:
-            check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,
-                                                        {'id': f'{from_date_id}{to_date_id}{ticker.upper()}{name}',
-                                                         'stock-id': stock_id,
-                                                         'from-date-id': from_date_id,
-                                                         'to-date-id': to_date_id,
-                                                         'model': name,
-                                                         'close': str(predicted['Close'].iloc[0]),
-                                                         'open': str(predicted['Open'].iloc[0])})
-            db_con.commit()
-        except mysql.connector.errors.IntegrityError:
-            cnx.close()
-            pass
-        except Exception as e:
-            print(f'[ERROR] Failed to insert nn-data element {predicted} for model {name}!\n', str(e))
-            cnx.close()
-            pass
+        if from_date_id is not None and to_date_id is not None:
+            try:
+                check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,
+                                                            {'id': f'{from_date_id}{to_date_id}{ticker.upper()}{name}',
+                                                             'stock-id': stock_id,
+                                                             'from-date-id': from_date_id,
+                                                             'to-date-id': to_date_id,
+                                                             'model': name,
+                                                             'close': str(predicted['Close'].iloc[0]),
+                                                             'open': str(predicted['Open'].iloc[0])})
+                db_con.commit()
+            except mysql.connector.errors.IntegrityError:
+                cnx.close()
+                pass
+            except Exception as e:
+                print(f'[ERROR] Failed to insert id {stock_id} nn-data for model {name}!\nException:\n', str(e))
+                cnx.close()
+                pass
         cnx.close()
 
     unnormalized_prediction = sampler.unnormalize(predicted).to_numpy()
@@ -507,8 +502,8 @@ def run(epochs, batch_size, name="model_relu"):
     neural_net.save_model()
 
 
-# thread_manager = Thread_Pool(amount_of_threads=3)
-# thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_relu")))
+thread_manager = Thread_Pool(amount_of_threads=3)
+thread_manager.start_worker(threading.Thread(target=run,args=(300,25,"model_relu")))
 # thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_leaky")))
 # thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_sigmoid")))
 # thread_manager.join_workers()

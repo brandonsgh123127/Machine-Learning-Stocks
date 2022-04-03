@@ -63,7 +63,7 @@ class Gather:
                         'Accept-encoding': 'gzip',
                         'User-Agent': 'twitterdev-search-tweets-python/'}
         self.new_uuid_gen = None
-        self.path = Path(os.getcwd()).parent.absolute()
+        self.path = Path(os.getcwd()).absolute()
         tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(self.path))
         root = tree.getroot()
         # Connect

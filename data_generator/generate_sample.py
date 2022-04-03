@@ -14,7 +14,7 @@ class Sample(Normalizer):
         super().__init__(ticker, force_generate=force_generate)
         self.DAYS_SAMPLED = 15
         self.ticker = ticker
-        self.path = Path(os.getcwd()).parent.absolute()
+        self.path = Path(os.getcwd()).absolute()
 
     def generate_sample(self, out=8, _has_actuals=False, rand_date=False, is_divergence=False, skip_db=False):
         self.cnx = self.db_con.cursor(buffered=True)

@@ -115,7 +115,7 @@ class Network(Neural_Framework):
 
     # Used for generation of data via the start
     def generate_sample(self, _has_actuals=False, rand_date=None):
-        path = Path(os.getcwd()).parent.absolute()
+        path = Path(os.getcwd()).absolute()
         self.sampler.reset_data()
         self.sampler.set_ticker(self.choose_random_ticker(f'{path}/data/watchlist/default.csv'))
         try:
@@ -348,7 +348,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu", force_generation=False,
          device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = None):
     # Connect to local DB
-    path = Path(os.getcwd()).parent.absolute()
+    path = Path(os.getcwd()).absolute()
     tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
     root = tree.getroot()
     try:
@@ -435,24 +435,25 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
                                                         VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(stock-id)s,%(from-date-id)s,
                                                         %(to-date-id)s,%(model)s,%(open)s,%(close)s,%(range)s)
             """
-        try:
-            check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,
-                                                        {'id': f'{from_date_id}{to_date_id}{ticker.upper()}{name}',
-                                                         'stock-id': stock_id,
-                                                         'from-date-id': from_date_id,
-                                                         'to-date-id': to_date_id,
-                                                         'model': name,
-                                                         'open': str(predicted['Open'].iloc[0]),
-                                                         'close': str(predicted['Close'].iloc[0]),
-                                                         'range': str(predicted['Range'].iloc[0])})
-            db_con.commit()
-        except mysql.connector.errors.IntegrityError:
-            cnx.close()
-            pass
-        except Exception as e:
-            print(f'[ERROR] Failed to insert nn-data element {predicted} for model {name}!\nException:\n', str(e))
-            cnx.close()
-            pass
+        if from_date_id is not None and to_date_id is not None:
+            try:
+                check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,
+                                                            {'id': f'{from_date_id}{to_date_id}{ticker.upper()}{name}',
+                                                             'stock-id': stock_id,
+                                                             'from-date-id': from_date_id,
+                                                             'to-date-id': to_date_id,
+                                                             'model': name,
+                                                             'open': str(predicted['Open'].iloc[0]),
+                                                             'close': str(predicted['Close'].iloc[0]),
+                                                             'range': str(predicted['Range'].iloc[0])})
+                db_con.commit()
+            except mysql.connector.errors.IntegrityError:
+                cnx.close()
+                pass
+            except Exception as e:
+                print(f'[ERROR] Failed to insert id {stock_id} nn-data for model {name}!\nException:\n', str(e))
+                cnx.close()
+                pass
         cnx.close()
 
     unnormalized_prediction = sampler.unnormalize_divergence(predicted).to_numpy()
