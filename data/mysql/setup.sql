@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Stock` (
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX stockid ON stocks.stock (id);
 
-CREATE TABLE IF NOT EXISTS `Stocks`.`Data` (
+CREATE TABLE IF NOT EXISTS `Stocks`.`dailydata` (
   `data-id` VARBINARY(128) NOT NULL,
   `stock-id` VARBINARY(128) NOT NULL,
   `date` DATE NOT NULL,
@@ -20,9 +20,56 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Data` (
   `adj-close` DOUBLE(12, 3) NOT NULL,
   PRIMARY KEY (`data-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
-CREATE INDEX `id-and-date` ON stocks.`data` (`data-id`,`stock-id`,`date`);
-CREATE INDEX `stockid-and-date` ON stocks.`data` (`stock-id`,`date`);
-CREATE INDEX `date` ON stocks.`data` (`date`);
+CREATE INDEX `id-and-date` ON stocks.`dailydata` (`data-id`,`stock-id`,`date`);
+CREATE INDEX `stockid-and-date` ON stocks.`dailydata` (`stock-id`,`date`);
+CREATE INDEX `date` ON stocks.`dailydata` (`date`);
+
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`weeklydata` (
+  `data-id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `date` DATE NOT NULL,
+  `open` DOUBLE(12, 3) NOT NULL,
+  `high` DOUBLE(12, 3) NOT NULL,
+  `low` DOUBLE(12, 3) NOT NULL,
+  `close` DOUBLE(12, 3) NOT NULL,
+  `adj-close` DOUBLE(12, 3) NOT NULL,
+  PRIMARY KEY (`data-id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `id-and-date` ON stocks.`weeklydata` (`data-id`,`stock-id`,`date`);
+CREATE INDEX `stockid-and-date` ON stocks.`weeklydata` (`stock-id`,`date`);
+CREATE INDEX `date` ON stocks.`weeklydata` (`date`);
+
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`monthlydata` (
+  `data-id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `date` DATE NOT NULL,
+  `open` DOUBLE(12, 3) NOT NULL,
+  `high` DOUBLE(12, 3) NOT NULL,
+  `low` DOUBLE(12, 3) NOT NULL,
+  `close` DOUBLE(12, 3) NOT NULL,
+  `adj-close` DOUBLE(12, 3) NOT NULL,
+  PRIMARY KEY (`data-id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `id-and-date` ON stocks.`monthlydata` (`data-id`,`stock-id`,`date`);
+CREATE INDEX `stockid-and-date` ON stocks.`monthlydata` (`stock-id`,`date`);
+CREATE INDEX `date` ON stocks.`monthlydata` (`date`);
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`yearlydata` (
+  `data-id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `date` DATE NOT NULL,
+  `open` DOUBLE(12, 3) NOT NULL,
+  `high` DOUBLE(12, 3) NOT NULL,
+  `low` DOUBLE(12, 3) NOT NULL,
+  `close` DOUBLE(12, 3) NOT NULL,
+  `adj-close` DOUBLE(12, 3) NOT NULL,
+  PRIMARY KEY (`data-id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `id-and-date` ON stocks.`yearlydata` (`data-id`,`stock-id`,`date`);
+CREATE INDEX `stockid-and-date` ON stocks.`yearlydata` (`stock-id`,`date`);
+CREATE INDEX `date` ON stocks.`yearlydata` (`date`);
 
 CREATE TABLE IF NOT EXISTS `Stocks`.`Study` (
   `study-id` VARBINARY(128) NOT NULL,
@@ -31,7 +78,7 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Study` (
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `studyid` ON stocks.`study` (`study-id`);
 
-CREATE TABLE IF NOT EXISTS `Stocks`.`Study-Data` (
+CREATE TABLE IF NOT EXISTS `Stocks`.`Daily-Study-Data` (
   `id` VARBINARY(128) NOT NULL,
   `stock-id` VARBINARY(128) NOT NULL,
   `data-id` VARBINARY(128) NOT NULL,
@@ -52,9 +99,80 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Study-Data` (
   `val14` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
-CREATE INDEX `ids` ON stocks.`study-data` (`id`,`stock-id`,`data-id`,`study-id`);
+CREATE INDEX `ids` ON stocks.`Daily-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
 
-CREATE TABLE IF NOT EXISTS `Stocks`.`NN-Data` (
+CREATE TABLE IF NOT EXISTS `Stocks`.`Weekly-Study-Data` (
+  `id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `data-id` VARBINARY(128) NOT NULL,
+  `study-id` varbinary(128) NOT NULL,
+  `val1` DOUBLE(12, 3) NOT NULL,
+  `val2` DOUBLE(12, 3) NULL,
+  `val3` DOUBLE(12, 3) NULL,
+  `val4` DOUBLE(12, 3) NULL,
+  `val5` DOUBLE(12, 3) NULL,
+  `val6` DOUBLE(12, 3) NULL,
+  `val7` DOUBLE(12, 3) NULL,
+  `val8` DOUBLE(12, 3) NULL,
+  `val9` DOUBLE(12, 3) NULL,
+  `val10` DOUBLE(12, 3) NULL,
+  `val11` DOUBLE(12, 3) NULL,
+  `val12` DOUBLE(12, 3) NULL,
+  `val13` DOUBLE(12, 3) NULL,
+  `val14` DOUBLE(12, 3) NULL,
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `ids` ON stocks.`Weekly-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`Monthly-Study-Data` (
+  `id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `data-id` VARBINARY(128) NOT NULL,
+  `study-id` varbinary(128) NOT NULL,
+  `val1` DOUBLE(12, 3) NOT NULL,
+  `val2` DOUBLE(12, 3) NULL,
+  `val3` DOUBLE(12, 3) NULL,
+  `val4` DOUBLE(12, 3) NULL,
+  `val5` DOUBLE(12, 3) NULL,
+  `val6` DOUBLE(12, 3) NULL,
+  `val7` DOUBLE(12, 3) NULL,
+  `val8` DOUBLE(12, 3) NULL,
+  `val9` DOUBLE(12, 3) NULL,
+  `val10` DOUBLE(12, 3) NULL,
+  `val11` DOUBLE(12, 3) NULL,
+  `val12` DOUBLE(12, 3) NULL,
+  `val13` DOUBLE(12, 3) NULL,
+  `val14` DOUBLE(12, 3) NULL,
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `ids` ON stocks.`Monthly-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`Yearly-Study-Data` (
+  `id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `data-id` VARBINARY(128) NOT NULL,
+  `study-id` varbinary(128) NOT NULL,
+  `val1` DOUBLE(12, 3) NOT NULL,
+  `val2` DOUBLE(12, 3) NULL,
+  `val3` DOUBLE(12, 3) NULL,
+  `val4` DOUBLE(12, 3) NULL,
+  `val5` DOUBLE(12, 3) NULL,
+  `val6` DOUBLE(12, 3) NULL,
+  `val7` DOUBLE(12, 3) NULL,
+  `val8` DOUBLE(12, 3) NULL,
+  `val9` DOUBLE(12, 3) NULL,
+  `val10` DOUBLE(12, 3) NULL,
+  `val11` DOUBLE(12, 3) NULL,
+  `val12` DOUBLE(12, 3) NULL,
+  `val13` DOUBLE(12, 3) NULL,
+  `val14` DOUBLE(12, 3) NULL,
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `ids` ON stocks.`Yearly-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
+
+
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`Daily-NN-Data` (
   `nn-id` VARBINARY(128) NOT NULL,
   `stock-id` VARBINARY(128) NOT NULL,
   `from-date-id` VARBINARY(128) NOT NULL,
@@ -65,11 +183,54 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`NN-Data` (
   `range` DOUBLE(6,3) NULL,
   PRIMARY KEY (`nn-id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
-CREATE INDEX `ids` ON stocks.`nn-data` (`nn-id`,`stock-id`,`from-date-id`,`to-date-id`);
-CREATE INDEX `from-to-model` ON stocks.`nn-data` (`from-date-id`,`to-date-id`,`model`);
-CREATE INDEX `stockid` ON stocks.`nn-data` (`stock-id`);
-select * from `nn-data`;
-Alter table stocks.`nn-data` add column `range` DOUBLE(6,3) NULL after close;
+CREATE INDEX `ids` ON stocks.`Daily-NN-Data` (`nn-id`,`stock-id`,`from-date-id`,`to-date-id`);
+CREATE INDEX `from-to-model` ON stocks.`Daily-NN-Data` (`from-date-id`,`to-date-id`,`model`);
+CREATE INDEX `stockid` ON stocks.`Daily-NN-Data` (`stock-id`);
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`Weekly-NN-Data` (
+  `nn-id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `from-date-id` VARBINARY(128) NOT NULL,
+  `to-date-id` VARBINARY(128) NOT NULL,
+  `model` VARCHAR(45) NULL,
+  `open` DOUBLE(6, 3) NULL,
+  `close` DOUBLE(6, 3) NULL,
+  `range` DOUBLE(6,3) NULL,
+  PRIMARY KEY (`nn-id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `ids` ON stocks.`Weekly-NN-Data` (`nn-id`,`stock-id`,`from-date-id`,`to-date-id`);
+CREATE INDEX `from-to-model` ON stocks.`Weekly-NN-Data` (`from-date-id`,`to-date-id`,`model`);
+CREATE INDEX `stockid` ON stocks.`Weekly-NN-Data` (`stock-id`);
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`Monthly-NN-Data` (
+  `nn-id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `from-date-id` VARBINARY(128) NOT NULL,
+  `to-date-id` VARBINARY(128) NOT NULL,
+  `model` VARCHAR(45) NULL,
+  `open` DOUBLE(6, 3) NULL,
+  `close` DOUBLE(6, 3) NULL,
+  `range` DOUBLE(6,3) NULL,
+  PRIMARY KEY (`nn-id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `ids` ON stocks.`Monthly-NN-Data` (`nn-id`,`stock-id`,`from-date-id`,`to-date-id`);
+CREATE INDEX `from-to-model` ON stocks.`Monthly-NN-Data` (`from-date-id`,`to-date-id`,`model`);
+CREATE INDEX `stockid` ON stocks.`Monthly-NN-Data` (`stock-id`);
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`Yearly-NN-Data` (
+  `nn-id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `from-date-id` VARBINARY(128) NOT NULL,
+  `to-date-id` VARBINARY(128) NOT NULL,
+  `model` VARCHAR(45) NULL,
+  `open` DOUBLE(6, 3) NULL,
+  `close` DOUBLE(6, 3) NULL,
+  `range` DOUBLE(6,3) NULL,
+  PRIMARY KEY (`nn-id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `ids` ON stocks.`Yearly-NN-Data` (`nn-id`,`stock-id`,`from-date-id`,`to-date-id`);
+CREATE INDEX `from-to-model` ON stocks.`Yearly-NN-Data` (`from-date-id`,`to-date-id`,`model`);
+CREATE INDEX `stockid` ON stocks.`Yearly-NN-Data` (`stock-id`);
 
 
 
@@ -111,8 +272,15 @@ drop table `options-data`;
 drop table `options-expiry`;
 
 DELETE FROM stock;
-DELETE FROM data;
-DELETE FROM `study-data`;
+DELETE FROM dailydata;
+DELETE FROM weeklydata;
+DELETE FROM monthlydata;
+DELETE FROM yearlydata;
+
+DELETE FROM `daily-study-data`;
+DELETE FROM `weekly-study-data`;
+DELETE FROM `monthly-study-data`;
+DELETE FROM `yearly-study-data`;
 DELETE FROM study;
 DELETE FROM `nn-data`;
 DELETE FROM `options`;
@@ -152,6 +320,7 @@ select * from stocks.study USE INDEX (`studyid`);
 select * from stocks.`study-data` USE INDEX (`ids`);
 select * from stocks.`nn-data` USE INDEX (`ids`);
 select * from stocks.`nn-data`;
+select * from stocks.`weeklydata`;
 
 
 select * from stocks.`data` inner join `stocks`.`stock` ON `stocks`.stock.stock = 'AXP' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`  and stocks.`data`.`date` = DATE('2008-11-07');

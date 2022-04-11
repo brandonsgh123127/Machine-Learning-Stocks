@@ -113,7 +113,8 @@ class Gather:
             return self.indicator
             # retrieve pandas_datareader object of datetime
 
-    def set_data_from_range(self, start_date: datetime.datetime, end_date: datetime.datetime, _force_generate=False, skip_db=False):
+    def set_data_from_range(self, start_date: datetime.datetime, end_date: datetime.datetime, _force_generate=False,
+                            skip_db=False, interval: str = '1d'):
         # Date range utilized for query...
         date_range = [d.strftime('%Y-%m-%d') for d in pd.date_range(start_date, end_date)]  # start/end date list
 
@@ -134,18 +135,52 @@ class Gather:
             new_data = pd.DataFrame(columns=['Date', 'Open', 'High', 'Low', 'Close', 'Adj. Close'])
             self.cnx = self.db_con.cursor()
             self.cnx.autocommit = True
-
-            # Before inserting data, check cached data, verify if there is data there...
-            check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date`,`stocks`.`data`.`open`,
-            `stocks`.`data`.`high`,`stocks`.`data`.`low`,
-            `stocks`.`data`.`close`,`stocks`.`data`.`adj-close`
-             FROM stocks.`data` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
-             ON `stock-id` = stocks.stock.`id` 
-              AND stocks.stock.`stock` = %(stock)s
-               AND `stocks`.`data`.`date` >= DATE(%(sdate)s)
-               AND `stocks`.`data`.`date` <= DATE(%(edate)s)
-               ORDER BY stocks.`data`.`date` ASC
-                """
+            check_cache_studies_db_stmt=''
+            if '1d' in interval:
+                # Before inserting data, check cached data, verify if there is data there...
+                check_cache_studies_db_stmt = """SELECT `stocks`.`dailydata`.`date`,`stocks`.`dailydata`.`open`,
+                `stocks`.`dailydata`.`high`,`stocks`.`dailydata`.`low`,
+                `stocks`.`dailydata`.`close`,`stocks`.`dailydata`.`adj-close`
+                 FROM stocks.`dailydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
+                 ON `stock-id` = stocks.stock.`id` 
+                  AND stocks.stock.`stock` = %(stock)s
+                   AND `stocks`.`dailydata`.`date` >= DATE(%(sdate)s)
+                   AND `stocks`.`dailydata`.`date` <= DATE(%(edate)s)
+                   ORDER BY stocks.`dailydata`.`date` ASC
+                    """
+            elif '1wk' in interval:
+                check_cache_studies_db_stmt = """SELECT `stocks`.`weeklydata`.`date`,`stocks`.`weeklydata`.`open`,
+                `stocks`.`weeklydata`.`high`,`stocks`.`weeklydata`.`low`,
+                `stocks`.`weeklydata`.`close`,`stocks`.`weeklydata`.`adj-close`
+                 FROM stocks.`weeklydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
+                 ON `stock-id` = stocks.stock.`id` 
+                  AND stocks.stock.`stock` = %(stock)s
+                   AND `stocks`.`weeklydata`.`date` >= DATE(%(sdate)s)
+                   AND `stocks`.`weeklydata`.`date` <= DATE(%(edate)s)
+                   ORDER BY stocks.`weeklydata`.`date` ASC
+                    """
+            elif '1m' in interval:
+                check_cache_studies_db_stmt = """SELECT `stocks`.`monthlydata`.`date`,`stocks`.`monthlydata`.`open`,
+                `stocks`.`monthlydata`.`high`,`stocks`.`monthlydata`.`low`,
+                `stocks`.`monthlydata`.`close`,`stocks`.`monthlydata`.`adj-close`
+                 FROM stocks.`monthlydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
+                 ON `stock-id` = stocks.stock.`id` 
+                  AND stocks.stock.`stock` = %(stock)s
+                   AND `stocks`.`monthlydata`.`date` >= DATE(%(sdate)s)
+                   AND `stocks`.`monthlydata`.`date` <= DATE(%(edate)s)
+                   ORDER BY stocks.`monthlydata`.`date` ASC
+                    """
+            elif '1y' in interval:
+                check_cache_studies_db_stmt = """SELECT `stocks`.`yearlydata`.`date`,`stocks`.`yearlydata`.`open`,
+                `stocks`.`yearlydata`.`high`,`stocks`.`yearlydata`.`low`,
+                `stocks`.`yearlydata`.`close`,`stocks`.`yearlydata`.`adj-close`
+                 FROM stocks.`yearlydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
+                 ON `stock-id` = stocks.stock.`id` 
+                  AND stocks.stock.`stock` = %(stock)s
+                   AND `stocks`.`yearlydata`.`date` >= DATE(%(sdate)s)
+                   AND `stocks`.`yearlydata`.`date` <= DATE(%(edate)s)
+                   ORDER BY stocks.`yearlydata`.`date` ASC
+                    """
 
             try:
                 check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,
@@ -199,7 +234,8 @@ class Gather:
                 self.data = None
                 try:
                     self.data = get_data(self.indicator.upper(), start_date=start_date.strftime("%Y-%m-%d"),
-                                         end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
+                                         end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
+                                         interval=interval)
                 except AssertionError as a:
                     raise AssertionError(
                         f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
@@ -213,7 +249,8 @@ class Gather:
                         time.sleep(2 * (retries / 1.33))
                         try:
                             self.data = get_data(self.indicator.upper(), start_date=start_date.strftime("%Y-%m-%d"),
-                                                 end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"))
+                                                 end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
+                                                 interval=interval)
                             break
                         except AssertionError as a:
                             raise Exception(
@@ -277,9 +314,22 @@ class Gather:
                 if not skip_db:
                     # Append dates to database
                     for index, row in self.data.iterrows():
-                        insert_date_stmt = """REPLACE INTO `stocks`.`data` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
-                        VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
-                        DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                        if '1d' in interval:
+                            insert_date_stmt = """REPLACE INTO `stocks`.`dailydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                            VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
+                            DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                        elif '1wk' in interval:
+                            insert_date_stmt = """REPLACE INTO `stocks`.`weeklydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                            VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
+                            DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                        elif '1m' in interval:
+                            insert_date_stmt = """REPLACE INTO `stocks`.`monthlydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                            VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
+                            DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                        elif '1y' in interval:
+                            insert_date_stmt = """REPLACE INTO `stocks`.`yearlydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                            VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
+                            DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
                         try:
                             # print(row.name)
                             insert_date_resultado = self.cnx.execute(insert_date_stmt, {
@@ -376,7 +426,7 @@ class Gather:
             self.date_set = (start, end)
             return self.date_set
 
-    def get_date_difference(self, date1: object = None, date2: object = None) -> object:
+    def get_date_difference(self, date1: datetime.datetime = None, date2: datetime.datetime = None) -> object:
         with threading.Lock():
             if date1 is None:
                 return (self.date_set[0] - self.date_set[1]).days
@@ -390,6 +440,8 @@ class Gather:
         if response.status_code != 200:
             raise Exception(response.status_code, response.text)
         return response.json()
-# d = Gather("SPY")
-# d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=7),end_date=datetime.datetime.utcnow().date(),_force_generate=False)
+if __name__ == '__main__':
+    d = Gather("SPY")
+    d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=200),end_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=8),_force_generate=False,interval='1wk')
+    print(d.data)
 # d.get_option_data(datetime.date(year=2021,month=11,day=12))

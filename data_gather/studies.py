@@ -20,6 +20,7 @@ class Studies(Gather):
         return 'stock_data.studies object <%s>' % ",".join(self.indicator)
 
     def __init__(self, indicator, force_generate=False):
+        self.data_ids = None
         self.study_id = None
         with threading.Lock():
             super().__init__(indicator)
@@ -47,7 +48,7 @@ class Studies(Gather):
         return self.timeframe
 
     # Save EMA to self defined applied_studies
-    def apply_ema(self, length, span=None, half=None, skip_db=False):
+    def apply_ema(self, length, span=None, half=None, skip_db=False, interval='1d'):
         # Now, Start the process for inserting ema data...
         date_range = [d.strftime('%Y-%m-%d') for d in
                       pd.date_range(self.data.iloc[0]['Date'], self.data.iloc[-1]['Date'])]  # start/end date list
@@ -127,21 +128,70 @@ class Studies(Gather):
                     except:
                         self.ema_cnx = self.db_con2.cursor()
                     self.ema_cnx.autocommit = True
-                    check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date`,
-                    `stocks`.`study-data`.`val1` 
-                     FROM stocks.`data` USE INDEX (`id-and-date`)
-                      INNER JOIN stocks.stock USE INDEX(`stockid`)
-                    ON `stock-id` = stocks.stock.`id` 
-                      AND stocks.stock.`stock` = %(stock)s
-                        AND `stocks`.`data`.`date` >= DATE(%(bdate)s)
-                        AND `stocks`.`data`.`date` <= DATE(%(edate)s)
-                       INNER JOIN stocks.`study-data` USE INDEX (`ids`)
-                        ON
-                        stocks.stock.`id` = stocks.`study-data`.`stock-id`
-                        AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`
-                        AND stocks.`study-data`.`study-id` = %(id)s 
-                        ORDER BY stocks.`data`.`date` ASC
-                        """
+                    if '1d' in interval:
+                        check_cache_studies_db_stmt = """SELECT `stocks`.`dailydata`.`date`,
+                        `stocks`.`daily-study-data`.`val1` 
+                         FROM stocks.`dailydata` USE INDEX (`id-and-date`)
+                          INNER JOIN stocks.stock USE INDEX(`stockid`)
+                        ON `stock-id` = stocks.stock.`id` 
+                          AND stocks.stock.`stock` = %(stock)s
+                            AND `stocks`.`dailydata`.`date` >= DATE(%(bdate)s)
+                            AND `stocks`.`dailydata`.`date` <= DATE(%(edate)s)
+                           INNER JOIN stocks.`daily-study-data` USE INDEX (`ids`)
+                            ON
+                            stocks.stock.`id` = stocks.`daily-study-data`.`stock-id`
+                            AND stocks.`daily-study-data`.`data-id` = stocks.`dailydata`.`data-id`
+                            AND stocks.`daily-study-data`.`study-id` = %(id)s 
+                            ORDER BY stocks.`dailydata`.`date` ASC
+                            """
+                    elif '1wk' in interval:
+                        check_cache_studies_db_stmt = """SELECT `stocks`.`weeklydata`.`date`,
+                        `stocks`.`weekly-study-data`.`val1` 
+                         FROM stocks.`weeklydata` USE INDEX (`id-and-date`)
+                          INNER JOIN stocks.stock USE INDEX(`stockid`)
+                        ON `stock-id` = stocks.stock.`id` 
+                          AND stocks.stock.`stock` = %(stock)s
+                            AND `stocks`.`weeklydata`.`date` >= DATE(%(bdate)s)
+                            AND `stocks`.`weeklydata`.`date` <= DATE(%(edate)s)
+                           INNER JOIN stocks.`weekly-study-data` USE INDEX (`ids`)
+                            ON
+                            stocks.stock.`id` = stocks.`weekly-study-data`.`stock-id`
+                            AND stocks.`weekly-study-data`.`data-id` = stocks.`weeklydata`.`data-id`
+                            AND stocks.`weekly-study-data`.`study-id` = %(id)s 
+                            ORDER BY stocks.`weeklydata`.`date` ASC
+                            """
+                    elif '1m' in interval:
+                        check_cache_studies_db_stmt = """SELECT `stocks`.`monthlydata`.`date`,
+                            `stocks`.`monthly-study-data`.`val1` 
+                             FROM stocks.`monthlydata` USE INDEX (`id-and-date`)
+                              INNER JOIN stocks.stock USE INDEX(`stockid`)
+                            ON `stock-id` = stocks.stock.`id` 
+                              AND stocks.stock.`stock` = %(stock)s
+                                AND `stocks`.`monthlydata`.`date` >= DATE(%(bdate)s)
+                                AND `stocks`.`monthlydata`.`date` <= DATE(%(edate)s)
+                               INNER JOIN stocks.`monthly-study-data` USE INDEX (`ids`)
+                                ON
+                                stocks.stock.`id` = stocks.`monthly-study-data`.`stock-id`
+                                AND stocks.`monthly-study-data`.`data-id` = stocks.`monthlydata`.`data-id`
+                                AND stocks.`monthly-study-data`.`study-id` = %(id)s 
+                                ORDER BY stocks.`monthlydata`.`date` ASC
+                                """
+                    elif '1y' in interval:
+                        check_cache_studies_db_stmt = """SELECT `stocks`.`yearlydata`.`date`,
+                            `stocks`.`yearly-study-data`.`val1` 
+                             FROM stocks.`yearlydata` USE INDEX (`id-and-date`)
+                              INNER JOIN stocks.stock USE INDEX(`stockid`)
+                            ON `stock-id` = stocks.stock.`id` 
+                              AND stocks.stock.`stock` = %(stock)s
+                                AND `stocks`.`yearlydata`.`date` >= DATE(%(bdate)s)
+                                AND `stocks`.`yearlydata`.`date` <= DATE(%(edate)s)
+                               INNER JOIN stocks.`yearly-study-data` USE INDEX (`ids`)
+                                ON
+                                stocks.stock.`id` = stocks.`yearly-study-data`.`stock-id`
+                                AND stocks.`yearly-study-data`.`data-id` = stocks.`yearlydata`.`data-id`
+                                AND stocks.`yearly-study-data`.`study-id` = %(id)s 
+                                ORDER BY stocks.`yearlydata`.`date` ASC
+                                """
                     try:
                         check_cache_studies_db_result = self.ema_cnx.execute(check_cache_studies_db_stmt,
                                                                              {'stock': self.indicator.upper(),
@@ -223,13 +273,39 @@ class Studies(Gather):
                         self.ema_cnx = self.db_con2.cursor()
                     self.ema_cnx.autocommit = True
                     # Retrieve the stock-id, and data-point id in a single select statement
-                    retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`,
-                     `stocks`.`data`.`stock-id` FROM `stocks`.`data` USE INDEX (`id-and-date`)
-                    INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`
-                     AND `stocks`.`data`.`date`>= DATE(%(bdate)s) 
-                     AND `stocks`.`data`.`date`<= DATE(%(edate)s)
-                     ORDER BY stocks.`data`.`date` ASC 
-                    """
+                    if '1d' in interval:
+                        retrieve_data_stmt = """SELECT `stocks`.`dailydata`.`data-id`,
+                         `stocks`.`dailydata`.`stock-id` FROM `stocks`.`dailydata` USE INDEX (`id-and-date`)
+                        INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`dailydata`.`stock-id`
+                         AND `stocks`.`dailydata`.`date`>= DATE(%(bdate)s) 
+                         AND `stocks`.`dailydata`.`date`<= DATE(%(edate)s)
+                         ORDER BY stocks.`dailydata`.`date` ASC 
+                         """
+                    elif '1wk' in interval:
+                        retrieve_data_stmt = """SELECT `stocks`.`weeklydata`.`data-id`,
+                             `stocks`.`weeklydata`.`stock-id` FROM `stocks`.`weeklydata` USE INDEX (`id-and-date`)
+                            INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`weeklydata`.`stock-id`
+                             AND `stocks`.`weeklydata`.`date`>= DATE(%(bdate)s) 
+                             AND `stocks`.`weeklydata`.`date`<= DATE(%(edate)s)
+                             ORDER BY stocks.`weeklydata`.`date` ASC 
+                             """
+                    elif '1m' in interval:
+                        retrieve_data_stmt = """SELECT `stocks`.`monthlydata`.`data-id`,
+                         `stocks`.`monthlydata`.`stock-id` FROM `stocks`.`monthlydata` USE INDEX (`id-and-date`)
+                        INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`monthlydata`.`stock-id`
+                         AND `stocks`.`monthlydata`.`date`>= DATE(%(bdate)s) 
+                         AND `stocks`.`monthlydata`.`date`<= DATE(%(edate)s)
+                         ORDER BY stocks.`monthlydata`.`date` ASC 
+                         """
+                    elif '1y' in interval:
+                        retrieve_data_stmt = """SELECT `stocks`.`yearlydata`.`data-id`,
+                             `stocks`.`yearlydata`.`stock-id` FROM `stocks`.`yearlydata` USE INDEX (`id-and-date`)
+                            INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`yearlydata`.`stock-id`
+                             AND `stocks`.`yearlydata`.`date`>= DATE(%(bdate)s) 
+                             AND `stocks`.`yearlydata`.`date`<= DATE(%(edate)s)
+                             ORDER BY stocks.`yearlydata`.`date` ASC 
+                             """
+
                     retrieve_data_result = self.ema_cnx.execute(retrieve_data_stmt,
                                                                 {'stock': f'{self.indicator.upper()}',
                                                                  'bdate': self.data["Date"].iloc[0].strftime(
@@ -263,8 +339,14 @@ class Studies(Gather):
                     self.data_ids.append(data_id)
 
                     # Execute insert for study-data
-                    insert_studies_db_stmt = "REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"
-
+                    if '1d' in interval:
+                        insert_studies_db_stmt = "REPLACE INTO `stocks`.`daily-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"
+                    elif '1wk' in interval:
+                        insert_studies_db_stmt = "REPLACE INTO `stocks`.`weekly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"
+                    elif '1m' in interval:
+                        insert_studies_db_stmt = "REPLACE INTO `stocks`.`monthly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"
+                    elif '1y' in interval:
+                        insert_studies_db_stmt = "REPLACE INTO `stocks`.`yearly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"
                     insert_list = []
                     for index, id in self.data.iterrows():
                         emastr = f'ema{length}'
@@ -393,13 +475,29 @@ class Studies(Gather):
                 raise Exception("Did not find downwards fib value")
         return val1, val2, val3
 
-    def insert_fib_vals(self, skip_db):
+    def insert_fib_vals(self, skip_db, interval):
         # Insert data if not in db...
         if not skip_db:
-            insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                        `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                """
+            if '1d' in interval:
+                insert_studies_db_stmt = """REPLACE INTO `stocks`.`daily-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
+                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """
+            elif '1wk' in interval:
+                insert_studies_db_stmt = """REPLACE INTO `stocks`.`weekly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
+                                                `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        """
+            elif '1wk' in interval:
+                insert_studies_db_stmt = """REPLACE INTO `stocks`.`monthly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
+                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """
+            elif '1y' in interval:
+                insert_studies_db_stmt = """REPLACE INTO `stocks`.`yearly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
+                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """
             insert_list = []
             self.fibonacci_extension = self.fibonacci_extension.reset_index().astype(float)
             for index, row in self.data.iterrows():
@@ -461,7 +559,7 @@ class Studies(Gather):
 val1    val3_________________________          vall2
         '''
 
-    def apply_fibonacci(self, skip_db=False):
+    def apply_fibonacci(self, skip_db=False, interval='1d'):
         date_range = [d.strftime('%Y-%m-%d') for d in
                       pd.date_range(self.data.iloc[0]['Date'], self.data.iloc[-1]['Date'])]  # start/end date list
         self.fib_cnx = self.db_con.cursor()
@@ -543,14 +641,40 @@ val1    val3_________________________          vall2
                 pass
             self.fib_cnx = self.db_con.cursor()
             self.fib_cnx.autocommit = True
+            retrieve_data_stmt=''
             # Retrieve the stock-id, and data-point id in a single select statement
-            retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id`
-             FROM `stocks`.`data` USE INDEX (`id-and-date`)
-            INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s
-             AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`
-              AND `stocks`.`data`.`date` >= DATE(%(bdate)s) 
-              AND `stocks`.`data`.`date` <= DATE(%(edate)s) 
-            """
+            if '1d' in interval:
+                retrieve_data_stmt = """SELECT `stocks`.`dailydata`.`data-id`,
+                 `stocks`.`dailydata`.`stock-id` FROM `stocks`.`dailydata` USE INDEX (`id-and-date`)
+                INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`dailydata`.`stock-id`
+                 AND `stocks`.`dailydata`.`date`>= DATE(%(bdate)s) 
+                 AND `stocks`.`dailydata`.`date`<= DATE(%(edate)s)
+                 ORDER BY stocks.`dailydata`.`date` ASC 
+                 """
+            elif '1wk' in interval:
+                retrieve_data_stmt = """SELECT `stocks`.`weeklydata`.`data-id`,
+                     `stocks`.`weeklydata`.`stock-id` FROM `stocks`.`weeklydata` USE INDEX (`id-and-date`)
+                    INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`weeklydata`.`stock-id`
+                     AND `stocks`.`weeklydata`.`date`>= DATE(%(bdate)s) 
+                     AND `stocks`.`weeklydata`.`date`<= DATE(%(edate)s)
+                     ORDER BY stocks.`weeklydata`.`date` ASC 
+                     """
+            elif '1m' in interval:
+                retrieve_data_stmt = """SELECT `stocks`.`monthlydata`.`data-id`,
+                 `stocks`.`monthlydata`.`stock-id` FROM `stocks`.`monthlydata` USE INDEX (`id-and-date`)
+                INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`monthlydata`.`stock-id`
+                 AND `stocks`.`monthlydata`.`date`>= DATE(%(bdate)s) 
+                 AND `stocks`.`monthlydata`.`date`<= DATE(%(edate)s)
+                 ORDER BY stocks.`monthlydata`.`date` ASC 
+                 """
+            elif '1y' in interval:
+                retrieve_data_stmt = """SELECT `stocks`.`yearlydata`.`data-id`,
+                     `stocks`.`yearlydata`.`stock-id` FROM `stocks`.`yearlydata` USE INDEX (`id-and-date`)
+                    INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`yearlydata`.`stock-id`
+                     AND `stocks`.`yearlydata`.`date`>= DATE(%(bdate)s) 
+                     AND `stocks`.`yearlydata`.`date`<= DATE(%(edate)s)
+                     ORDER BY stocks.`yearlydata`.`date` ASC 
+                     """
             retrieve_data_result = self.fib_cnx.execute(retrieve_data_stmt, {'stock': f'{self.indicator.upper()}',
                                                                              'bdate': self.data["Date"].iloc[
                                                                                  0].strftime('%Y-%m-%d') if isinstance(
@@ -583,24 +707,82 @@ val1    val3_________________________          vall2
                             break
 
             # Before inserting data, check cached data, verify if there is data there...
-            check_cache_studies_db_stmt = """SELECT `stocks`.`data`.`date`,
-            `stocks`.`study-data`.`val1`,`stocks`.`study-data`.`val2`,
-            `stocks`.`study-data`.`val3`,`stocks`.`study-data`.`val4`,
-            `stocks`.`study-data`.`val5`,`stocks`.`study-data`.`val6`,
-            `stocks`.`study-data`.`val7`,`stocks`.`study-data`.`val8`,
-            `stocks`.`study-data`.`val9`,`stocks`.`study-data`.`val10`,
-            `stocks`.`study-data`.`val11`,`stocks`.`study-data`.`val12`,
-            `stocks`.`study-data`.`val13`,`stocks`.`study-data`.`val14` 
-             FROM stocks.`data` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
-            ON `stocks`.`data`.`stock-id` = stocks.stock.`id` 
-              AND stocks.stock.`stock` = %(stock)s
-               AND `stocks`.`data`.`date` >= DATE(%(bdate)s)
-               AND `stocks`.`data`.`date` <= DATE(%(edate)s)
-               INNER JOIN stocks.`study-data` USE INDEX (`ids`) ON
-                stocks.stock.`id` = stocks.`study-data`.`stock-id`
-                AND stocks.`study-data`.`data-id` = stocks.`data`.`data-id`
-                AND stocks.`study-data`.`study-id` = %(id)s ORDER BY stocks.`data`.`date` ASC
-                """
+            if '1d' in interval:
+                check_cache_studies_db_stmt = """SELECT `stocks`.`dailydata`.`date`,
+                `stocks`.`daily-study-data`.`val1`,`stocks`.`daily-study-data`.`val2`,
+                `stocks`.`daily-study-data`.`val3`,`stocks`.`daily-study-data`.`val4`,
+                `stocks`.`daily-study-data`.`val5`,`stocks`.`daily-study-data`.`val6`,
+                `stocks`.`daily-study-data`.`val7`,`stocks`.`daily-study-data`.`val8`,
+                `stocks`.`daily-study-data`.`val9`,`stocks`.`daily-study-data`.`val10`,
+                `stocks`.`daily-study-data`.`val11`,`stocks`.`daily-study-data`.`val12`,
+                `stocks`.`daily-study-data`.`val13`,`stocks`.`daily-study-data`.`val14` 
+                 FROM stocks.`dailydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
+                ON `stocks`.`dailydata`.`stock-id` = stocks.stock.`id` 
+                  AND stocks.stock.`stock` = %(stock)s
+                   AND `stocks`.`dailydata`.`date` >= DATE(%(bdate)s)
+                   AND `stocks`.`dailydata`.`date` <= DATE(%(edate)s)
+                   INNER JOIN stocks.`daily-study-data` USE INDEX (`ids`) ON
+                    stocks.stock.`id` = stocks.`daily-study-data`.`stock-id`
+                    AND stocks.`daily-study-data`.`data-id` = stocks.`dailydata`.`data-id`
+                    AND stocks.`daily-study-data`.`study-id` = %(id)s ORDER BY stocks.`dailydata`.`date` ASC
+                    """
+            elif '1wk' in interval:
+                check_cache_studies_db_stmt = """SELECT `stocks`.`weeklydata`.`date`,
+                `stocks`.`weekly-study-data`.`val1`,`stocks`.`weekly-study-data`.`val2`,
+                `stocks`.`weekly-study-data`.`val3`,`stocks`.`weekly-study-data`.`val4`,
+                `stocks`.`weekly-study-data`.`val5`,`stocks`.`weekly-study-data`.`val6`,
+                `stocks`.`weekly-study-data`.`val7`,`stocks`.`weekly-study-data`.`val8`,
+                `stocks`.`weekly-study-data`.`val9`,`stocks`.`weekly-study-data`.`val10`,
+                `stocks`.`weekly-study-data`.`val11`,`stocks`.`weekly-study-data`.`val12`,
+                `stocks`.`weekly-study-data`.`val13`,`stocks`.`weekly-study-data`.`val14` 
+                 FROM stocks.`weeklydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
+                ON `stocks`.`weeklydata`.`stock-id` = stocks.stock.`id` 
+                  AND stocks.stock.`stock` = %(stock)s
+                   AND `stocks`.`weeklydata`.`date` >= DATE(%(bdate)s)
+                   AND `stocks`.`weeklydata`.`date` <= DATE(%(edate)s)
+                   INNER JOIN stocks.`weekly-study-data` USE INDEX (`ids`) ON
+                    stocks.stock.`id` = stocks.`weekly-study-data`.`stock-id`
+                    AND stocks.`weekly-study-data`.`data-id` = stocks.`weeklydata`.`data-id`
+                    AND stocks.`weekly-study-data`.`study-id` = %(id)s ORDER BY stocks.`weeklydata`.`date` ASC
+                    """
+            elif '1m' in interval:
+                check_cache_studies_db_stmt = """SELECT `stocks`.`monthlydata`.`date`,
+                `stocks`.`monthly-study-data`.`val1`,`stocks`.`monthly-study-data`.`val2`,
+                `stocks`.`monthly-study-data`.`val3`,`stocks`.`monthly-study-data`.`val4`,
+                `stocks`.`monthly-study-data`.`val5`,`stocks`.`monthly-study-data`.`val6`,
+                `stocks`.`monthly-study-data`.`val7`,`stocks`.`monthly-study-data`.`val8`,
+                `stocks`.`monthly-study-data`.`val9`,`stocks`.`monthly-study-data`.`val10`,
+                `stocks`.`monthly-study-data`.`val11`,`stocks`.`monthly-study-data`.`val12`,
+                `stocks`.`monthly-study-data`.`val13`,`stocks`.`monthly-study-data`.`val14` 
+                 FROM stocks.`monthlydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
+                ON `stocks`.`monthlydata`.`stock-id` = stocks.stock.`id` 
+                  AND stocks.stock.`stock` = %(stock)s
+                   AND `stocks`.`monthlydata`.`date` >= DATE(%(bdate)s)
+                   AND `stocks`.`monthlydata`.`date` <= DATE(%(edate)s)
+                   INNER JOIN stocks.`monthly-study-data` USE INDEX (`ids`) ON
+                    stocks.stock.`id` = stocks.`monthly-study-data`.`stock-id`
+                    AND stocks.`monthly-study-data`.`data-id` = stocks.`monthlydata`.`data-id`
+                    AND stocks.`monthly-study-data`.`study-id` = %(id)s ORDER BY stocks.`monthlydata`.`date` ASC
+                    """
+            elif '1y' in interval:
+                check_cache_studies_db_stmt = """SELECT `stocks`.`yearlydata`.`date`,
+                `stocks`.`yearly-study-data`.`val1`,`stocks`.`yearly-study-data`.`val2`,
+                `stocks`.`yearly-study-data`.`val3`,`stocks`.`yearly-study-data`.`val4`,
+                `stocks`.`yearly-study-data`.`val5`,`stocks`.`yearly-study-data`.`val6`,
+                `stocks`.`yearly-study-data`.`val7`,`stocks`.`yearly-study-data`.`val8`,
+                `stocks`.`yearly-study-data`.`val9`,`stocks`.`yearly-study-data`.`val10`,
+                `stocks`.`yearly-study-data`.`val11`,`stocks`.`yearly-study-data`.`val12`,
+                `stocks`.`yearly-study-data`.`val13`,`stocks`.`yearly-study-data`.`val14` 
+                 FROM stocks.`yearlydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
+                ON `stocks`.`yearlydata`.`stock-id` = stocks.stock.`id` 
+                  AND stocks.stock.`stock` = %(stock)s
+                   AND `stocks`.`yearlydata`.`date` >= DATE(%(bdate)s)
+                   AND `stocks`.`yearlydata`.`date` <= DATE(%(edate)s)
+                   INNER JOIN stocks.`yearly-study-data` USE INDEX (`ids`) ON
+                    stocks.stock.`id` = stocks.`yearly-study-data`.`stock-id`
+                    AND stocks.`yearly-study-data`.`data-id` = stocks.`yearlydata`.`data-id`
+                    AND stocks.`yearly-study-data`.`study-id` = %(id)s ORDER BY stocks.`yearlydata`.`date` ASC
+                    """
 
             try:
                 check_cache_studies_db_result = self.fib_cnx.execute(check_cache_studies_db_stmt,
@@ -786,11 +968,11 @@ val1    val3_________________________          vall2
 
     ''' Keltner Channels for display data'''
 
-    def keltner_channels(self, length: int, factor: int = 2, displace: int = None, skip_db=False):
+    def keltner_channels(self, length: int, factor: int = 2, displace: int = None, skip_db=False,interval='1d'):
         with threading.Lock():
             self.data_cp = self.data.copy()
             # self.data_cp=self.data_cp.reset_index()
-            self.apply_ema(length, length, skip_db=skip_db)  # apply length ema for middle band
+            self.apply_ema(length, length, skip_db=skip_db,interval=interval)  # apply length ema for middle band
             self.keltner = pd.DataFrame({'middle': [], 'upper': [], 'lower': []}, dtype=float)
             true_range = pd.DataFrame(columns=['trueRange'], dtype=float)
             avg_true_range = pd.DataFrame(columns=['AvgTrueRange'], dtype=float)
@@ -841,13 +1023,13 @@ val1    val3_________________________          vall2
                                                            , ignore_index=True)
 
                     else:  # else
-                        self.keltner = self.keltner.append({'middle': self.applied_studies[f'ema14'][index:index + 1],
-                                                            'upper': self.applied_studies[f'ema14'][index:index + 1]
+                        self.keltner = self.keltner.append({'middle': self.applied_studies[f'ema14'][index],
+                                                            'upper': self.applied_studies[f'ema14'][index]
                                                                      + float(factor * avg_true_range['AvgTrueRange'][
-                                                                                      index:index + 1]),
-                                                            'lower': self.applied_studies[f'ema14'][index:index + 1]
+                                                                                      index]),
+                                                            'lower': self.applied_studies[f'ema14'][index]
                                                                      - (factor * avg_true_range['AvgTrueRange'][
-                                                                                 index:index + 1])}
+                                                                                 index])}
                                                            , ignore_index=True)
                 except Exception as e:
                     raise Exception("[Error] Failed to calculate Keltner Bands...\n", str(e))
@@ -920,15 +1102,39 @@ val1    val3_________________________          vall2
             except:
                 self.kelt_cnx = self.db_con2.cursor()
             self.kelt_cnx.autocommit = True
-            retrieve_data_stmt = """SELECT `stocks`.`data`.`data-id`,
-             `stocks`.`data`.`stock-id` FROM `stocks`.`data` USE INDEX (`id-and-date`)
-            INNER JOIN `stocks`.`stock` USE INDEX (`stockid`)
-            ON `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`
-             AND `stocks`.stock.stock = %(stock)s
-               AND `stocks`.`data`.`date`>= DATE(%(bdate)s) 
-               AND `stocks`.`data`.`date`<= DATE(%(edate)s) 
-               ORDER BY stocks.`data`.`date` ASC
-            """
+            retrieve_data_stmt=''
+            if '1d' in interval:
+                retrieve_data_stmt = """SELECT `stocks`.`dailydata`.`data-id`,
+                 `stocks`.`dailydata`.`stock-id` FROM `stocks`.`dailydata` USE INDEX (`id-and-date`)
+                INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`dailydata`.`stock-id`
+                 AND `stocks`.`dailydata`.`date`>= DATE(%(bdate)s) 
+                 AND `stocks`.`dailydata`.`date`<= DATE(%(edate)s)
+                 ORDER BY stocks.`dailydata`.`date` ASC 
+                 """
+            elif '1wk' in interval:
+                retrieve_data_stmt = """SELECT `stocks`.`weeklydata`.`data-id`,
+                     `stocks`.`weeklydata`.`stock-id` FROM `stocks`.`weeklydata` USE INDEX (`id-and-date`)
+                    INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`weeklydata`.`stock-id`
+                     AND `stocks`.`weeklydata`.`date`>= DATE(%(bdate)s) 
+                     AND `stocks`.`weeklydata`.`date`<= DATE(%(edate)s)
+                     ORDER BY stocks.`weeklydata`.`date` ASC 
+                     """
+            elif '1m' in interval:
+                retrieve_data_stmt = """SELECT `stocks`.`monthlydata`.`data-id`,
+                 `stocks`.`monthlydata`.`stock-id` FROM `stocks`.`monthlydata` USE INDEX (`id-and-date`)
+                INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`monthlydata`.`stock-id`
+                 AND `stocks`.`monthlydata`.`date`>= DATE(%(bdate)s) 
+                 AND `stocks`.`monthlydata`.`date`<= DATE(%(edate)s)
+                 ORDER BY stocks.`monthlydata`.`date` ASC 
+                 """
+            elif '1y' in interval:
+                retrieve_data_stmt = """SELECT `stocks`.`yearlydata`.`data-id`,
+                     `stocks`.`yearlydata`.`stock-id` FROM `stocks`.`yearlydata` USE INDEX (`id-and-date`)
+                    INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`yearlydata`.`stock-id`
+                     AND `stocks`.`yearlydata`.`date`>= DATE(%(bdate)s) 
+                     AND `stocks`.`yearlydata`.`date`<= DATE(%(edate)s)
+                     ORDER BY stocks.`yearlydata`.`date` ASC 
+                     """
             retrieve_data_result = self.kelt_cnx.execute(retrieve_data_stmt, {'stock': f'{self.indicator.upper()}',
                                                                               'bdate': self.data["Date"].iloc[
                                                                                   0].strftime('%Y-%m-%d') if isinstance(
@@ -964,9 +1170,22 @@ val1    val3_________________________          vall2
             self.data_ids.append(data_id)
 
             # Execute insert for study-data
-            insert_studies_db_stmt = """REPLACE INTO `stocks`.`study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,`val2`,`val3`) 
-                VALUES (%s,%s,%s,%s,%s,%s,%s)
-                """
+            if '1d' in interval:
+                insert_studies_db_stmt = """REPLACE INTO `stocks`.`daily-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,`val2`,`val3`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s)
+                    """
+            elif '1wk' in interval:
+                insert_studies_db_stmt = """REPLACE INTO `stocks`.`weekly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,`val2`,`val3`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s)
+                    """
+            elif '1m' in interval:
+                insert_studies_db_stmt = """REPLACE INTO `stocks`.`monthly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,`val2`,`val3`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s)
+                    """
+            elif '1y' in interval:
+                insert_studies_db_stmt = """REPLACE INTO `stocks`.`yearly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,`val2`,`val3`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s)
+                    """
             insert_list = []
             for index, row in self.keltner.iterrows():
                 try:
