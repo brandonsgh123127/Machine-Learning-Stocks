@@ -25,7 +25,7 @@ class Normalizer():
         self.normalized_data = pd.DataFrame()
         self.unnormalized_data = pd.DataFrame()
         self.path = Path(os.getcwd()).absolute()
-        self.min_max = MinMaxScaler()
+        self.min_max = MinMaxScaler(feature_range=(0,1))
         self.gen = Generator(ticker=ticker, force_generate=force_generate)
         self.studies = None
         self.data = None
@@ -71,7 +71,7 @@ class Normalizer():
         Utilize mysql to gather data.  Gathers stock data from table.
     '''
 
-    def mysql_read_data(self, ticker, date=None, force_generate=False, skip_db=False):
+    def mysql_read_data(self, ticker, date=None, force_generate=False, skip_db=False,interval='1d'):
         try:
             self.cnx = self.db_con.cursor(buffered=True)
             self.cnx.autocommit = True
@@ -99,7 +99,7 @@ class Normalizer():
                 initial_date = date
             self.gen.set_ticker(ticker)
             vals = self.gen.generate_data_with_dates(initial_date - datetime.timedelta(days=40), initial_date,
-                                                     force_generate=force_generate, skip_db=skip_db)
+                                                     force_generate=force_generate, skip_db=skip_db, interval=interval)
             self.studies = vals[1]
             self.data = vals[0]
             self.fib = vals[2]
@@ -126,7 +126,7 @@ class Normalizer():
         utilize mysql to retrieve data and study data for later usage...
     '''
 
-    def read_data(self, ticker, rand_dates=False, skip_db=False):
+    def read_data(self, ticker, rand_dates=False, skip_db=False, interval='1d'):
         if rand_dates:
             # Get a random date for generation based on min/max date
             d2 = datetime.datetime.strptime(datetime.datetime.now().strftime('%m/%d/%Y %I:%M %p'), '%m/%d/%Y %I:%M %p')
@@ -140,7 +140,7 @@ class Normalizer():
         else:
             date = None
         try:
-            self.mysql_read_data(ticker, date=date, skip_db=skip_db)
+            self.mysql_read_data(ticker, date=date, skip_db=skip_db,interval=interval)
         except Exception as e:
             print('[ERROR] Failed to read data!\n', str(e))
             raise RuntimeError(f'[ERROR] Failed to read data!',e)
@@ -163,6 +163,10 @@ class Normalizer():
         data = self.data
         try:
             data = data.drop(columns={'Date'})
+        except:
+            pass
+        try:
+            data = data.drop(columns={'index'})
         except:
             pass
         data = data.astype('float')
@@ -256,8 +260,8 @@ class Normalizer():
         for index, row in data.iterrows():
             try:
                 if index == 0:
-                    self.normalized_data.loc[index, "Open"] = data["Open"].iloc[0]
-                    self.normalized_data.loc[index, "Close"] = data["Close"].iloc[0]
+                    self.normalized_data.loc[index, "Open"] = 0
+                    self.normalized_data.loc[index, "Close"] = 0
                     self.normalized_data.loc[index, "Range"] = abs(data.at[index, "Close"] - data.at[index, "Open"])
                     self.normalized_data.loc[index, "Euclidean Open"] = np.power(np.power(((data.at[index, "Open"] -
                                                                                             self.studies.at[
@@ -331,29 +335,16 @@ class Normalizer():
         self.unnormalized_data = self.normalized_data
         try:
             scaler = self.min_max.fit(self.unnormalized_data)
-            if out == 8:
-                self.normalized_data = pd.DataFrame(scaler.fit_transform(self.normalized_data), columns=['Keltner Pos',
-                                                                                                         'Close EMA14 Euclidean',
-                                                                                                         'Close EMA30 Euclidean',
-                                                                                                         'EMA14 EMA30 Euclidean',
-                                                                                                         'Prior Close Euclidean',
-                                                                                                         'Upper Keltner Close Diff',
-                                                                                                         'Lower Keltner Close Diff',
-                                                                                                         'Open',
-                                                                                                         'Close'])
-                #  NORMALIZED DATA STORED IN NP ARRAY
-            elif out == 2:
-                # 'Open EMA Euclidean','Close EMA Euclidean','Prior Close Euclidean','Upper Keltner Close Diff',
-                # 'Lower Keltner Close Diff'
-                self.normalized_data = pd.DataFrame(scaler.fit_transform(self.normalized_data), columns=['Keltner Pos',
-                                                                                                         'Close EMA14 Euclidean',
-                                                                                                         'Close EMA30 Euclidean',
-                                                                                                         'EMA14 EMA30 Euclidean',
-                                                                                                         'Prior Close Euclidean',
-                                                                                                         'Upper Keltner Close Diff',
-                                                                                                         'Lower Keltner Close Diff',
-                                                                                                         'Open',
-                                                                                                         'Close'])
+            self.normalized_data = pd.DataFrame(scaler.fit_transform(self.unnormalized_data), columns=['Keltner Pos',
+                                                                                                     'Close EMA14 Euclidean',
+                                                                                                     'Close EMA30 Euclidean',
+                                                                                                     'EMA14 EMA30 Euclidean',
+                                                                                                     'Prior Close Euclidean',
+                                                                                                     'Upper Keltner Close Diff',
+                                                                                                     'Lower Keltner Close Diff',
+                                                                                                     'Open',
+                                                                                                     'Close'])
+            if out == 2:
                 self.normalized_data = self.normalized_data.drop(
                     columns=['EMA14 EMA30 Euclidean', 'Keltner Pos', 'Prior Close Euclidean'])
         except Exception as e:
@@ -379,8 +370,7 @@ class Normalizer():
                                                              'EMA14 EMA30 Diff'])  # NORMALIZED DATA STORED IN NP ARRAY
             elif out == 2:
                 self.normalized_data = pd.DataFrame(scaler.fit_transform(self.normalized_data),
-                                                    columns=['Open', 'Close',
-                                                             'Range'])  # NORMALIZED DATA STORED IN NP ARRAY
+                                                    columns=['Close'])  # NORMALIZED DATA STORED IN NP ARRAY
         except Exception as e:
             print('[ERROR] Failed to normalize!\nException:\n', str(e))
             return 1
@@ -399,7 +389,10 @@ class Normalizer():
                                          'Open',
                                          'Close'])
         # Set data manually to preserve order
-        tmp_data['Open'] = data['Open']
+        try:
+            tmp_data['Open'] = data['Open']
+        except:
+            pass
         tmp_data['Close'] = data['Close']
         return pd.DataFrame(scaler.inverse_transform((tmp_data.to_numpy())), columns=['Keltner Pos',
                                                                                       'Close EMA14 Euclidean',

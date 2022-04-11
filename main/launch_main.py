@@ -55,7 +55,9 @@ class GUI(Thread_Pool):
 
         self.watchlist = []
         self.quick_select = StringVar(self.content)
-        self.quick_select.set('SPY')  # default value
+        self.quick_select.set('Select Stock from Dropdown')  # default value
+        self.interval_text = StringVar(self.content)
+        self.interval_text.set('Daily')  # default value
         self.stock_input = tk.Entry(self.content)
         self.quick_select.trace('w', self.quick_gen)
         self.generate_button = ttk.Button(self.content, text="Generate", command=self.generate_callback)
@@ -100,9 +102,9 @@ class GUI(Thread_Pool):
 
     def find_biggest_moves_callback(self, event=None):
         if isinstance(event, tk.Event):
-            self.cache_queue.put(threading.Thread(target=self.search_big_moves, args=(type(event),self.force_bool.get(),
+            threading.Thread(target=self.search_big_moves, args=(type(event),self.force_bool.get(),
                                                                                       self.boolean1.get(),
-                                                                                      0.015)))
+                                                                                      0.015)).start()
 
     """
         Loads the dropdown bar with current prices for all stocks located under 'default.csv'.
@@ -130,7 +132,7 @@ class GUI(Thread_Pool):
             pass
 
         self.stock_dropdown = tk.OptionMenu(self.content, self.quick_select, *self.watchlist)
-        self.stock_dropdown.grid(column=4, row=0)
+        self.stock_dropdown.grid(column=5, row=0)
         self.watchlist_file.close()
 
     """
@@ -149,7 +151,7 @@ class GUI(Thread_Pool):
             except:
                 ticker = line.strip().upper()
             tickers.append(ticker)
-        noted_moves = find_all_big_moves(tickers, force_generation=_force_generation, _has_actuals=_has_actuals, percent=percent)
+        noted_moves = find_all_big_moves(tickers, force_generation=_force_generation, _has_actuals=_has_actuals, percent=percent,interval=self.interval_text.get())
         # After setting noted moves, populate self noted to str
         for note in noted_moves:
             self.noted_str.append(f'{note[0]} >>> {round((((note[2] + note[1]) / note[2]) -1) * 100,2)}%')
@@ -161,7 +163,8 @@ class GUI(Thread_Pool):
             pass
 
         self.noted_dropdown = tk.OptionMenu(self.content, self.quick_select, *self.noted_str)
-        self.noted_dropdown.grid(column=5, row=0)
+        self.noted_dropdown = tk.OptionMenu(self.content, self.quick_select, *self.noted_str)
+        self.noted_dropdown.grid(column=5, row=20)
         watchlist_file.close()
 
     def quick_gen(self, event, *args, **vargs):
@@ -231,10 +234,10 @@ class GUI(Thread_Pool):
                          datetime.datetime.utcnow().date())  # month worth of data
             if not has_actuals:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    thread = executor.submit(analyze_stock, ticker, has_actuals, force_generation)
+                    thread = executor.submit(analyze_stock, ticker, has_actuals, force_generation, self.interval_text.get())
             else:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    thread = executor.submit(analyze_stock, ticker, has_actuals, force_generation)
+                    thread = executor.submit(analyze_stock, ticker, has_actuals, force_generation, self.interval_text.get())
 
             self.img = thread.result()[0]
             # self.image = ImageTk.PhotoImage(self.img)
@@ -345,6 +348,9 @@ class GUI(Thread_Pool):
         self.generate_button.grid(column=3, row=2)
         # self.next_page_button.pack(side='bottom')
         self.cache_queue.put(threading.Thread(target=self.load_dropdown, args=()))
+        self.interval_dropdown = tk.OptionMenu(self.content, self.interval_text, *['Daily','Weekly','Monthly','Yearly'])
+        self.interval_dropdown.grid(column=4, row=0)
+
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True,False)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('TSLA',False,False,True,False)))
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('KO',False,False,True,False)))

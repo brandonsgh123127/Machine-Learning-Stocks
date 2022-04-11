@@ -30,19 +30,21 @@ class launcher:
     def display_model(self, name: str = "model_relu", _has_actuals: bool = False, ticker: str = "spy",
                       color: str = "blue", force_generation=False, unnormalized_data=False, row=0, col=1,
                       data=None, is_divergence=False,
-                      skip_threshold: float = 0.05):
+                      skip_threshold: float = 0.05,
+                      interval: str = '1d'):
         # Call machine learning model
         if not is_divergence:
             ldata = load(f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
-                        force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False, data=data)
+                         force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False, data=data,
+                         interval=interval)
         else:
             ldata = load_divergence(f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
-                                   force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False,
-                                   data=data)
+                                    force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False,
+                                    data=data, interval=interval)
         # if skipping display, return only predicted value and last val, as that is what we care about.
         if self.skip_display:
             predict_close = ldata[0]['Close'].iloc[0]
-            if isinstance(data,tuple): # if tuple, take 1st df and get close
+            if isinstance(data, tuple):  # if tuple, take 1st df and get close
                 self.saved_predictions.append((ticker, predict_close, data[0]['Close'].iloc[-1]))
                 return ticker, predict_close, data[0]['Close'].iloc[-1]
             else:
@@ -78,7 +80,7 @@ class launcher:
 data_gen = Generator()
 
 
-def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False):
+def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False, interval='Daily'):
     thread_pool = Thread_Pool(amount_of_threads=4)
     listLock = threading.Lock()
 
@@ -116,55 +118,67 @@ def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False):
         valid_date = (valid_date - datetime.timedelta(days=1))
     e_date = valid_date
 
-    dates = (e_date - datetime.timedelta(days=75), e_date)  # month worth of data
+    n_interval = '1d' if interval == 'Daily' else '1wk' if interval == 'Weekly' else '1mo' if interval == 'Monthly' else '1y'
+
+    if '1d' in n_interval:
+        dates = (e_date - datetime.timedelta(days=75), e_date)  # month worth of data
+    elif '1wk' in n_interval:
+        cur_day = abs(e_date.weekday())
+        if cur_day != 0:
+            e_date = e_date - datetime.timedelta(days=cur_day + 2)
+        dates = (e_date - datetime.timedelta(days=250), e_date)  # ~5 months
+    elif '1mo' in n_interval:
+        dates = (e_date - datetime.timedelta(days=600), e_date.replace(day=1))  # ~20 months
 
     _has_actuals = has_actuals
+
     # Generate Data for usage in display_model
-    data = gen.generate_data_with_dates(dates[0], dates[1], False, force_generate)
+    data = gen.generate_data_with_dates(dates[0], dates[1], False, force_generate, interval=n_interval)
     #
     # PREDICT LABEL
 
     # Call display line on first result, rest display predict only
 
-    if _has_actuals:
-        with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_relu", _has_actuals, ticker, 'green', force_generate, False, 1, 0, data, False,
-                    0.05))) == 1:
-                thread_pool.join_workers()
-        with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_leaky", _has_actuals, ticker, 'black', force_generate, False, 1, 0, data, False,
-                    0.05))) == 1:
-                thread_pool.join_workers()
-        with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_sigmoid", _has_actuals, ticker, 'magenta', force_generate, False, 1, 0, data, False,
-                    0.05))) == 1:
-                thread_pool.join_workers()
-
-    # Call solely display predict only
-    else:
-        with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_relu", _has_actuals, ticker, 'green', force_generate, False, 1, 0, data, False,
-                    0.05))) == 1:
-                thread_pool.join_workers()
-        with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_leaky", _has_actuals, ticker, 'black', force_generate, False, 1, 0, data, False,
-                    0.05))) == 1:
-                thread_pool.join_workers()
-        with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_sigmoid", _has_actuals, ticker, 'magenta', force_generate, False, 1, 0, data, False,
-                    0.05))) == 1:
-                thread_pool.join_workers()
-    gc.collect()
-    thread_pool.join_workers()
+    # if _has_actuals:
+    #     with listLock:
+    #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+    #                 "model_relu", _has_actuals, ticker, 'green', force_generate, False, 1, 0, data, False,
+    #                 0.05))) == 1:
+    #             thread_pool.join_workers()
+    #     with listLock:
+    #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+    #                 "model_leaky", _has_actuals, ticker, 'black', force_generate, False, 1, 0, data, False,
+    #                 0.05))) == 1:
+    #             thread_pool.join_workers()
+    #     with listLock:
+    #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+    #                 "model_sigmoid", _has_actuals, ticker, 'magenta', force_generate, False, 1, 0, data, False,
+    #                 0.05))) == 1:
+    #             thread_pool.join_workers()
+    #
+    # # Call solely display predict only
+    # else:
+    #     with listLock:
+    #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+    #                 "model_relu", _has_actuals, ticker, 'green', force_generate, False, 1, 0, data, False,
+    #                 0.05))) == 1:
+    #             thread_pool.join_workers()
+    #     with listLock:
+    #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+    #                 "model_leaky", _has_actuals, ticker, 'black', force_generate, False, 1, 0, data, False,
+    #                 0.05))) == 1:
+    #             thread_pool.join_workers()
+    #     with listLock:
+    #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+    #                 "model_sigmoid", _has_actuals, ticker, 'magenta', force_generate, False, 1, 0, data, False,
+    #                 0.05))) == 1:
+    #             thread_pool.join_workers()
+    # gc.collect()
+    # thread_pool.join_workers()
     #
     # CHART LABEL
-    launch.display_model("model_relu", has_actuals, ticker, 'green', force_generate, True, 0, 0, data)
+    launch.display_model("model_relu", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
+                         n_interval)
     gc.collect()
 
     #
@@ -172,34 +186,34 @@ def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False):
     if _has_actuals:
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_relu2", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, True,
-                    0.05))) == 1:
+                    "model_relu2", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval))) == 1:
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_leaky2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, True,
-                    0.05))) == 1:
+                    "model_leaky2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval))) == 1:
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_sigmoid2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, True,
-                    0.05))) == 1:
+                    "model_sigmoid2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval))) == 1:
                 thread_pool.join_workers()
     else:
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_relu2", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, True,
-                    0.05))) == 1:
+                    "model_relu2", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval))) == 1:
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_leaky2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, True,
-                    0.05))) == 1:
+                    "model_leaky2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval))) == 1:
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_sigmoid2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, True,
-                    0.05))) == 1:
+                    "model_sigmoid2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval))) == 1:
                 thread_pool.join_workers()
 
     gc.collect()
@@ -220,7 +234,8 @@ def get_preview_prices(ticker: str, force_generation=False):
         return ['nan'], ['nan']
 
 
-def find_all_big_moves(tickers: list, force_generation=False,_has_actuals: bool = False, percent: float = 0.02) -> list:
+def find_all_big_moves(tickers: list, force_generation=False, _has_actuals: bool = False, percent: float = 0.02,
+                       interval: str = 'Daily') -> list:
     thread_pool = Thread_Pool(amount_of_threads=4)
     listLock = threading.Lock()
 
@@ -250,21 +265,31 @@ def find_all_big_moves(tickers: list, force_generation=False,_has_actuals: bool 
         valid_date = (valid_date - datetime.timedelta(days=1))
     e_date = valid_date
 
-    dates = (e_date - datetime.timedelta(days=75), e_date)  # month worth of data
+    n_interval = '1d' if interval == 'Daily' else '1wk' if interval == 'Weekly' else '1mo' if interval == 'Monthly' else '1y'
+
+    if '1d' in n_interval:
+        dates = (e_date - datetime.timedelta(days=75), e_date)  # month worth of data
+    elif '1wk' in n_interval:
+        cur_day = abs(e_date.weekday())
+        if cur_day != 0:
+            e_date = e_date - datetime.timedelta(days=cur_day + 2)
+        dates = (e_date - datetime.timedelta(days=250), e_date)  # ~5 months
+    elif '1mo' in n_interval:
+        dates = (e_date - datetime.timedelta(days=600), e_date.replace(day=1))  # ~20 months
 
     path = Path(os.getcwd()).absolute()
     gen = Generator(None, path, force_generation)
     for ticker in tickers:
         try:
             gen.set_ticker(ticker)
-            data = gen.generate_data_with_dates(dates[0], dates[1], False, force_generation,True)
+            data = gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
             # print(data,flush=True)
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_leaky2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, True,
-                    percent))) == 1:
+                    "model_relu2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
+                    percent, n_interval))) == 1:
                 thread_pool.join_workers()
         except Exception as e:
-            print(f'[ERROR] Could not generate an NN dataset for {ticker}!  Continuing...',flush=True)
+            print(f'[ERROR] Could not generate an NN dataset for {ticker}!  Continuing...', flush=True)
     thread_pool.join_workers()
 
     saved_predictions: list = []
@@ -282,20 +307,21 @@ if __name__ == "__main__":
     _force_generate = sys.argv[4] == 'True'
     # print(_force_generate)
     # print(_type,_has_actuals,_is_not_closed)
-    main(ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate)
+    # main(ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='Weekly')
 
-    # path = Path(os.getcwd()).absolute()
-    # watchlist_file = open(f'{path}/data/watchlist/test.csv', 'r')
-    # lines = watchlist_file.readlines()
-    # noted_str = []
-    # tickers1 = []
-    # for line in lines:
-    #     try:
-    #         ticker1 = line[0:line.find(",")].strip().upper()
-    #     except:
-    #         ticker1 = line.strip().upper()
-    #     tickers1.append(ticker1)
-    # noted_moves= find_all_big_moves(tickers1,False,False,0.01)
+    path = Path(os.getcwd()).absolute()
+    watchlist_file = open(f'{path}/data/watchlist/test.csv', 'r')
+    lines = watchlist_file.readlines()
+    noted_str = []
+    tickers1 = []
+    for line in lines:
+        try:
+            ticker1 = line[0:line.find(",")].strip().upper()
+        except:
+            ticker1 = line.strip().upper()
+        tickers1.append(ticker1)
+    noted_moves = find_all_big_moves(tickers1, True, False, 0.01, 'Weekly')
+    print(noted_moves)
     # # After setting noted moves, populate self noted to str
     # for note in noted_moves:
     #     noted_str.append(f'{note[0]} -> {(((note[2] + note[1]) / note[2]) - 1) * 100}%')

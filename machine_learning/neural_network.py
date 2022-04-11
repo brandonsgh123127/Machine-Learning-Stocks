@@ -1,4 +1,5 @@
 import os
+import shutil
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -35,40 +36,38 @@ class Network(Neural_Framework):
         self.model_name = model_choice
         self.model_choice = self.model_map_names.get(model_choice)
         if self.model_choice < 4:
-            self.nn_input = keras.Input(shape=(1,126))  # 14 * 12 cols
+            self.nn_input = keras.Input(shape=(1, 126))  # 14 * 12 cols
         else:
-            self.nn_input = keras.Input(shape=(1,84))  # 14 * 9 cols
+            self.nn_input = keras.Input(shape=(1, 126))  # 14 * 9 cols
         #######
         ###### 12 col * 14 rows
         #######
 
         # Relu Model
         if self.model_choice == 1:
-            self.nn = keras.layers.Dense(154, activation='relu',
+            self.nn = keras.layers.Dense(126, activation='relu',
                                          kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
                 self.nn_input)
             # self.nn = keras.layers.Dropout(0.1)(self.nn)
-            keras.regularizers.l1(0.09)
-            keras.regularizers.l2(0.1)
-            self.nn = keras.layers.Dense(124, activation='relu',
-                                         kernel_initializer=tf.keras.initializers.GlorotUniform())(self.nn)
-            self.nn = keras.layers.Dense(48, activation='relu')(self.nn)
-            self.nn = keras.layers.Dropout(0.5)(self.nn)
-            self.nn = keras.layers.Dense(24, activation='relu')(self.nn)
-            self.nn2 = keras.layers.Dense(2, activation='linear')(self.nn)
+            keras.regularizers.l2(0.01)
+            self.nn = keras.layers.Dense(48, activation=keras.layers.LeakyReLU(alpha=0.2),kernel_regularizer=keras.regularizers.l1(0.01))(self.nn)
+            self.nn = keras.layers.Dense(48, activation=keras.layers.LeakyReLU(alpha=0.3),)(self.nn)
+            self.nn2 = keras.layers.Dense(1, activation='linear',activity_regularizer=keras.regularizers.l1(0.03))(self.nn)
+
+
         #  Leaky Relu no Dropout
         elif self.model_choice == 2:
-            self.nn = keras.layers.Dense(154, activation=keras.layers.LeakyReLU(alpha=0.3),
+            self.nn = keras.layers.Dense(126, activation=keras.layers.LeakyReLU(alpha=0.3),
                                          kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
                 self.nn_input)
-            self.nn = keras.layers.Dense(140, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn = keras.layers.Dense(48, activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
-            self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.74))(self.nn)
             self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn2 = keras.layers.Dense(2, activation='linear')(self.nn)
-        # Sigmoid 
+            self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3),kernel_regularizer=keras.regularizers.l1(0.01))(self.nn)
+            self.nn2 = keras.layers.Dense(1, activation='linear',activity_regularizer=keras.regularizers.l1(0.03))(self.nn)
+
+
+        # Sigmoid
         elif self.model_choice == 3:
-            self.nn = keras.layers.Dense(154, activation='sigmoid',
+            self.nn = keras.layers.Dense(126, activation='sigmoid',
                                          kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
                 self.nn_input)
             # self.nn = keras.layers.Dropout(0.1)(self.nn)
@@ -76,68 +75,70 @@ class Network(Neural_Framework):
             keras.regularizers.l2(0.04)
             self.nn = keras.layers.Dense(56, activation='sigmoid',
                                          kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
-            self.nn = keras.layers.Dense(56, activation='sigmoid',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
             self.nn = keras.layers.Dropout(0.5)(self.nn)  # Residual layer
-            self.nn = keras.layers.Dense(48, activation='sigmoid')(self.nn)
+            self.nn = keras.layers.Dense(22, activation='sigmoid')(self.nn)
             self.nn = keras.layers.Dense(20, activation='sigmoid')(self.nn)
-            self.nn2 = keras.layers.Dense(2, activation='linear')(self.nn)
+            self.nn2 = keras.layers.Dense(1, activation='linear',activity_regularizer=keras.regularizers.l1(0.03))(self.nn)
             #######
         ###### 9 col * 14 rows
         #######
 
+
+
         # Relu - Out 5
         elif self.model_choice == 4:
-            self.nn = keras.layers.Dense(84, activation='relu',
+            self.nn = keras.layers.Dense(126, activation='relu',
                                          kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
                 self.nn_input)
             keras.regularizers.l1(0.02)
             keras.regularizers.l2(0.07)
-            self.nn = keras.layers.Dense(48, activation='relu',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
-            self.nn = keras.layers.Dense(16, activation='relu',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
-            self.nn = keras.layers.Dropout(0.5)(self.nn)
-            self.nn2 = keras.layers.Dense(2, activation='linear')(self.nn)
+            self.nn = keras.layers.Dense(32, activation='relu')(self.nn)
+            self.nn = keras.layers.Dense(16, activation='relu')(self.nn)
+            self.nn2 = keras.layers.Dense(1, activation='linear',activity_regularizer=keras.regularizers.l1(0.03))(self.nn)
+
+
         # Leaky Relu - Out 5
         elif self.model_choice == 5:
-            self.nn = keras.layers.Dense(84, activation=keras.layers.LeakyReLU(alpha=0.3),
+            self.nn = keras.layers.Dense(126, activation=keras.layers.LeakyReLU(alpha=0.3),
                                          kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
                 self.nn_input)
             keras.regularizers.l1(0.01)
             keras.regularizers.l2(0.04)
-            self.nn = keras.layers.Dense(64, activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
             self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
             self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn2 = keras.layers.Dense(2, activation='linear')(self.nn)
+            self.nn2 = keras.layers.Dense(1, activation='linear',activity_regularizer=keras.regularizers.l2(0.02))(self.nn)
+
+
         # Sigmoid - Out 5
         elif self.model_choice == 6:
-            self.nn = keras.layers.Dense(84, activation='sigmoid',
+            self.nn = keras.layers.Dense(126, activation='sigmoid',
                                          kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
                 self.nn_input)
             self.nn = keras.layers.Dense(84, activation='sigmoid')(self.nn)
             self.nn = keras.layers.Dropout(0.6)(self.nn)  # Residual
             keras.regularizers.l1(0.01)
             keras.regularizers.l2(0.04)
-            self.nn = keras.layers.Dense(52, activation='sigmoid',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
             self.nn = keras.layers.Dense(22, activation='sigmoid')(self.nn)
-            self.nn2 = keras.layers.Dense(2, activation='linear')(self.nn)
+            self.nn = keras.layers.Dense(22, activation='sigmoid')(self.nn)
+            self.nn2 = keras.layers.Dense(1, activation='linear',activity_regularizer=keras.regularizers.l2(0.01))(self.nn)
+
+        # Convert to a model
         self.nn = keras.Model(inputs=self.nn_input, outputs=[self.nn2])
-        self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.002, beta_1=0.85, beta_2=0.997), loss='mse',
-                        metrics=['MeanAbsoluteError', 'MeanAbsolutePercentageError'])
+        self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.01, beta_1=0.90, beta_2=0.997), loss='mse',
+                        metrics=['MeanAbsoluteError', 'MeanSquaredError'])
         return self.nn
 
     # Used for generation of data via the start
     def generate_sample(self, _has_actuals=False, rand_date=None):
         path = Path(os.getcwd()).absolute()
         self.sampler.reset_data()
-        self.sampler.set_ticker(self.choose_random_ticker(Neural_Framework,csv_file=f'{path}/data/watchlist/default.csv'))
+        self.sampler.set_ticker(
+            self.choose_random_ticker(Neural_Framework, csv_file=f'{path}/data/watchlist/default.csv'))
         try:
             if self.model_choice < 4:
-                self.sampler.generate_sample(_has_actuals=_has_actuals, out=8, rand_date=rand_date, skip_db=True)
+                self.sampler.generate_sample(_has_actuals=_has_actuals, out=1, rand_date=rand_date, skip_db=True)
             else:
-                self.sampler.generate_sample(_has_actuals=_has_actuals, out=2, rand_date=rand_date, skip_db=True)
+                self.sampler.generate_sample(_has_actuals=_has_actuals, out=1, rand_date=rand_date, skip_db=True)
             self.sampler.data = self.sampler.data.drop(['High', 'Low'], axis=1)
         except Exception as e:
             print('[Error] Failed batch!\n', str(e))
@@ -161,16 +162,17 @@ class Network(Neural_Framework):
                 try:
                     self.generate_sample(True, rand_date)
                 except Exception as e:
-                    print('[ERROR] Failed to generate sample\n',str(e))
+                    print('[ERROR] Failed to generate sample\n', str(e))
                     continue
                 try:
                     if self.model_choice < 4:
                         train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 126)))
                     else:
-                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 84)))
+                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 126)))
                     tmp = self.sampler.normalized_data.iloc[-1:]
-                    tmp = pd.concat([pd.DataFrame([tmp['Open'].to_numpy()]), pd.DataFrame([tmp['Close'].to_numpy()])])
-                    train_targets.append(np.reshape(tmp.to_numpy(), (1, 2)))
+                    tmp = pd.concat([pd.DataFrame([tmp['Close'].to_numpy()])])
+
+                    train_targets.append(np.reshape(tmp.to_numpy(), (1, 1)))
                 except Exception as e:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -182,11 +184,14 @@ class Network(Neural_Framework):
                     print('[ERROR] Unknown error has occurred while training!')
                     continue
                 j = j + 1
+            train = np.asarray(train).astype('float32')
+            train_targets = np.asarray(train_targets).astype('float32')
+
             # Profile a range of batches, e.g. from 2 to 5.
             tensorboard_callback = tf.keras.callbacks.TensorBoard(
                 log_dir='./logs', profile_batch=(2, 5))
             # Use fit for generating with ease.  Validation data included for analysis of loss
-            disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets), batch_size=BATCHES, epochs=1,
+            disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets), batch_size=75, epochs=1,
                                validation_split=0.177,
                                callbacks=[tensorboard_callback])
             models[i] = disp.history
@@ -206,19 +211,39 @@ listLock = threading.Lock()
 
 
 def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_actuals: bool = False,
-                   name: str = "model_relu", force_generation: bool = False):
+                   name: str = "model_relu", force_generation: bool = False,interval='1d'):
     # Before inserting data, check cached data, verify if there is data there...
     from_date_id = None
     to_date_id = None
     stock_id = None
 
     # First, get to date id
-    check_cache_tdata_db_stmt = """SELECT `stocks`.`data`.`data-id`,`stocks`.`data`.`stock-id` 
-     FROM stocks.`data` USE INDEX (`id-and-date`) INNER JOIN stocks.`stock`
-     ON stocks.`data`.`stock-id` = stocks.`stock`.`id` 
-       AND `stocks`.`stock`.`stock` = %(stock)s
-       AND stocks.`data`.`date` = DATE(%(date)s)
-        """
+    check_cache_tdata_db_stmt=''
+    # Retrieve the stock-id, and data-point id in a single select statement
+    if '1d' in interval:
+        check_cache_tdata_db_stmt = """SELECT `stocks`.`dailydata`.`data-id`,
+         `stocks`.`dailydata`.`stock-id` FROM `stocks`.`dailydata` USE INDEX (`id-and-date`)
+        INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`dailydata`.`stock-id`
+         AND `stocks`.`dailydata`.`date`= DATE(%(date)s)
+             """
+    elif '1wk' in interval:
+        check_cache_tdata_db_stmt = """SELECT `stocks`.`weeklydata`.`data-id`,
+             `stocks`.`weeklydata`.`stock-id` FROM `stocks`.`weeklydata` USE INDEX (`id-and-date`)
+            INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`weeklydata`.`stock-id`
+             AND `stocks`.`weeklydata`.`date`= DATE(%(date)s)
+             """
+    elif '1m' in interval:
+        check_cache_tdata_db_stmt = """SELECT `stocks`.`monthlydata`.`data-id`,
+         `stocks`.`monthlydata`.`stock-id` FROM `stocks`.`monthlydata` USE INDEX (`id-and-date`)
+        INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`monthlydata`.`stock-id`
+         AND `stocks`.`monthlydata`.`date`= DATE(%(date)s)
+             """
+    elif '1y' in interval:
+        check_cache_tdata_db_stmt = """SELECT `stocks`.`yearlydata`.`data-id`,
+             `stocks`.`yearlydata`.`stock-id` FROM `stocks`.`yearlydata` USE INDEX (`id-and-date`)
+            INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`yearlydata`.`stock-id`
+             AND `stocks`.`yearlydata`.`date`= DATE(%(date)s)
+             """
     # check if currently weekend/holiday
     valid_datetime = datetime.datetime.utcnow()
     holidays = USFederalHolidayCalendar().holidays(start=valid_datetime,
@@ -260,8 +285,6 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
     for retrieve_result in retrieve_tdata_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
-            print(
-                f'[INFO] Failed to locate a to data-id and stock-id for {ticker} on {valid_datetime.strftime("%Y-%m-%d")} with has_actuals: {has_actuals}')
             print(f'[INFO] Retrieving just stock-id...')
             check_stockid_db_stmt = """SELECT `stocks`.`stock`.`id` 
              FROM stocks.`stock` USE INDEX (`stockid`) WHERE
@@ -285,11 +308,30 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
             to_date_id = id_res[0][0].decode('latin1')
 
     # Check nn-data table after retrieval of from-date and to-date id's
-    check_cache_fdata_db_stmt = """SELECT `stocks`.`data`.`data-id` 
-     FROM stocks.`data` USE INDEX (`stockid-and-date`)
-     WHERE stocks.`data`.`stock-id` = %(stock-id)s
-       AND stocks.`data`.`date` = DATE(%(date)s)
-        """
+    if '1d' in interval:
+        check_cache_fdata_db_stmt = """SELECT `stocks`.`dailydata`.`data-id` 
+         FROM stocks.`dailydata` USE INDEX (`stockid-and-date`)
+         WHERE stocks.`dailydata`.`stock-id` = %(stock-id)s
+           AND stocks.`dailydata`.`date` = DATE(%(date)s)
+            """
+    elif '1wk' in interval:
+        check_cache_fdata_db_stmt = """SELECT `stocks`.`weeklydata`.`data-id` 
+         FROM stocks.`weeklydata` USE INDEX (`stockid-and-date`)
+         WHERE stocks.`weeklydata`.`stock-id` = %(stock-id)s
+           AND stocks.`weeklydata`.`date` = DATE(%(date)s)
+            """
+    elif '1m' in interval:
+        check_cache_fdata_db_stmt = """SELECT `stocks`.`monthlydata`.`data-id` 
+         FROM stocks.`monthlydata` USE INDEX (`stockid-and-date`)
+         WHERE stocks.`monthlydata`.`stock-id` = %(stock-id)s
+           AND stocks.`monthlydata`.`date` = DATE(%(date)s)
+            """
+    elif '1y' in interval:
+        check_cache_fdata_db_stmt = """SELECT `stocks`.`yearlydata`.`data-id` 
+         FROM stocks.`yearlydata` USE INDEX (`stockid-and-date`)
+         WHERE stocks.`yearlydata`.`stock-id` = %(stock-id)s
+           AND stocks.`yearlydata`.`date` = DATE(%(date)s)
+            """
     # 75 days ago max -- check if weekday or holiday before proceeding
     valid_datetime = datetime.datetime.utcnow() - datetime.timedelta(days=75)
     holidays = USFederalHolidayCalendar().holidays(start=valid_datetime,
@@ -322,14 +364,38 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
         else:
             from_date_id = id_res[0][0].decode('latin1')
     # Check nn-data table after retrieval of from-date and to-date id's
-    check_cache_nn_db_stmt = """SELECT `stocks`.`nn-data`.`close`,`stocks`.`nn-data`.`open` 
-     FROM stocks.`nn-data` USE INDEX (`from-to-model`,`stockid`) WHERE
-    `stock-id` = %(stock-id)s
-       AND `stocks`.`nn-data`.`from-date-id` = %(from-date-id)s
-       AND `stocks`.`nn-data`.`to-date-id` = %(to-date-id)s
-        AND `stocks`.`nn-data`.`model` = %(model)s
-
-        """
+    if '1d' in interval:
+        check_cache_nn_db_stmt = """SELECT `stocks`.`daily-nn-data`.`close`,`stocks`.`daily-nn-data`.`open` 
+         FROM stocks.`daily-nn-data` USE INDEX (`from-to-model`,`stockid`) WHERE
+        `stock-id` = %(stock-id)s
+           AND `stocks`.`daily-nn-data`.`from-date-id` = %(from-date-id)s
+           AND `stocks`.`daily-nn-data`.`to-date-id` = %(to-date-id)s
+            AND `stocks`.`daily-nn-data`.`model` = %(model)s
+            """
+    elif '1wk' in interval:
+        check_cache_nn_db_stmt = """SELECT `stocks`.`weekly-nn-data`.`close`,`stocks`.`weekly-nn-data`.`open` 
+         FROM stocks.`weekly-nn-data` USE INDEX (`from-to-model`,`stockid`) WHERE
+        `stock-id` = %(stock-id)s
+           AND `stocks`.`weekly-nn-data`.`from-date-id` = %(from-date-id)s
+           AND `stocks`.`weekly-nn-data`.`to-date-id` = %(to-date-id)s
+            AND `stocks`.`weekly-nn-data`.`model` = %(model)s
+            """
+    elif '1m' in interval:
+        check_cache_nn_db_stmt = """SELECT `stocks`.`monthly-nn-data`.`close`,`stocks`.`monthly-nn-data`.`open` 
+         FROM stocks.`monthly-nn-data` USE INDEX (`from-to-model`,`stockid`) WHERE
+        `stock-id` = %(stock-id)s
+           AND `stocks`.`monthly-nn-data`.`from-date-id` = %(from-date-id)s
+           AND `stocks`.`monthly-nn-data`.`to-date-id` = %(to-date-id)s
+            AND `stocks`.`monthly-nn-data`.`model` = %(model)s
+            """
+    elif '1y' in interval:
+        check_cache_nn_db_stmt = """SELECT `stocks`.`yearly-nn-data`.`close`,`stocks`.`yearly-nn-data`.`open` 
+         FROM stocks.`yearly-nn-data` USE INDEX (`from-to-model`,`stockid`) WHERE
+        `stock-id` = %(stock-id)s
+           AND `stocks`.`yearly-nn-data`.`from-date-id` = %(from-date-id)s
+           AND `stocks`.`yearly-nn-data`.`to-date-id` = %(to-date-id)s
+            AND `stocks`.`yearly-nn-data`.`model` = %(model)s
+            """
     try:
 
         check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt, {'stock-id': stock_id,
@@ -361,7 +427,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 
 
 def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu", force_generation=False,
-         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = None):
+         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = None, interval: str = '1d'):
     # Connect to local DB
     path = Path(os.getcwd()).absolute()
     tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
@@ -390,13 +456,12 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
     stock_id = None
 
     try:
-        vals = check_db_cache(cnx, ticker, has_actuals, name, force_generation)
+        vals = check_db_cache(cnx, ticker, has_actuals, name, force_generation,interval=interval)
         predicted = vals[0]
         stock_id = vals[1]
         from_date_id = vals[2]
         to_date_id = vals[3]
     except Exception as e:
-        print(f'[INFO] Failed to gather NN Supervised Model value from DB!\n{str(e)}')
         pass
 
     # Start ML calculations
@@ -411,10 +476,7 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
         if data is not None:
             sampler.set_sample_data(data[0], data[1], data[2], data[3])
         train = None
-        if neural_net.model_choice < 4:
-            sampler.generate_sample(_has_actuals=has_actuals, out=8, rand_date=rand_date)
-        else:
-            sampler.generate_sample(_has_actuals=has_actuals, out=2, rand_date=rand_date)
+        sampler.generate_sample(_has_actuals=has_actuals, out=8, rand_date=rand_date, interval=interval)
         try:  # verify there is no extra 'index' column
             sampler.data = sampler.data.drop(['index'], axis=1)
         except Exception as e:
@@ -432,26 +494,42 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
             print(f'[INFO] Did not query all specified dates within range for nn-data retrieval!')
         with listLock:
             with tf.device(device_opt):
-                if neural_net.model_choice < 4:
-                    if has_actuals:
-                        train=(np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(), (1, 1, 126)))
-                    else:
-                        train=(np.reshape(sampler.normalized_data[-14:].to_numpy(), (1, 1, 126)))
+                if has_actuals:
+                    train = (np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(), (1, 1, 126)))
                 else:
-                    if has_actuals:
-                        train=(np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(), (1, 1, 126)))
-                    else:
-                        train=(np.reshape(sampler.normalized_data[-14:].to_numpy(), (1, 1, 126)))
+                    train = (np.reshape(sampler.normalized_data[-14:].to_numpy(), (1, 1, 126)))
+                train = np.asarray(train).astype('float32')
                 prediction = neural_net.nn.predict(np.stack(train))
-        predicted = pd.DataFrame((np.reshape(prediction, (1, 2))), columns=['Open',
-                                                                            'Close'])  # NORMALIZED
+        predicted = pd.DataFrame((np.reshape(prediction, (1, 1))), columns=['Close'])  # NORMALIZED
 
         # Upload data to DB given prediction has finished
-        check_cache_nn_db_stmt = """REPLACE INTO `stocks`.`nn-data` (`nn-id`, `stock-id`, 
-                                                                `from-date-id`,`to-date-id`,
-                                                                `model`,`close`,`open` 
-                                                        VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(stock-id)s,%(from-date-id)s,
-                                                        %(to-date-id)s,%(model)s,%(close)s,%(open)s)
+        if '1d' in interval:
+            check_cache_nn_db_stmt = """REPLACE INTO `stocks`.`daily-nn-data` (`nn-id`, `stock-id`, 
+                                                                    `from-date-id`,`to-date-id`,
+                                                                    `model`,`close`,`open` 
+                                                            VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(stock-id)s,%(from-date-id)s,
+                                                            %(to-date-id)s,%(model)s,%(close)s,%(open)s)
+            """
+        elif '1wk' in interval:
+            check_cache_nn_db_stmt = """REPLACE INTO `stocks`.`weekly-nn-data` (`nn-id`, `stock-id`, 
+                                                                    `from-date-id`,`to-date-id`,
+                                                                    `model`,`close`,`open` 
+                                                            VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(stock-id)s,%(from-date-id)s,
+                                                            %(to-date-id)s,%(model)s,%(close)s,%(open)s)
+            """
+        elif '1m' in interval:
+            check_cache_nn_db_stmt = """REPLACE INTO `stocks`.`monthly-nn-data` (`nn-id`, `stock-id`, 
+                                                                    `from-date-id`,`to-date-id`,
+                                                                    `model`,`close`,`open` 
+                                                            VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(stock-id)s,%(from-date-id)s,
+                                                            %(to-date-id)s,%(model)s,%(close)s,%(open)s)
+            """
+        elif '1y' in interval:
+            check_cache_nn_db_stmt = """REPLACE INTO `stocks`.`yearly-nn-data` (`nn-id`, `stock-id`, 
+                                                                    `from-date-id`,`to-date-id`,
+                                                                    `model`,`close`,`open` 
+                                                            VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(stock-id)s,%(from-date-id)s,
+                                                            %(to-date-id)s,%(model)s,%(close)s,%(open)s)
             """
         if from_date_id is not None and to_date_id is not None:
             try:
@@ -461,8 +539,7 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
                                                              'from-date-id': from_date_id,
                                                              'to-date-id': to_date_id,
                                                              'model': name,
-                                                             'close': str(predicted['Close'].iloc[0]),
-                                                             'open': str(predicted['Open'].iloc[0])})
+                                                             'close': str(predicted['Close'].iloc[0])})
                 db_con.commit()
             except mysql.connector.errors.IntegrityError:
                 cnx.close()
@@ -476,13 +553,13 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
     unnormalized_prediction = sampler.unnormalize(predicted).to_numpy()
 
     # space = pd.DataFrame([[0,0]],columns=['Open','Close'])
-    unnormalized_predict_values = sampler.data.append(pd.DataFrame([[unnormalized_prediction[0, 0] +
-                                                                     sampler.data['Open'].iloc[-1],
-                                                                     unnormalized_prediction[0, 1] +
+    unnormalized_predict_values = sampler.data.append(pd.DataFrame([[unnormalized_prediction[0, 1] +
                                                                      sampler.data['Close'].iloc[-1]]],
-                                                                   columns=['Open', 'Close']), ignore_index=True)
+                                                                   columns=['Close']), ignore_index=True)
     predicted_unnormalized = pd.concat([unnormalized_predict_values])
-    return sampler.unnormalize(predicted), sampler.unnormalized_data.tail(1), predicted_unnormalized, sampler.keltner, sampler.fib, sampler.studies
+
+    return sampler.unnormalize(predicted), sampler.unnormalized_data.tail(
+        1), predicted_unnormalized, sampler.keltner, sampler.fib, sampler.studies
 
 
 """
@@ -499,16 +576,36 @@ def run(epochs, batch_size, name="model_relu"):
     for i in range(1, neural_net.EPOCHS):
         train_history = model[i]
         print(train_history)
-    neural_net.save_model()
+
+def copy_logs(path : Path = None, dest_folder: str = ""):
+    shutil.move(f'{path}/logs/', f'{path}/old_logs/{dest_folder}', copy_function=shutil.copytree)
+    os.mkdir(f'{path}/logs/')
 
 
-thread_manager = Thread_Pool(amount_of_threads=3)
-thread_manager.start_worker(threading.Thread(target=run,args=(300,25,"model_relu")))
-# thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_leaky")))
-# thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_sigmoid")))
-# thread_manager.join_workers()
-# thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_relu2")))
-# thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_leaky2")))
-# thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_sigmoid2")))
-# net=Network(1,1)
-# load("SPY", False, "model_relu2", True)
+def main():
+    thread_manager = Thread_Pool(amount_of_threads=3)
+    path = Path(os.getcwd()).absolute()
+    # model_relu = threading.Thread(target=run, args=(300, 25, "model_relu"))
+    # thread_manager.start_worker(model_relu)
+    # run(50,75,'model_relu')
+    # copy_logs(path,'relu')
+    # thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_leaky")))
+    # run(50,75,'model_leaky')
+    # copy_logs(path,'leaky')
+    # thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_sigmoid")))
+    # run(50,75,'model_sigmoid')
+    # copy_logs(path,'sigmoid')
+    # thread_manager.join_workers()
+    # thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_relu2")))
+    run(50,75,'model_relu2')
+    copy_logs(path,'relu2')
+    # thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_leaky2")))
+    run(50,75,'model_leaky2')
+    copy_logs(path,'leaky2')
+    # thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_sigmoid2")))
+    run(50,75,'model_sigmoid2')
+    copy_logs(path,'sigmoid2')
+    # net=Network(1,1)
+    # load("SPY", False, "model_relu2", True)
+if __name__ == "__main__":
+    main()

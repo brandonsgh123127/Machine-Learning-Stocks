@@ -44,36 +44,28 @@ class Network(Neural_Framework):
             # self.nn = keras.layers.Dropout(0.1)(self.nn)
             keras.regularizers.l1(0.09)
             keras.regularizers.l2(0.1)
-            self.nn = keras.layers.Dense(48, activation='relu',
-                                         kernel_initializer=tf.keras.initializers.GlorotUniform())(self.nn)
             self.nn = keras.layers.Dense(48, activation='relu')(self.nn)
-            self.nn = keras.layers.Dropout(0.5)(self.nn)
-            self.nn = keras.layers.Dense(24, activation='relu')(self.nn)
-            self.nn2 = keras.layers.Dense(10, activation='linear')(self.nn)
+            self.nn = keras.layers.Dense(56, activation='relu')(self.nn)
+            self.nn2 = keras.layers.Dense(2, activation='linear')(self.nn)
         #  Leaky Relu no Dropout
         elif self.model_choice == 2:
             self.nn = keras.layers.Dense(140, activation=keras.layers.LeakyReLU(alpha=0.3),
                                          kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
                 self.nn_input)
-            self.nn = keras.layers.Dense(140, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn = keras.layers.Dense(48, activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
-            self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.74))(self.nn)
+            self.nn = keras.layers.Dense(56, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
             self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn2 = keras.layers.Dense(10, activation='linear')(self.nn)
+            self.nn2 = keras.layers.Dense(2, activation='linear')(self.nn)
         # Sigmoid 
         elif self.model_choice == 3:
-            self.nn = keras.layers.Dense(140, activation='sigmoid',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                self.nn_input)
+            self.nn = keras.layers.Dense(140, activation='sigmoid')(self.nn_input)
             # self.nn = keras.layers.Dropout(0.1)(self.nn)
             keras.regularizers.l1(0.01)
             keras.regularizers.l2(0.04)
-            self.nn = keras.layers.Dense(56, activation='sigmoid',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
+            self.nn = keras.layers.Dense(56, activation='sigmoid')(self.nn)
             self.nn = keras.layers.Dropout(0.5)(self.nn)  # Residual layer
-            self.nn = keras.layers.Dense(48, activation='sigmoid')(self.nn)
+            self.nn = keras.layers.Dense(22, activation='sigmoid')(self.nn)
             self.nn = keras.layers.Dense(20, activation='sigmoid')(self.nn)
-            self.nn2 = keras.layers.Dense(10, activation='linear')(self.nn)
+            self.nn2 = keras.layers.Dense(2, activation='linear')(self.nn)
             # Relu - Out 3
         elif self.model_choice == 4:
             self.nn = keras.layers.Dense(140, activation='relu',
@@ -81,9 +73,7 @@ class Network(Neural_Framework):
                 self.nn_input)
             keras.regularizers.l1(0.02)
             keras.regularizers.l2(0.07)
-            self.nn = keras.layers.Dense(48, activation='relu',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
-            self.nn = keras.layers.Dropout(0.5)(self.nn)
+            self.nn = keras.layers.Dense(48, activation='relu')(self.nn)
             self.nn2 = keras.layers.Dense(3, activation='linear')(self.nn)
         # Leaky Relu - Out 3
         elif self.model_choice == 5:
@@ -93,7 +83,7 @@ class Network(Neural_Framework):
             keras.regularizers.l1(0.01)
             keras.regularizers.l2(0.04)
             self.nn = keras.layers.Dense(48, activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
-            self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
+            self.nn = keras.layers.Dense(48, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
             self.nn2 = keras.layers.Dense(3, activation='linear')(self.nn)
         # Sigmoid - Out 3
         elif self.model_choice == 6:
@@ -104,13 +94,12 @@ class Network(Neural_Framework):
             self.nn = keras.layers.Dropout(0.6)(self.nn)  # Residual
             keras.regularizers.l1(0.01)
             keras.regularizers.l2(0.04)
-            self.nn = keras.layers.Dense(48, activation='sigmoid',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
+            self.nn = keras.layers.Dense(8, activation='sigmoid')(self.nn)
             self.nn = keras.layers.Dense(8, activation='sigmoid')(self.nn)
             self.nn2 = keras.layers.Dense(3, activation='linear')(self.nn)
         self.nn = keras.Model(inputs=self.nn_input, outputs=[self.nn2])
         self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.0005, beta_1=0.95, beta_2=0.999), loss='mse',
-                        metrics=['MeanAbsoluteError', 'MeanAbsolutePercentageError'])
+                        metrics=['MeanAbsoluteError', 'MeanSquaredError'])
         return self.nn
 
     # Used for generation of data via the start
@@ -154,7 +143,9 @@ class Network(Neural_Framework):
                     train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(),
                                             (1, 1, 140)))  # Retrieve all except for last data to be analyzed/predicted
                     if self.model_choice <= 3:
-                        train_targets.append(np.reshape(self.sampler.normalized_data.iloc[-1:].to_numpy(), (1, 10)))
+                        tmp = self.sampler.normalized_data.iloc[-1:]
+                        tmp = pd.concat([pd.DataFrame([tmp['Open'].to_numpy()]), pd.DataFrame([tmp['Close'].to_numpy()])])
+                        train_targets.append(np.reshape(tmp.to_numpy(), (1, 2)))
                     else:
                         tmp = self.sampler.normalized_data.iloc[-1:]
                         tmp = pd.concat(
@@ -213,7 +204,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
             datetime.datetime.utcnow().hour <= 14 and datetime.datetime.utcnow().minute < 30):  # if current time is before 9:30 AM EST, go back a day
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
-    if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() <= 4:  # week day holiday
+    if valid_date in holidays and 0 <= valid_date.weekday() <= 4:  # week day holiday
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
     if valid_date.weekday() == 5:  # if saturday
@@ -291,7 +282,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
     if valid_date.weekday() == 6:  # if sunday
         valid_datetime = (valid_datetime + datetime.timedelta(days=1))
         valid_date = (valid_date + datetime.timedelta(days=1))
-    if valid_date in holidays and valid_date.weekday() >= 0 and valid_date.weekday() < 4:
+    if valid_date in holidays and 0 <= valid_date.weekday() < 4:
         valid_datetime = (valid_datetime + datetime.timedelta(days=1))
         valid_date = (valid_date + datetime.timedelta(days=1))
 
@@ -346,7 +337,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 
 
 def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu", force_generation=False,
-         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = None):
+         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = None, interval: str = '1d'):
     # Connect to local DB
     path = Path(os.getcwd()).absolute()
     tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
@@ -396,7 +387,7 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
         if data is not None:
             sampler.set_sample_data(data[0], data[1], data[2], data[3])
         train = []
-        sampler.generate_sample(_has_actuals=has_actuals, rand_date=rand_date, is_divergence=True)
+        sampler.generate_sample(_has_actuals=has_actuals, rand_date=rand_date, is_divergence=True, interval=interval)
 
         try:  # verify there is no extra 'index' column
             sampler.data = sampler.data.drop(['index'], axis=1)
@@ -420,10 +411,8 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
                 train.append(np.reshape(sampler.normalized_data[-14:].to_numpy(), (1, 1, 140)))
             prediction = neural_net.nn.predict(np.stack(train))
         if neural_net.model_choice <= 3:
-            predicted = pd.DataFrame((np.reshape((prediction), (1, 10))),
-                                     columns=['Open', 'Close', 'Range', 'Euclidean Open', 'Euclidean Close',
-                                              'Open EMA14 Diff', 'Open EMA30 Diff', 'Close EMA14 Diff',
-                                              'Close EMA30 Diff', 'EMA14 EMA30 Diff'])  # NORMALIZED
+            predicted = pd.DataFrame((np.reshape((prediction), (1, 2))),
+                                     columns=['Open', 'Close'])  # NORMALIZED
         else:
             predicted = pd.DataFrame((np.reshape((prediction), (1, 3))),
                                      columns=['Open', 'Close', 'Range'])  # NORMALIZED
@@ -437,15 +426,26 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
             """
         if from_date_id is not None and to_date_id is not None:
             try:
-                check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,
-                                                            {'id': f'{from_date_id}{to_date_id}{ticker.upper()}{name}',
-                                                             'stock-id': stock_id,
-                                                             'from-date-id': from_date_id,
-                                                             'to-date-id': to_date_id,
-                                                             'model': name,
-                                                             'open': str(predicted['Open'].iloc[0]),
-                                                             'close': str(predicted['Close'].iloc[0]),
-                                                             'range': str(predicted['Range'].iloc[0])})
+                if neural_net.model_choice <= 3:
+                    check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,
+                                                                {'id': f'{from_date_id}{to_date_id}{ticker.upper()}{name}',
+                                                                 'stock-id': stock_id,
+                                                                 'from-date-id': from_date_id,
+                                                                 'to-date-id': to_date_id,
+                                                                 'model': name,
+                                                                 'open': str(predicted['Open'].iloc[0]),
+                                                                 'close': str(predicted['Close'].iloc[0])})
+                else:
+                    check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,
+                                                                {'id': f'{from_date_id}{to_date_id}{ticker.upper()}{name}',
+                                                                 'stock-id': stock_id,
+                                                                 'from-date-id': from_date_id,
+                                                                 'to-date-id': to_date_id,
+                                                                 'model': name,
+                                                                 'open': str(predicted['Open'].iloc[0]),
+                                                                 'close': str(predicted['Close'].iloc[0]),
+                                                                 'range': str(predicted['Range'].iloc[0])})
+
                 db_con.commit()
             except mysql.connector.errors.IntegrityError:
                 cnx.close()
@@ -457,7 +457,6 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
         cnx.close()
 
     unnormalized_prediction = sampler.unnormalize_divergence(predicted).to_numpy()
-    # space = pd.DataFrame([[0,0]],columns=['Open','Close'])
     unnormalized_predict_values = sampler.data.append(pd.DataFrame([[unnormalized_prediction[0, 0] +
                                                                      sampler.data['Open'].iloc[-1],
                                                                      unnormalized_prediction[0, 1] +

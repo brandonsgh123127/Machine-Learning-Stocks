@@ -16,7 +16,8 @@ class Sample(Normalizer):
         self.ticker = ticker
         self.path = Path(os.getcwd()).absolute()
 
-    def generate_sample(self, out=8, _has_actuals=False, rand_date=False, is_divergence=False, skip_db=False):
+    def generate_sample(self, out=8, _has_actuals=False, rand_date=False, is_divergence=False, skip_db=False,
+                        interval='1d'):
         self.cnx = self.db_con.cursor(buffered=True)
         if not _has_actuals:
             # print("Predict Mode")
@@ -25,11 +26,11 @@ class Sample(Normalizer):
             self.DAYS_SAMPLED = 15
         # If data has been set via neural_network, don't read data
         if self.data is not None:
-            None
+            pass
         else:
             # Read the current ticker data
             try:
-                self.read_data(self.ticker, rand_dates=rand_date, skip_db=skip_db)
+                self.read_data(self.ticker, rand_dates=rand_date, skip_db=skip_db, interval=interval)
             except Exception as e:
                 print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\n{str(e)}')
                 raise Exception(str(e))

@@ -151,48 +151,47 @@ class Display:
         else:
             indices_dict = {0: 'Keltner Pos', 1: 'Close EMA14 Euclidean', 2: 'Close EMA30 Euclidean',
                             3: 'EMA14 EMA30 Euclidean', 4: 'Prior Close Euclidean', 5: 'Upper Keltner Close Diff',
-                            6: 'Lower Keltner Close Diff', 7: 'Open', 8: 'Close', 9: 'Range'}
+                            6: 'Lower Keltner Close Diff', 7: 'Open', 8: 'Close'}
         self.data_display2 = pd.concat([self.data_display.reset_index(), self.data_predict_display.reset_index()],
                                        ignore_index=False).set_flags(allows_duplicate_labels=True)
         self.data_display2['index'] = [0, 0]
+        # self.data_display2 = self.data_display2.set_index('index')
+        # self.data_display2['Open'].plot(ax=self.axes[row, col], x='index', y='Open',
+        #                                 style=f'{self.color_map.get(color)}x')
+        #
+        # self.data_display2['index'] = [1, 1]
         self.data_display2 = self.data_display2.set_index('index')
-        self.data_display2['Open'].plot(ax=self.axes[row, col], x='index', y='Open',
-                                        style=f'{self.color_map.get(color)}x')
+        self.data_display2['Close'].plot(x='index', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
 
-        self.data_display2['index'] = [1, 1]
-        self.data_display2 = self.data_display2.set_index('index')
-        self.data_display2['Close'].plot(x='index', y='Close', style='mo', ax=self.axes[row, col])
-
-        # if divergence, add range label
+        # if divergence, add open label
         try:
             if is_divergence:
-                self.data_display2['index'] = [2, 2]
+                self.data_display2['index'] = [1, 1]
                 self.data_display2 = self.data_display2.set_index('index')
-                self.data_display2['Range'].plot(x='index', y='Range', style='mo', ax=self.axes[row, col])
+                self.data_display2['Open'].plot(x='index', y='Open', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
         except Exception as e:
             raise Exception(
                 f'[INFO] Failed to draw "Range" column!\n{len(self.data_predict_display2.columns)}\n{self.data_predict_display2.columns}\n{str(e)}')
-
         for i, row2 in enumerate(self.data_display2.index):
             for j, col2 in enumerate(self.data_display2.columns):
                 if not is_divergence:
                     if i == 0:
-                        if j == 7 or j == 8:  # Bottom Left
+                        if j == 8:  # Bottom Left
                             y = round(self.data_display2.iloc[i][j], 2)
-                            self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
+                            self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
                     else:
-                        if j == 7 or j == 8:  # Top right
+                        if j == 8:  # Top right
                             y = round(self.data_display2.iloc[i][j], 2)
-                            self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                            self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
                 else:  # divergence
                     if i == 0:
                         if j == 0 or j == 1 or j == 2:
                             y = round(self.data_display2.iloc[i][j], 2)
-                            self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
+                            self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
                     else:
                         if j == 0 or j == 1 or j == 2:
                             y = round(self.data_display2.iloc[i][j], 2)
-                            self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                            self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
 
     def display_predict_only(self, color=None, row=0, col=1, is_divergence=False):
         if is_divergence:
@@ -200,27 +199,27 @@ class Display:
         else:
             indices_dict = {0: 'Keltner Pos', 1: 'Close EMA14 Euclidean', 2: 'Close EMA30 Euclidean',
                             3: 'EMA14 EMA30 Euclidean', 4: 'Prior Close Euclidean', 5: 'Upper Keltner Close Diff',
-                            6: 'Lower Keltner Close Diff', 7: 'Open', 8: 'Close', 9: 'Range',10: 'test'}
+                            6: 'Lower Keltner Close Diff', 7: 'Open', 8: 'Close'}
 
         self.data_predict_display2 = self.data_predict_display
         self.data_predict_display2['index'] = [0]
-        self.data_predict_display2 = self.data_predict_display2.set_index('index')
-        self.data_predict_display2['Open'].plot(ax=self.axes[row, col], x='index', y='Open',
-                                                style=f'{self.color_map.get(color)}x')
-
-        self.data_predict_display2['index'] = [1]
+        # self.data_predict_display2 = self.data_predict_display2.set_index('index')
+        # self.data_predict_display2['Open'].plot(ax=self.axes[row, col], x='index', y='Open',
+        #                                         style=f'{self.color_map.get(color)}x')
+        #
+        # self.data_predict_display2['index'] = [1]
         data = self.data_predict_display2.set_index('index')
-        data['Close'].plot(x='index', y='Close', style='mo', ax=self.axes[row, col])
+        data['Close'].plot(x='index', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
         # Under divergence print range label
         try:
             if is_divergence:
                 self.data_predict_display2['index'] = [2]
                 data = self.data_predict_display2.set_index('index')
-                data['Range'].plot(x='index', y='Range', style='mo', ax=self.axes[row, col])
+                data['Open'].plot(x='index', y='Open', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
                 data['index'] = [3]
         except Exception as e:
             raise Exception(
-                f'[INFO] Failed to draw "Range" column!\n{len(self.data_predict_display2.columns)}\n{self.data_predict_display2.columns}\n{str(e)}')
+                f'[INFO] Failed to draw "Open" column!\n{len(self.data_predict_display2.columns)}\n{self.data_predict_display2.columns}\n{str(e)}')
 
         for i, row2 in enumerate(self.data_predict_display2.index):
             for j, col2 in enumerate(self.data_predict_display2.columns):
