@@ -27,7 +27,7 @@ class launcher:
         self.saved_predictions: list = []
         self.listLock = threading.Lock()
 
-    def display_model(self, name: str = "model_relu", _has_actuals: bool = False, ticker: str = "spy",
+    def display_model(self, name: str = "relu_multilayer_l2", _has_actuals: bool = False, ticker: str = "spy",
                       color: str = "blue", force_generation=False, unnormalized_data=False, row=0, col=1,
                       data=None, is_divergence=False,
                       skip_threshold: float = 0.05,
@@ -123,12 +123,18 @@ def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False, in
     if '1d' in n_interval:
         dates = (e_date - datetime.timedelta(days=75), e_date)  # month worth of data
     elif '1wk' in n_interval:
+        # change end date to a monday before
         cur_day = abs(e_date.weekday())
         if cur_day != 0:
             e_date = e_date - datetime.timedelta(days=cur_day + 2)
-        dates = (e_date - datetime.timedelta(days=250), e_date)  # ~5 months
+        # change begin date to a monday
+        begin_date = e_date - datetime.timedelta(days=250)
+        begin_day = abs(begin_date.weekday())
+        if begin_day != 0:
+            begin_date = begin_date - datetime.timedelta(days=begin_day)
+        dates = (begin_date, e_date)  # ~5 months
     elif '1mo' in n_interval:
-        dates = (e_date - datetime.timedelta(days=600), e_date.replace(day=1))  # ~20 months
+        dates = ((e_date - datetime.timedelta(days=600)).replace(day=1), e_date.replace(day=1))  # ~20 months
 
     _has_actuals = has_actuals
 
@@ -142,17 +148,17 @@ def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False, in
     # if _has_actuals:
     #     with listLock:
     #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-    #                 "model_relu", _has_actuals, ticker, 'green', force_generate, False, 1, 0, data, False,
+    #                 "relu_multilayer_l2", _has_actuals, ticker, 'green', force_generate, False, 1, 0, data, False,
     #                 0.05))) == 1:
     #             thread_pool.join_workers()
     #     with listLock:
     #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-    #                 "model_leaky", _has_actuals, ticker, 'black', force_generate, False, 1, 0, data, False,
+    #                 "relu_2layer_0regularization", _has_actuals, ticker, 'black', force_generate, False, 1, 0, data, False,
     #                 0.05))) == 1:
     #             thread_pool.join_workers()
     #     with listLock:
     #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-    #                 "model_sigmoid", _has_actuals, ticker, 'magenta', force_generate, False, 1, 0, data, False,
+    #                 "relu_2layer_dropout_l2_noout", _has_actuals, ticker, 'magenta', force_generate, False, 1, 0, data, False,
     #                 0.05))) == 1:
     #             thread_pool.join_workers()
     #
@@ -160,24 +166,24 @@ def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False, in
     # else:
     #     with listLock:
     #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-    #                 "model_relu", _has_actuals, ticker, 'green', force_generate, False, 1, 0, data, False,
+    #                 "relu_multilayer_l2", _has_actuals, ticker, 'green', force_generate, False, 1, 0, data, False,
     #                 0.05))) == 1:
     #             thread_pool.join_workers()
     #     with listLock:
     #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-    #                 "model_leaky", _has_actuals, ticker, 'black', force_generate, False, 1, 0, data, False,
+    #                 "relu_2layer_0regularization", _has_actuals, ticker, 'black', force_generate, False, 1, 0, data, False,
     #                 0.05))) == 1:
     #             thread_pool.join_workers()
     #     with listLock:
     #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-    #                 "model_sigmoid", _has_actuals, ticker, 'magenta', force_generate, False, 1, 0, data, False,
+    #                 "relu_2layer_dropout_l2_noout", _has_actuals, ticker, 'magenta', force_generate, False, 1, 0, data, False,
     #                 0.05))) == 1:
     #             thread_pool.join_workers()
     # gc.collect()
     # thread_pool.join_workers()
     #
     # CHART LABEL
-    launch.display_model("model_relu", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
+    launch.display_model("relu_1layer_l2", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
                          n_interval)
     gc.collect()
 
@@ -186,33 +192,33 @@ def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False, in
     if _has_actuals:
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_relu2", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    "relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_leaky2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
+                    "relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_sigmoid2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
+                    "relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
     else:
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_relu2", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    "relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_leaky2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
+                    "relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_sigmoid2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
+                    "relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
 
@@ -273,9 +279,16 @@ def find_all_big_moves(tickers: list, force_generation=False, _has_actuals: bool
         cur_day = abs(e_date.weekday())
         if cur_day != 0:
             e_date = e_date - datetime.timedelta(days=cur_day + 2)
-        dates = (e_date - datetime.timedelta(days=250), e_date)  # ~5 months
+
+        # change begin date to a monday
+        begin_date = e_date - datetime.timedelta(days=250)
+        begin_day = abs(begin_date.weekday())
+        if begin_day != 0:
+            begin_date = begin_date - datetime.timedelta(days=begin_day)
+
+        dates = (begin_date, e_date)  # ~5 months
     elif '1mo' in n_interval:
-        dates = (e_date - datetime.timedelta(days=600), e_date.replace(day=1))  # ~20 months
+        dates = ((e_date - datetime.timedelta(days=600)).replace(day=1), e_date.replace(day=1))  # ~20 months
 
     path = Path(os.getcwd()).absolute()
     gen = Generator(None, path, force_generation)
@@ -285,7 +298,7 @@ def find_all_big_moves(tickers: list, force_generation=False, _has_actuals: bool
             data = gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
             # print(data,flush=True)
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "model_relu2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
+                    "relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
                     percent, n_interval))) == 1:
                 thread_pool.join_workers()
         except Exception as e:
@@ -307,21 +320,21 @@ if __name__ == "__main__":
     _force_generate = sys.argv[4] == 'True'
     # print(_force_generate)
     # print(_type,_has_actuals,_is_not_closed)
-    # main(ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='Weekly')
+    main(ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='Weekly')
 
-    path = Path(os.getcwd()).absolute()
-    watchlist_file = open(f'{path}/data/watchlist/test.csv', 'r')
-    lines = watchlist_file.readlines()
-    noted_str = []
-    tickers1 = []
-    for line in lines:
-        try:
-            ticker1 = line[0:line.find(",")].strip().upper()
-        except:
-            ticker1 = line.strip().upper()
-        tickers1.append(ticker1)
-    noted_moves = find_all_big_moves(tickers1, True, False, 0.01, 'Weekly')
-    print(noted_moves)
+    # path = Path(os.getcwd()).absolute()
+    # watchlist_file = open(f'{path}/data/watchlist/test.csv', 'r')
+    # lines = watchlist_file.readlines()
+    # noted_str = []
+    # tickers1 = []
+    # for line in lines:
+    #     try:
+    #         ticker1 = line[0:line.find(",")].strip().upper()
+    #     except:
+    #         ticker1 = line.strip().upper()
+    #     tickers1.append(ticker1)
+    # noted_moves = find_all_big_moves(tickers1, True, False, 0.01, 'Weekly')
+    # print(noted_moves)
     # # After setting noted moves, populate self noted to str
     # for note in noted_moves:
     #     noted_str.append(f'{note[0]} -> {(((note[2] + note[1]) / note[2]) - 1) * 100}%')

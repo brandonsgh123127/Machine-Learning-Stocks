@@ -33,7 +33,6 @@ class GUI(Thread_Pool):
         self.force_refresh = None
         self.watchlist_file = None
         self.stock_label = None
-        self.dates = None
         self.canvas = None
         self.stop_threads = False
         self.path = Path(os.getcwd()).absolute()
@@ -56,6 +55,7 @@ class GUI(Thread_Pool):
         self.watchlist = []
         self.quick_select = StringVar(self.content)
         self.quick_select.set('Select Stock from Dropdown')  # default value
+
         self.interval_text = StringVar(self.content)
         self.interval_text.set('Daily')  # default value
         self.stock_input = tk.Entry(self.content)
@@ -102,9 +102,9 @@ class GUI(Thread_Pool):
 
     def find_biggest_moves_callback(self, event=None):
         if isinstance(event, tk.Event):
-            threading.Thread(target=self.search_big_moves, args=(type(event),self.force_bool.get(),
-                                                                                      self.boolean1.get(),
-                                                                                      0.015)).start()
+            threading.Thread(target=self.search_big_moves, args=(type(event), self.force_bool.get(),
+                                                                 self.boolean1.get(),
+                                                                 0.015)).start()
 
     """
         Loads the dropdown bar with current prices for all stocks located under 'default.csv'.
@@ -139,7 +139,8 @@ class GUI(Thread_Pool):
         Finds the biggest moves for all stocks located under 'default.csv'.
     """
 
-    def search_big_moves(self, event=None,_force_generation: bool = False, _has_actuals: bool = False, percent: float = 0.03):
+    def search_big_moves(self, event=None, _force_generation: bool = False, _has_actuals: bool = False,
+                         percent: float = 0.03):
 
         watchlist_file = open(f'{self.path}/data/watchlist/default.csv', 'r')
         lines = watchlist_file.readlines()
@@ -151,10 +152,11 @@ class GUI(Thread_Pool):
             except:
                 ticker = line.strip().upper()
             tickers.append(ticker)
-        noted_moves = find_all_big_moves(tickers, force_generation=_force_generation, _has_actuals=_has_actuals, percent=percent,interval=self.interval_text.get())
+        noted_moves = find_all_big_moves(tickers, force_generation=_force_generation, _has_actuals=_has_actuals,
+                                         percent=percent, interval=self.interval_text.get())
         # After setting noted moves, populate self noted to str
         for note in noted_moves:
-            self.noted_str.append(f'{note[0]} >>> {round((((note[2] + note[1]) / note[2]) -1) * 100,2)}%')
+            self.noted_str.append(f'{note[0]} >>> {round((((note[2] + note[1]) / note[2]) - 1) * 100, 2)}%')
 
         # destroy object before proceeding
         try:
@@ -187,19 +189,11 @@ class GUI(Thread_Pool):
             self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
             if not is_caching:
                 self.generate_button.grid_forget()
-            if not has_actuals:
-                dates = (datetime.date.utcnow() - datetime.timedelta(days=75),
-                         datetime.date.utcnow() + datetime.timedelta(days=1))  # month worth of data
-            elif has_actuals:
-                dates = (
-                    datetime.date.utcnow() - datetime.timedelta(days=75), datetime.date.utcnow())  # month worth of data
             self.img = analyze_stock(ticker, has_actuals, force_generate=force_generation)[0]
             # self.image = ImageTk.PhotoImage(self.img)
 
             gc.collect()
             # time.sleep(5)
-            self.dates = dates
-            # print(self.dates)
             # self.output_image.delete('all')
             # self.output_image.pack(side='top')
             try:
@@ -225,26 +219,19 @@ class GUI(Thread_Pool):
             self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
             if not is_caching:
                 self.generate_button.grid_forget()
-            # When predicting next day, set day to +1
-            if not has_actuals:
-                dates = (datetime.datetime.utcnow().date() - datetime.timedelta(days=75),
-                         datetime.datetime.utcnow().date() + datetime.timedelta(days=1))  # month worth of data
-            else:
-                dates = (datetime.datetime.utcnow().date() - datetime.timedelta(days=75),
-                         datetime.datetime.utcnow().date())  # month worth of data
             if not has_actuals:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    thread = executor.submit(analyze_stock, ticker, has_actuals, force_generation, self.interval_text.get())
+                    thread = executor.submit(analyze_stock, ticker, has_actuals, force_generation,
+                                             self.interval_text.get())
             else:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    thread = executor.submit(analyze_stock, ticker, has_actuals, force_generation, self.interval_text.get())
+                    thread = executor.submit(analyze_stock, ticker, has_actuals, force_generation,
+                                             self.interval_text.get())
 
             self.img = thread.result()[0]
             # self.image = ImageTk.PhotoImage(self.img)
 
             gc.collect()
-            self.dates = dates
-            # print(self.dates)
             # self.output_image.create_image(600,500,image=self.image)
             # self.output_image.pack(side='bottom')
             try:
@@ -348,7 +335,8 @@ class GUI(Thread_Pool):
         self.generate_button.grid(column=3, row=2)
         # self.next_page_button.pack(side='bottom')
         self.cache_queue.put(threading.Thread(target=self.load_dropdown, args=()))
-        self.interval_dropdown = tk.OptionMenu(self.content, self.interval_text, *['Daily','Weekly','Monthly','Yearly'])
+        self.interval_dropdown = tk.OptionMenu(self.content, self.interval_text,
+                                               *['Daily', 'Weekly', 'Monthly', 'Yearly'])
         self.interval_dropdown.grid(column=4, row=0)
 
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True,False)))

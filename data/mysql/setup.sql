@@ -350,20 +350,6 @@ select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER 
                 AND stocks.`study`.`study` like 'ema%' 
              INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = 'DOCU';
 INSERT INTO stocks.stock (id, stock) VALUES (AES_ENCRYPT('test', 'test'),'test');
-#select * from stocks.`data` where `stock-id` = (select data_id from stocks.stock where `stock` = 'AMD' LIMIT 1);
-#select * from stocks.`data` where date >= '2020-03-03' and date <= '2021-04-22' and `stock-id` = (select `data_id` from stocks.stock where stock = 'SPY');
--- select * from stocks.data INNER JOIN stocks.stock ON `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id` AND `stocks`.stock.stock = 'AXP' AND stocks.stock.id = AES_ENCRYPT('s', UNHEX(SHA2('s',512)));
--- SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id`, `stocks`.`data`.`date` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'AMC' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`;
--- SELECT * FROM stocks.`study-data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'SPY' AND stocks.`study-data`.`stock-id` = stocks.stock.id INNER JOIN stocks.`data` ON stocks.`study-data`.`data-id` = stocks.`data`.`data-id` INNER JOIN stocks.study ON stocks.study.study = "ema14" AND stocks.study.`study-id` = stocks.`study-data`.`study-id`;
--- SELECT * FROM stocks.`study-data`  INNER JOIN stocks.study ON stocks.study.study = "ema30";
--- SELECT `stocks`.`data`.`data-id`, `stocks`.`data`.`stock-id` FROM `stocks`.`data` INNER JOIN `stocks`.`stock` ON `stocks`.stock.stock = 'OCUL' AND `stocks`.`stock`.`id` = `stocks`.`data`.`stock-id`;
--- SELECT `stocks`.`data`.`date` FROM stocks.`data` INNER JOIN stocks.stock 
---                         ON `stock-id` = stocks.stock.`id` 
---                           AND stocks.stock.`stock` = "SPY"
---                            AND `stocks`.`data`.`date` = DATE("2021-10-01")
---                            INNER JOIN stocks.`study-data` ON
---                             stocks.stock.`id` = stocks.`study-data`.`stock-id`
---                             INNER JOIN stocks.`study` ON
---                             stocks.`study-data`.`study-id` = stocks.`study`.`study-id`
---                             AND stocks.`study-data`.`study-id` = (AES_ENCRYPT("fibonacci", UNHEX(SHA2("fibonacci",512))))
---                             AND stocks.`data`.`data-id` = stocks.`study-data`.`data-id`;
+
+SELECT `stocks`.`stock`.`id` FROM stocks.`stock` USE INDEX (`stockid`) WHERE `stocks`.`stock`.`stock` = 'SPY';
+SELECT `stocks`.`weeklydata`.`data-id`,`stocks`.`weeklydata`.`date` FROM stocks.`weeklydata` USE INDEX (`stockid-and-date`) WHERE stocks.`weeklydata`.`stock-id` = (SELECT `stocks`.`stock`.`id` FROM stocks.`stock` USE INDEX (`stockid`) WHERE `stocks`.`stock`.`stock` = 'SPY') AND stocks.`weeklydata`.`date` >= DATE('2022-01-21');

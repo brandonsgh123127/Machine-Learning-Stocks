@@ -175,8 +175,7 @@ class Normalizer():
             self.keltner = self.keltner.astype('float')
         except:
             print('[INFO] Couldn\'t convert keltner to type <float>')
-        self.normalized_data = pd.DataFrame((), columns=['Keltner Pos',
-                                                         'Close EMA14 Euclidean', 'Close EMA30 Euclidean',
+        self.normalized_data = pd.DataFrame((), columns=['Close EMA14 Euclidean', 'Close EMA30 Euclidean',
                                                          'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
                                                          'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
                                                          'Open',
@@ -185,48 +184,38 @@ class Normalizer():
         for index, row in data.iterrows():
             try:
                 if index == 0:
-                    self.normalized_data.loc[index, "Open"] = data["Open"].iloc[0]
-                    self.normalized_data.loc[index, "Close"] = data["Close"].iloc[0]
+                    self.normalized_data.loc[index, "Open"] = 0
+                    self.normalized_data.loc[index, "Close"] = 0
+                    self.normalized_data.loc[index, "Prior Close Euclidean"] = np.power(
+                        np.power((data.at[index, "Close"] - data.at[index, 'Open']), 2), 0.5)
                     self.normalized_data.loc[index, "Close EMA14 Euclidean"] = np.power(
-                        np.power((data.at[index, "Close"] - self.studies.at[index, 'ema14']), 2), 1 / 2)
+                        np.power((data.at[index, "Close"] - self.studies.at[index, 'ema14']), 2), 0.5)
                     self.normalized_data.loc[index, "Close EMA30 Euclidean"] = np.power(
-                        np.power((data.at[index, "Close"] - self.studies.at[index, 'ema30']), 2), 1 / 2)
+                        np.power((data.at[index, "Close"] - self.studies.at[index, 'ema30']), 2), 0.5)
                     self.normalized_data.loc[index, "EMA14 EMA30 Euclidean"] = np.power(
                         np.power((self.studies.at[index, "ema14"] - self.studies.at[index, 'ema30']), 2), 1 / 2)
-                    self.normalized_data.loc[index, "Prior Close Euclidean"] = (0)
                     self.normalized_data.loc[index, "Upper Keltner Close Diff"] = (
                             data.at[index, 'Close'] - self.keltner.at[index, "upper"])
                     self.normalized_data.loc[index, "Lower Keltner Close Diff"] = (
                             data.at[index, 'Close'] - self.keltner.at[index, "lower"])
-                    self.normalized_data.loc[index, "Keltner Pos"] = (
-                            self.normalized_data.at[index, "Upper Keltner Close Diff"] - self.normalized_data.at[
-                        index, "Lower Keltner Close Diff"])
                 else:
-                    self.normalized_data.loc[index, "Close"] = ((
-                            data.at[index, "Close"] - data.at[index - 1, "Close"])) / (1)
-                    self.normalized_data.loc[index, "Open"] = (
-                                                                  (data.at[index, "Open"] - data.at[
-                                                                      index - 1, "Open"])) / (
-                                                                  1)
-                    self.normalized_data.loc[index, "Keltner Pos"] = (
-                            self.normalized_data.at[index, "Upper Keltner Close Diff"] - self.normalized_data.at[
-                        index, "Lower Keltner Close Diff"])
+                    self.normalized_data.loc[index, "Close"] = ((data.at[index, "Close"] - data.at[
+                                                                        index - 1, "Close"]))
+                    self.normalized_data.loc[index, "Open"] = ((data.at[index, "Open"] - data.at[
+                                                                      index - 1, "Open"]))
+                    self.normalized_data.loc[index, "Prior Close Euclidean"] = np.power(
+                        np.power((data.at[index, "Close"] - data.at[index, 'Open']), 2) +
+                        np.power((data.at[index - 1, "Close"] - data.at[index - 1, 'Open']), 2), 0.5)
+                    self.normalized_data.loc[index, "Upper Keltner Close Diff"] = (
+                            self.keltner.at[index, "upper"] - data.at[index, 'Close'])
+                    self.normalized_data.loc[index, "Lower Keltner Close Diff"] = (
+                            self.keltner.at[index, "lower"] - data.at[index, 'Close'])
                     self.normalized_data.loc[index, "Close EMA14 Euclidean"] = np.power(
                         np.power((data.at[index, "Close"] - self.studies.at[index, 'ema14']), 2), 1 / 2)
                     self.normalized_data.loc[index, "Close EMA30 Euclidean"] = np.power(
                         np.power((data.at[index, "Close"] - self.studies.at[index, 'ema30']), 2), 1 / 2)
                     self.normalized_data.loc[index, "EMA14 EMA30 Euclidean"] = np.power(
                         np.power((self.studies.at[index, "ema14"] - self.studies.at[index, 'ema30']), 2), 1 / 2)
-                    self.normalized_data.loc[index, "Prior Close Euclidean"] = np.power(
-                        np.power((data.at[index, "Close"] - data.at[index - 1, 'Close']), 2), 1 / 2)
-                    self.normalized_data.loc[index, "Upper Keltner Close Diff"] = (
-                            self.keltner.at[index, "upper"] - data.at[index, 'Close'])
-                    self.normalized_data.loc[index, "Lower Keltner Close Diff"] = (
-                            self.keltner.at[index, "lower"] - data.at[index, 'Close'])
-                    self.normalized_data.loc[index, "Keltner Pos"] = (
-                            self.normalized_data.at[index, "Upper Keltner Close Diff"] - self.normalized_data.at[
-                        index, "Lower Keltner Close Diff"])
-
             except Exception as e:
                 raise AssertionError(f'[ERROR] Failed normalization!  Current normalized data:\n{self.normalized_data}')
         return 0
@@ -335,8 +324,7 @@ class Normalizer():
         self.unnormalized_data = self.normalized_data
         try:
             scaler = self.min_max.fit(self.unnormalized_data)
-            self.normalized_data = pd.DataFrame(scaler.fit_transform(self.unnormalized_data), columns=['Keltner Pos',
-                                                                                                     'Close EMA14 Euclidean',
+            self.normalized_data = pd.DataFrame(scaler.fit_transform(self.unnormalized_data), columns=['Close EMA14 Euclidean',
                                                                                                      'Close EMA30 Euclidean',
                                                                                                      'EMA14 EMA30 Euclidean',
                                                                                                      'Prior Close Euclidean',
@@ -346,7 +334,7 @@ class Normalizer():
                                                                                                      'Close'])
             if out == 2:
                 self.normalized_data = self.normalized_data.drop(
-                    columns=['EMA14 EMA30 Euclidean', 'Keltner Pos', 'Prior Close Euclidean'])
+                    columns=['EMA14 EMA30 Euclidean', 'Prior Close Euclidean'])
         except Exception as e:
             print('[ERROR] Failed to normalize!\n', str(e))
             return 1
@@ -382,8 +370,7 @@ class Normalizer():
 
     def unnormalize(self, data):
         scaler = self.min_max.fit(self.unnormalized_data)
-        tmp_data = pd.DataFrame(columns=['Keltner Pos',
-                                         'Close EMA14 Euclidean', 'Close EMA30 Euclidean',
+        tmp_data = pd.DataFrame(columns=['Close EMA14 Euclidean', 'Close EMA30 Euclidean',
                                          'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
                                          'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
                                          'Open',
@@ -394,8 +381,7 @@ class Normalizer():
         except:
             pass
         tmp_data['Close'] = data['Close']
-        return pd.DataFrame(scaler.inverse_transform((tmp_data.to_numpy())), columns=['Keltner Pos',
-                                                                                      'Close EMA14 Euclidean',
+        return pd.DataFrame(scaler.inverse_transform((tmp_data.to_numpy())), columns=['Close EMA14 Euclidean',
                                                                                       'Close EMA30 Euclidean',
                                                                                       'EMA14 EMA30 Euclidean',
                                                                                       'Prior Close Euclidean',

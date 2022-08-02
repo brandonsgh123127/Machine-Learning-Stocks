@@ -24,108 +24,98 @@ class Network(Neural_Framework):
     def __init__(self, epochs, batch_size):
         super().__init__(epochs, batch_size)
         self.sampler = None
-        self.model_map_names = {"model_relu": 1, "model_leaky": 2, "model_sigmoid": 3, "model_relu2": 4,
-                                "model_leaky2": 5,
-                                "model_sigmoid2": 6}
+        self.model_map_names = {"relu_multilayer_l2": 1, "relu_2layer_0regularization": 2, "relu_2layer_dropout_l2_noout": 3, "relu_2layer_l1l2": 4,
+                                "relu_1layer_l2": 5, "relu_2layer_dropout_l2_out": 6}
         self.model_choice: int = None
 
     def get_mapping(self, choice: int):
         return self.model_map_names.keys()[self.model_map_names.values().index(choice)]
 
-    def create_model(self, model_choice="model_relu"):
+    def create_model(self, model_choice="relu_1layer"):
         self.model_name = model_choice
         self.model_choice = self.model_map_names.get(model_choice)
-        if self.model_choice < 4:
-            self.nn_input = keras.Input(shape=(1, 126))  # 14 * 12 cols
-        else:
-            self.nn_input = keras.Input(shape=(1, 126))  # 14 * 9 cols
-        #######
-        ###### 12 col * 14 rows
-        #######
+        if 0 < self.model_choice <= 6:
+            self.nn_input = keras.Input(shape=(1, 112))  # 14 * 8 cols
+        elif 6 < self.model_choice <= 12:
+            self.nn_input = keras.Input(shape=(1, 112))  # 14 * 8 cols
 
-        # Relu Model
-        if self.model_choice == 1:
-            self.nn = keras.layers.Dense(126, activation='relu',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                self.nn_input)
-            # self.nn = keras.layers.Dropout(0.1)(self.nn)
-            keras.regularizers.l2(0.01)
-            self.nn = keras.layers.Dense(48, activation=keras.layers.LeakyReLU(alpha=0.2),kernel_regularizer=keras.regularizers.l1(0.01))(self.nn)
-            self.nn = keras.layers.Dense(48, activation=keras.layers.LeakyReLU(alpha=0.3),)(self.nn)
-            self.nn2 = keras.layers.Dense(1, activation='linear',activity_regularizer=keras.regularizers.l1(0.03))(self.nn)
+        if 0 < self.model_choice <= 6:
+            if self.model_choice == 1:
+                self.nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3),
+                                             activity_regularizer=keras.regularizers.l2(0.01))(
+                    self.nn_input)
+                self.nn = keras.layers.Dropout(0.25)(self.nn)
+                self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3),
+                                             activity_regularizer=keras.regularizers.l2(0.01))(self.nn)
+                self.nn2 = keras.layers.Dense(1, activation='linear', activity_regularizer=keras.regularizers.l2(0.01))(
+                    self.nn)
 
+            elif self.model_choice == 2:
+                self.nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3))(
+                    self.nn_input)
+                self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
+                self.nn = keras.layers.Dropout(0.25)(self.nn)
+                self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.2))(self.nn)
+                self.nn2 = keras.layers.Dense(1, activation='linear')(self.nn)
 
-        #  Leaky Relu no Dropout
-        elif self.model_choice == 2:
-            self.nn = keras.layers.Dense(126, activation=keras.layers.LeakyReLU(alpha=0.3),
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                self.nn_input)
-            self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3),kernel_regularizer=keras.regularizers.l1(0.01))(self.nn)
-            self.nn2 = keras.layers.Dense(1, activation='linear',activity_regularizer=keras.regularizers.l1(0.03))(self.nn)
+            elif self.model_choice == 3:
+                self.nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3),
+                                             activity_regularizer=keras.regularizers.l2(0.01))(
+                    self.nn_input)
+                self.nn = keras.layers.Dropout(0.25)(self.nn)
+                self.nn = keras.layers.Dense(56, activation=keras.layers.LeakyReLU(alpha=0.3),
+                                             activity_regularizer=keras.regularizers.l2(0.01))(self.nn)
+                self.nn = keras.layers.Dense(22, activation=keras.layers.LeakyReLU(alpha=0.3),
+                                             activity_regularizer=keras.regularizers.l2(0.01))(self.nn)
+                self.nn = keras.layers.Dropout(0.25)(self.nn)
+                self.nn2 = keras.layers.Dense(1, activation='linear')(
+                    self.nn)
 
+            elif self.model_choice == 4:
+                self.nn = keras.layers.Dense(112,
+                                             kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
+                    self.nn_input)
+                self.nn = keras.layers.Dense(44, activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
+                self.nn = keras.layers.Dropout(0.25)(self.nn)
+                self.nn = keras.layers.Dense(12, activation=keras.layers.LeakyReLU(alpha=0.2),
+                                             kernel_regularizer=keras.regularizers.l1_l2(0.01, 0.002))(self.nn)
+                self.nn2 = keras.layers.Dense(1, activation='sigmoid')(self.nn)
 
-        # Sigmoid
-        elif self.model_choice == 3:
-            self.nn = keras.layers.Dense(126, activation='sigmoid',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                self.nn_input)
-            # self.nn = keras.layers.Dropout(0.1)(self.nn)
-            keras.regularizers.l1(0.01)
-            keras.regularizers.l2(0.04)
-            self.nn = keras.layers.Dense(56, activation='sigmoid',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(self.nn)
-            self.nn = keras.layers.Dropout(0.5)(self.nn)  # Residual layer
-            self.nn = keras.layers.Dense(22, activation='sigmoid')(self.nn)
-            self.nn = keras.layers.Dense(20, activation='sigmoid')(self.nn)
-            self.nn2 = keras.layers.Dense(1, activation='linear',activity_regularizer=keras.regularizers.l1(0.03))(self.nn)
-            #######
-        ###### 9 col * 14 rows
-        #######
+            elif self.model_choice == 5:
+                self.nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3))(
+                    self.nn_input)
+                self.nn = keras.layers.Dense(36, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
+                self.nn2 = keras.layers.Dense(1, activation='sigmoid')(self.nn)
 
+            elif self.model_choice == 6:
+                self.nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3))(
+                    self.nn_input)
+                self.nn = keras.layers.Dropout(0.33)(self.nn)
+                self.nn = keras.layers.Dense(84, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
+                self.nn = keras.layers.Dense(10, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
+                self.nn2 = keras.layers.Dense(1, activation='softmax')(
+                    self.nn)
 
+            # Convert to a model
+            self.nn = keras.Model(inputs=self.nn_input, outputs=[self.nn2])
+            self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.01, beta_1=0.90, beta_2=0.997), loss='mse',
+                            metrics=['MeanAbsoluteError', 'MeanSquaredError'])
 
-        # Relu - Out 5
-        elif self.model_choice == 4:
-            self.nn = keras.layers.Dense(126, activation='relu',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                self.nn_input)
-            keras.regularizers.l1(0.02)
-            keras.regularizers.l2(0.07)
-            self.nn = keras.layers.Dense(32, activation='relu')(self.nn)
-            self.nn = keras.layers.Dense(16, activation='relu')(self.nn)
-            self.nn2 = keras.layers.Dense(1, activation='linear',activity_regularizer=keras.regularizers.l1(0.03))(self.nn)
+        elif 6 < self.model_choice <= 12:
+            if self.model_choice == 1:
+                self.nn = keras.layers.Dense(112,
+                                             kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None),
+                                             activity_regularizer=keras.regularizers.l1(0.03))(
+                    self.nn_input)
+                # self.nn = keras.layers.Dropout(0.1)(self.nn)
+                keras.regularizers.l2(0.01)
+                self.nn = keras.layers.Dense(64, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
+                self.nn2 = keras.layers.Dense(1, activation='linear')(self.nn)
+            # Convert to a model
+            self.nn = keras.Model(inputs=self.nn_input, outputs=[self.nn2])
+            self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.01, beta_1=0.90, beta_2=0.997), loss='mse',
+                            metrics=['MeanAbsoluteError', 'MeanSquaredError'])
 
-
-        # Leaky Relu - Out 5
-        elif self.model_choice == 5:
-            self.nn = keras.layers.Dense(126, activation=keras.layers.LeakyReLU(alpha=0.3),
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                self.nn_input)
-            keras.regularizers.l1(0.01)
-            keras.regularizers.l2(0.04)
-            self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn2 = keras.layers.Dense(1, activation='linear',activity_regularizer=keras.regularizers.l2(0.02))(self.nn)
-
-
-        # Sigmoid - Out 5
-        elif self.model_choice == 6:
-            self.nn = keras.layers.Dense(126, activation='sigmoid',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                self.nn_input)
-            self.nn = keras.layers.Dense(84, activation='sigmoid')(self.nn)
-            self.nn = keras.layers.Dropout(0.6)(self.nn)  # Residual
-            keras.regularizers.l1(0.01)
-            keras.regularizers.l2(0.04)
-            self.nn = keras.layers.Dense(22, activation='sigmoid')(self.nn)
-            self.nn = keras.layers.Dense(22, activation='sigmoid')(self.nn)
-            self.nn2 = keras.layers.Dense(1, activation='linear',activity_regularizer=keras.regularizers.l2(0.01))(self.nn)
-
-        # Convert to a model
-        self.nn = keras.Model(inputs=self.nn_input, outputs=[self.nn2])
-        self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.01, beta_1=0.90, beta_2=0.997), loss='mse',
-                        metrics=['MeanAbsoluteError', 'MeanSquaredError'])
         return self.nn
 
     # Used for generation of data via the start
@@ -151,6 +141,14 @@ class Network(Neural_Framework):
     def run_model(self, rand_date=False):
         self.sampler = Sample()
         models = {}
+        try:
+            os.mkdir(f"./logs")
+        except:
+            pass
+        try:
+            os.mkdir(f"./logs/{self.model_name}")
+        except:
+            pass
         # Retrieve all necessary data into training data
         for i in range(1, self.EPOCHS):
             print(f'\n\n\nEPOCH {i} -- {self.model_choice}')
@@ -166,9 +164,10 @@ class Network(Neural_Framework):
                     continue
                 try:
                     if self.model_choice < 4:
-                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 126)))
+                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 112)))
                     else:
-                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 126)))
+                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 112)))
+                    # print(len(self.sampler.normalized_data),self.sampler.normalized_data.iloc[-15:])
                     tmp = self.sampler.normalized_data.iloc[-1:]
                     tmp = pd.concat([pd.DataFrame([tmp['Close'].to_numpy()])])
 
@@ -189,7 +188,7 @@ class Network(Neural_Framework):
 
             # Profile a range of batches, e.g. from 2 to 5.
             tensorboard_callback = tf.keras.callbacks.TensorBoard(
-                log_dir='./logs', profile_batch=(2, 5))
+                log_dir=f'./logs/{self.model_name}', profile_batch=(2, 5))
             # Use fit for generating with ease.  Validation data included for analysis of loss
             disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets), batch_size=75, epochs=1,
                                validation_split=0.177,
@@ -202,7 +201,7 @@ class Network(Neural_Framework):
     def save_model(self):
         super().save_model()
 
-    def load_model(self, name="model_relu"):
+    def load_model(self, name="relu_1layer"):
         self.model_choice = self.model_map_names.get(name)
         super().load_model(name)
 
@@ -211,14 +210,14 @@ listLock = threading.Lock()
 
 
 def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_actuals: bool = False,
-                   name: str = "model_relu", force_generation: bool = False,interval='1d'):
+                   name: str = "relu_1layer", force_generation: bool = False, interval='1d'):
     # Before inserting data, check cached data, verify if there is data there...
     from_date_id = None
     to_date_id = None
     stock_id = None
 
     # First, get to date id
-    check_cache_tdata_db_stmt=''
+    check_cache_tdata_db_stmt = ''
     # Retrieve the stock-id, and data-point id in a single select statement
     if '1d' in interval:
         check_cache_tdata_db_stmt = """SELECT `stocks`.`dailydata`.`data-id`,
@@ -249,25 +248,14 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
     holidays = USFederalHolidayCalendar().holidays(start=valid_datetime,
                                                    end=(valid_datetime + datetime.timedelta(days=7))).to_pydatetime()
     valid_date = valid_datetime.date()
-    if (
-            datetime.datetime.utcnow().hour <= 14 and datetime.datetime.utcnow().minute < 30):  # if current time is before 9:30 AM EST, go back a day
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
-    if valid_date in holidays and 0 <= valid_date.weekday() <= 4:  # week day holiday
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
-    if valid_date.weekday() == 5:  # if saturday
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
-    if valid_date.weekday() == 6:  # if sunday
-        valid_datetime = (valid_datetime - datetime.timedelta(days=2))
-        valid_date = (valid_date - datetime.timedelta(days=2))
-    if valid_date in holidays:
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
-    if has_actuals:  # go back a day
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
+    if '1wk' not in interval and '1mo' not in interval:
+        if (
+                datetime.datetime.utcnow().hour <= 14 and datetime.datetime.utcnow().minute < 30):  # if current time is before 9:30 AM EST, go back a day
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+            valid_date = (valid_date - datetime.timedelta(days=1))
+        if valid_date in holidays and 0 <= valid_date.weekday() <= 4:  # week day holiday
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+            valid_date = (valid_date - datetime.timedelta(days=1))
         if valid_date.weekday() == 5:  # if saturday
             valid_datetime = (valid_datetime - datetime.timedelta(days=1))
             valid_date = (valid_date - datetime.timedelta(days=1))
@@ -277,15 +265,34 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
         if valid_date in holidays:
             valid_datetime = (valid_datetime - datetime.timedelta(days=1))
             valid_date = (valid_date - datetime.timedelta(days=1))
+        if has_actuals:  # go back a day
+            valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+            valid_date = (valid_date - datetime.timedelta(days=1))
+            if valid_date.weekday() == 5:  # if saturday
+                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                valid_date = (valid_date - datetime.timedelta(days=1))
+            if valid_date.weekday() == 6:  # if sunday
+                valid_datetime = (valid_datetime - datetime.timedelta(days=2))
+                valid_date = (valid_date - datetime.timedelta(days=2))
+            if valid_date in holidays:
+                valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+                valid_date = (valid_date - datetime.timedelta(days=1))
+    elif '1wk' in interval:
+        begin_day = abs(valid_date.weekday())
+        if begin_day != 0:
+            valid_date = valid_date - datetime.timedelta(days=begin_day)
+            valid_datetime = valid_datetime - datetime.timedelta(days=begin_day)
+    elif '1mo' in interval:
+        valid_datetime = (valid_datetime.replace(day=1))
+        valid_date = (valid_date.replace(day=1))
     # print(valid_datetime,flush=True)
     retrieve_tdata_result = cnx.execute(check_cache_tdata_db_stmt, {'stock': f'{ticker.upper()}',
                                                                     'date': valid_datetime.strftime('%Y-%m-%d')},
                                         multi=True)
-
     for retrieve_result in retrieve_tdata_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
-            print(f'[INFO] Retrieving just stock-id...')
+            print(f'[INFO] Retrieving just stock-id for {ticker}...')
             check_stockid_db_stmt = """SELECT `stocks`.`stock`.`id` 
              FROM stocks.`stock` USE INDEX (`stockid`) WHERE
                `stocks`.`stock`.`stock` = %(stock)s
@@ -306,6 +313,19 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
         else:
             stock_id = id_res[0][1].decode('latin1')
             to_date_id = id_res[0][0].decode('latin1')
+
+    if '1wk' in interval:
+        valid_datetime = valid_datetime - datetime.timedelta(days=250)
+        valid_date = valid_date - datetime.timedelta(days=250)
+        begin_day = abs(valid_date.weekday())
+        if begin_day != 0:
+            valid_date = valid_date - datetime.timedelta(days=begin_day)
+            valid_datetime = valid_datetime - datetime.timedelta(days=begin_day)
+    elif '1mo' in interval:
+        valid_datetime = (valid_datetime - datetime.timedelta(days=600))
+        valid_date = (valid_date - datetime.timedelta(days=600))
+        valid_datetime = (valid_datetime.replace(day=1))
+        valid_date = (valid_date.replace(day=1))
 
     # Check nn-data table after retrieval of from-date and to-date id's
     if '1d' in interval:
@@ -332,25 +352,6 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
          WHERE stocks.`yearlydata`.`stock-id` = %(stock-id)s
            AND stocks.`yearlydata`.`date` = DATE(%(date)s)
             """
-    # 75 days ago max -- check if weekday or holiday before proceeding
-    valid_datetime = datetime.datetime.utcnow() - datetime.timedelta(days=75)
-    holidays = USFederalHolidayCalendar().holidays(start=valid_datetime,
-                                                   end=(valid_datetime + datetime.timedelta(days=7)).strftime(
-                                                       '%Y-%m-%d')).to_pydatetime()
-    valid_date = valid_datetime.date()
-
-    if valid_date in holidays and 0 <= valid_date.weekday() <= 4:
-        valid_datetime = (valid_datetime + datetime.timedelta(days=1))
-        valid_date = (valid_date + datetime.timedelta(days=1))
-    if valid_date.weekday() == 5:  # if saturday
-        valid_datetime = (valid_datetime + datetime.timedelta(days=2))
-        valid_date = (valid_date + datetime.timedelta(days=2))
-    if valid_date.weekday() == 6:  # if sunday
-        valid_datetime = (valid_datetime + datetime.timedelta(days=1))
-        valid_date = (valid_date + datetime.timedelta(days=1))
-    if valid_date in holidays and 0 <= valid_date.weekday() < 4:
-        valid_datetime = (valid_datetime + datetime.timedelta(days=1))
-        valid_date = (valid_date + datetime.timedelta(days=1))
 
     retrieve_data_result = cnx.execute(check_cache_fdata_db_stmt, {'stock-id': stock_id,
                                                                    'date': valid_date}, multi=True)
@@ -363,6 +364,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
             break
         else:
             from_date_id = id_res[0][0].decode('latin1')
+
     # Check nn-data table after retrieval of from-date and to-date id's
     if '1d' in interval:
         check_cache_nn_db_stmt = """SELECT `stocks`.`daily-nn-data`.`close`,`stocks`.`daily-nn-data`.`open` 
@@ -426,7 +428,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 """Load Specified Model"""
 
 
-def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu", force_generation=False,
+def load(ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer", force_generation=False,
          device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = None, interval: str = '1d'):
     # Connect to local DB
     path = Path(os.getcwd()).absolute()
@@ -456,7 +458,7 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
     stock_id = None
 
     try:
-        vals = check_db_cache(cnx, ticker, has_actuals, name, force_generation,interval=interval)
+        vals = check_db_cache(cnx, ticker, has_actuals, name, force_generation, interval=interval)
         predicted = vals[0]
         stock_id = vals[1]
         from_date_id = vals[2]
@@ -495,9 +497,9 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
         with listLock:
             with tf.device(device_opt):
                 if has_actuals:
-                    train = (np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(), (1, 1, 126)))
+                    train = (np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(), (1, 1, 112)))
                 else:
-                    train = (np.reshape(sampler.normalized_data[-14:].to_numpy(), (1, 1, 126)))
+                    train = (np.reshape(sampler.normalized_data[-14:].to_numpy(), (1, 1, 112)))
                 train = np.asarray(train).astype('float32')
                 prediction = neural_net.nn.predict(np.stack(train))
         predicted = pd.DataFrame((np.reshape(prediction, (1, 1))), columns=['Close'])  # NORMALIZED
@@ -568,7 +570,7 @@ Run Specified Model by creating model and running batches/epochs.
 """
 
 
-def run(epochs, batch_size, name="model_relu"):
+def run(epochs, batch_size, name="relu_1layer"):
     neural_net = Network(epochs, batch_size)
     neural_net.load_model(name)
     neural_net.create_model(model_choice=name)
@@ -577,7 +579,8 @@ def run(epochs, batch_size, name="model_relu"):
         train_history = model[i]
         print(train_history)
 
-def copy_logs(path : Path = None, dest_folder: str = ""):
+
+def copy_logs(path: Path = None, dest_folder: str = ""):
     shutil.move(f'{path}/logs/', f'{path}/old_logs/{dest_folder}', copy_function=shutil.copytree)
     os.mkdir(f'{path}/logs/')
 
@@ -585,27 +588,29 @@ def copy_logs(path : Path = None, dest_folder: str = ""):
 def main():
     thread_manager = Thread_Pool(amount_of_threads=3)
     path = Path(os.getcwd()).absolute()
-    # model_relu = threading.Thread(target=run, args=(300, 25, "model_relu"))
-    # thread_manager.start_worker(model_relu)
-    # run(50,75,'model_relu')
-    # copy_logs(path,'relu')
-    # thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_leaky")))
-    # run(50,75,'model_leaky')
-    # copy_logs(path,'leaky')
-    # thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_sigmoid")))
-    # run(50,75,'model_sigmoid')
-    # copy_logs(path,'sigmoid')
-    # thread_manager.join_workers()
-    # thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_relu2")))
-    run(50,75,'model_relu2')
-    copy_logs(path,'relu2')
-    # thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_leaky2")))
-    run(50,75,'model_leaky2')
-    copy_logs(path,'leaky2')
-    # thread_manager.start_worker(threading.Thread(target=run,args=(100,100,"model_sigmoid2")))
-    run(50,75,'model_sigmoid2')
-    copy_logs(path,'sigmoid2')
+    thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_multilayer_l2")))
+    # run(50,75,'relu_1layer')
+    # copy_logs(path,'relu_1layer')
+    # thread_manager.start_worker//(threading.Thread(target=run, args=(50, 75, "relu_2layer_0regularization")))
+    # run(50,75,'relu_2layer')
+    # copy_logs(path,'relu_2layer')
+    thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_dropout_l2_noout")))
+    # run(50,75,'relu_2layer_dropout')
+    # copy_logs(path,'relu_2layer_dropout')
+    thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_l1l2")))
+    thread_manager.join_workers()
+    # run(50,75,'relu_2layer_l1l2')
+    # copy_logs(path,'relu_2layer_l1l2')
+    # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_1layer_l2")))
+    # run(50,75,'relu_1layer_l2')
+    # copy_logs(path,'relu_1layer_l2')
+    thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_dropout_l2_out")))
+    thread_manager.join_workers()
+    # run(50,75,'relu_2layer_dropout_l1_l2')
+    # copy_logs(path,'relu_2layer_dropout_l1_l2')
     # net=Network(1,1)
-    # load("SPY", False, "model_relu2", True)
+    # load("SPY", False, "relu_1layer", True)
+
+
 if __name__ == "__main__":
     main()

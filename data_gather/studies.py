@@ -385,9 +385,9 @@ class Studies(Gather):
 
     def fib_help(self, val1, val2, val3, fib_val):
         if val1 < val2:  # means val 3 is higher low -- upwards
-            return (val3 + ((val2 - val1) * fib_val))
+            return val3 + ((val2 - val1) * fib_val)
         else:  # val 3 is a lower high -- downwards
-            return (val3 - ((val2 - val1) * -(fib_val)))
+            return val3 - ((val2 - val1) * -fib_val)
 
     def upwards_fib(self, new_set):
         # After this, iterate new list and find which direction stock may go
@@ -398,27 +398,27 @@ class Studies(Gather):
         for i, row in new_set['Vals'].iloc[::-1].iteritems():  # reverse order iteration
             if i == len(new_set.index) - 1:  # if last element, skip
                 continue
-            # if the last value is greater than 10 days prior , do upwards fib, else downwards
-            if new_set['Vals'].iloc[i] > new_set['Vals'].iloc[-10]:
-                if row < float(new_set['Vals'].iloc[i + 1]) and not float(
-                        new_set['Vals'].iloc[i - 1]) < row:  # if low is found, jump to this value
-                    val1 = row
+            # if the last value is greater than prior , do upwards fib, else downwards
+            if self.data['Close'].iloc[-1] < new_set['Vals'].iloc[i]:
+                if float(new_set['Vals'].iloc[i + 1]) > row < float(
+                        new_set['Vals'].iloc[i - 1]):  # if low is found, jump to this value
+                    val3 = row
                     # find val2 by finding next local high
                     for j, sub in new_set['Vals'].iloc[::-1].iteritems():
                         if j >= i:
                             continue
                         else:  # find val2 by making sure next local high is valid
-                            if sub > float(new_set['Vals'].iloc[j + 1]) and not float(
-                                    new_set['Vals'].iloc[j - 1]) > sub:
+                            if float(new_set['Vals'].iloc[j + 1]) <= sub <= float(
+                                    new_set['Vals'].iloc[j - 1]):
                                 val2 = sub
                                 # find val3 by getting next low
                                 for k, low in new_set['Vals'].iloc[::-1].iteritems():
                                     if k >= j:
                                         continue
                                     else:
-                                        if low < float(new_set['Vals'].iloc[k + 1]) and not float(
-                                                new_set['Vals'].iloc[k - 1]) < low:
-                                            val3 = low
+                                        if float(new_set['Vals'].iloc[k + 1]) >= low <= float(
+                                                new_set['Vals'].iloc[k - 1]):
+                                            val1 = low
                                             return (val1, val2, val3)
                                         else:
                                             continue
@@ -430,7 +430,7 @@ class Studies(Gather):
                     continue
             else:
                 raise Exception("Did not find upwards fib value")
-        return (val1, val2, val3)
+        return val1, val2, val3
 
     def downwards_fib(self, new_set):
         # After this, iterate new list and find which direction stock may go
@@ -441,27 +441,27 @@ class Studies(Gather):
             if i == len(new_set.index) - 1:  # if last element, skip
                 continue
             # if the last value is greater than 10 days prior , do downwards fib
-            if new_set['Vals'].iloc[-1] < new_set['Vals'].iloc[-10]:
+            if self.data['Close'].iloc[-1] > new_set['Vals'].iloc[i]:
                 # attempt downwards fib
-                if row > float(new_set['Vals'].iloc[i + 1]) and not float(
-                        new_set['Vals'].iloc[i - 1]) > row:  # if low is found, jump to this value
-                    val1 = row
+                if float(new_set['Vals'].iloc[i + 1]) < row > float(
+                        new_set['Vals'].iloc[i - 1]):  # if low is found, jump to this value
+                    val3 = row
                     # find val2 by finding next local high
                     for j, sub in new_set['Vals'].iloc[::-1].iteritems():
                         if j >= i:
                             continue
                         else:  # find val2 by making sure next local low is valid
-                            if sub < float(new_set['Vals'].iloc[j + 1]) and not float(
-                                    new_set['Vals'].iloc[j - 1]) < sub:
+                            if float(new_set['Vals'].iloc[j + 1]) > sub < float(
+                                    new_set['Vals'].iloc[j - 1]):
                                 val2 = sub
                                 # find val3 by getting next high
                                 for k, low in new_set['Vals'].iloc[::-1].iteritems():
                                     if k >= j:
                                         continue
                                     else:
-                                        if low > float(new_set['Vals'].iloc[k + 1]) and not float(
-                                                new_set['Vals'].iloc[k - 1]) > low:
-                                            val3 = low
+                                        if float(new_set['Vals'].iloc[k + 1]) < low > float(
+                                                new_set['Vals'].iloc[k - 1]):
+                                            val1 = low
                                             return val1, val2, val3
                                         else:
                                             continue

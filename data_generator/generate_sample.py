@@ -32,7 +32,7 @@ class Sample(Normalizer):
             try:
                 self.read_data(self.ticker, rand_dates=rand_date, skip_db=skip_db, interval=interval)
             except Exception as e:
-                print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\n{str(e)}')
+                print(f'[ERROR] Failed to read sample data for ticker {self.ticker}')
                 raise Exception(str(e))
         # Iterate through dataframe and retrieve random sample
         if not is_divergence:

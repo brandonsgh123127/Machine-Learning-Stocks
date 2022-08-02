@@ -21,7 +21,7 @@ class Neural_Framework(ABC):
         # print(device_lib.list_local_devices())
 
     @abstractmethod
-    def create_model(self, model_choice="model_relu"):
+    def create_model(self, model_choice="relu_multilayer_l2"):
         pass
 
     @abstractmethod
