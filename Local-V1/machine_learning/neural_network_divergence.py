@@ -6,7 +6,6 @@ import keras
 import tensorflow as tf
 import numpy as np
 from data_generator.generate_sample import Sample
-from pathlib import Path
 import os
 import pandas as pd
 import threading
@@ -17,7 +16,6 @@ from mysql.connector import errorcode
 import mysql.connector
 import xml.etree.ElementTree as ET
 import datetime
-import random
 
 
 class Network(Neural_Framework):

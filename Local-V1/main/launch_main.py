@@ -1,6 +1,5 @@
 import sys
 import tkinter as tk
-from multiprocessing import Process
 import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -8,7 +7,6 @@ from pathlib import Path
 from tkinter import ttk
 import threading
 import queue
-import datetime
 import time
 from PIL import Image, ImageTk
 from itertools import count
