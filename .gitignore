@@ -133,6 +133,6 @@ dmypy.json
 .pyre/
 
 # Internal directories:
-Local-V1/data/mysql/mysql_config.xml
-Local-V1/data/stock/
-Local-V1/data/tweets/
+V1/data/mysql/mysql_config.xml
+V1/data/stock/
+V1/data/tweets/
