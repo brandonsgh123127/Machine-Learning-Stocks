@@ -391,15 +391,14 @@ class Studies(Gather):
 
     def upwards_fib(self, new_set):
         # After this, iterate new list and find which direction stock may go
-        val1 = None;
-        val2 = None;
+        val1 = None
+        val2 = None
         val3 = None
-
         for i, row in new_set['Vals'].iloc[::-1].iteritems():  # reverse order iteration
             if i == len(new_set.index) - 1:  # if last element, skip
                 continue
             # if the last value is greater than prior , do upwards fib, else downwards
-            if self.data['Close'].iloc[-1] < new_set['Vals'].iloc[i]:
+            if not self.data['Low'].iloc[i-1] < new_set['Vals'].iloc[i]:
                 if float(new_set['Vals'].iloc[i + 1]) > row < float(
                         new_set['Vals'].iloc[i - 1]):  # if low is found, jump to this value
                     val3 = row
@@ -429,7 +428,7 @@ class Studies(Gather):
                 else:
                     continue
             else:
-                raise Exception("Did not find upwards fib value")
+                pass
         return val1, val2, val3
 
     def downwards_fib(self, new_set):
@@ -441,7 +440,7 @@ class Studies(Gather):
             if i == len(new_set.index) - 1:  # if last element, skip
                 continue
             # if the last value is greater than 10 days prior , do downwards fib
-            if self.data['Close'].iloc[-1] > new_set['Vals'].iloc[i]:
+            if self.data['High'].iloc[i-1] < new_set['Vals'].iloc[i]:
                 # attempt downwards fib
                 if float(new_set['Vals'].iloc[i + 1]) < row > float(
                         new_set['Vals'].iloc[i - 1]):  # if low is found, jump to this value
@@ -472,7 +471,7 @@ class Studies(Gather):
                 else:
                     continue
             else:
-                raise Exception("Did not find downwards fib value")
+                pass
         return val1, val2, val3
 
     def insert_fib_vals(self, skip_db, interval):
@@ -897,32 +896,9 @@ val1    val3_________________________          vall2
                 new_set = new_set.drop(['Index'], axis=1)
 
                 # attempt upwards fib
-                try:
-                    val1, val2, val3 = self.upwards_fib(new_set)
-                    # calculate values  -- 14 vals
-                    self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
-                                                             '0.236': [self.fib_help(val1, val2, val3, 0.236)],
-                                                             '0.241': [self.fib_help(val1, val2, val3, 0.241)],
-                                                             '0.273': [self.fib_help(val1, val2, val3, 0.273)],
-                                                             '0.283': [self.fib_help(val1, val2, val3, 0.283)],
-                                                             '0.316': [self.fib_help(val1, val2, val3, 0.316)],
-                                                             '0.382': [self.fib_help(val1, val2, val3, 0.382)],
-                                                             '0.5': [self.fib_help(val1, val2, val3, 0.5)],
-                                                             '0.618': [self.fib_help(val1, val2, val3, 0.618)],
-                                                             '0.796': [self.fib_help(val1, val2, val3, 0.796)],
-                                                             '1.556': [self.fib_help(val1, val2, val3, 1.556)],
-                                                             '3.43': [self.fib_help(val1, val2, val3, 3.43)],
-                                                             '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                                                             '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
-                    self.insert_fib_vals(skip_db=skip_db)  # insert to db
-                except Exception as e:
-                    exc_type, exc_obj, exc_tb = sys.exc_info()
-                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                    # print(exc_type, fname, exc_tb.tb_lineno,flush=True)
-
-                try:
-                    val1, val2, val3 = self.downwards_fib(new_set)
-                    if self.fibonacci_extension.empty:  # If upwards fails, initialize here
+                if not self.data['Close'].iloc[-1] < new_set['Vals'].iloc[0]:
+                    try:
+                        val1, val2, val3 = self.upwards_fib(new_set)
                         # calculate values  -- 14 vals
                         self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
                                                                  '0.236': [self.fib_help(val1, val2, val3, 0.236)],
@@ -938,27 +914,69 @@ val1    val3_________________________          vall2
                                                                  '3.43': [self.fib_help(val1, val2, val3, 3.43)],
                                                                  '3.83': [self.fib_help(val1, val2, val3, 3.83)],
                                                                  '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
-                    else:  # else, append
-                        self.fibonacci_extension = self.fibonacci_extension.append(
-                            {'0.202': [self.fib_help(val1, val2, val3, 0.202)],
-                             '0.236': [self.fib_help(val1, val2, val3, 0.236)],
-                             '0.241': [self.fib_help(val1, val2, val3, 0.241)],
-                             '0.273': [self.fib_help(val1, val2, val3, 0.273)],
-                             '0.283': [self.fib_help(val1, val2, val3, 0.283)],
-                             '0.316': [self.fib_help(val1, val2, val3, 0.316)],
-                             '0.382': [self.fib_help(val1, val2, val3, 0.382)],
-                             '0.5': [self.fib_help(val1, val2, val3, 0.5)],
-                             '0.618': [self.fib_help(val1, val2, val3, 0.618)],
-                             '0.796': [self.fib_help(val1, val2, val3, 0.796)],
-                             '1.556': [self.fib_help(val1, val2, val3, 1.556)],
-                             '3.43': [self.fib_help(val1, val2, val3, 3.43)],
-                             '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                             '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
+                        self.insert_fib_vals(skip_db=skip_db,interval=interval)  # insert to db
+                    except Exception as e:
+                        exc_type, exc_obj, exc_tb = sys.exc_info()
+                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                        print(fname,exc_type,exc_obj,exc_tb.tb_lineno)
+                else:
+                    try:
+                        val1, val2, val3 = self.downwards_fib(new_set)
+                        if self.fibonacci_extension.empty:  # If upwards fails, initialize here
+                            # calculate values  -- 14 vals
+                            self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
+                                                                     '0.236': [self.fib_help(val1, val2, val3, 0.236)],
+                                                                     '0.241': [self.fib_help(val1, val2, val3, 0.241)],
+                                                                     '0.273': [self.fib_help(val1, val2, val3, 0.273)],
+                                                                     '0.283': [self.fib_help(val1, val2, val3, 0.283)],
+                                                                     '0.316': [self.fib_help(val1, val2, val3, 0.316)],
+                                                                     '0.382': [self.fib_help(val1, val2, val3, 0.382)],
+                                                                     '0.5': [self.fib_help(val1, val2, val3, 0.5)],
+                                                                     '0.618': [self.fib_help(val1, val2, val3, 0.618)],
+                                                                     '0.796': [self.fib_help(val1, val2, val3, 0.796)],
+                                                                     '1.556': [self.fib_help(val1, val2, val3, 1.556)],
+                                                                     '3.43': [self.fib_help(val1, val2, val3, 3.43)],
+                                                                     '3.83': [self.fib_help(val1, val2, val3, 3.83)],
+                                                                     '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
+                        else:  # else, append
+                            self.fibonacci_extension = self.fibonacci_extension.append(
+                                {'0.202': [self.fib_help(val1, val2, val3, 0.202)],
+                                 '0.236': [self.fib_help(val1, val2, val3, 0.236)],
+                                 '0.241': [self.fib_help(val1, val2, val3, 0.241)],
+                                 '0.273': [self.fib_help(val1, val2, val3, 0.273)],
+                                 '0.283': [self.fib_help(val1, val2, val3, 0.283)],
+                                 '0.316': [self.fib_help(val1, val2, val3, 0.316)],
+                                 '0.382': [self.fib_help(val1, val2, val3, 0.382)],
+                                 '0.5': [self.fib_help(val1, val2, val3, 0.5)],
+                                 '0.618': [self.fib_help(val1, val2, val3, 0.618)],
+                                 '0.796': [self.fib_help(val1, val2, val3, 0.796)],
+                                 '1.556': [self.fib_help(val1, val2, val3, 1.556)],
+                                 '3.43': [self.fib_help(val1, val2, val3, 3.43)],
+                                 '3.83': [self.fib_help(val1, val2, val3, 3.83)],
+                                 '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
 
-                except Exception as e:
-                    exc_type, exc_obj, exc_tb = sys.exc_info()
-                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                    # print(exc_type, fname, exc_tb.tb_lineno)
+                    except Exception as e:
+                        exc_type, exc_obj, exc_tb = sys.exc_info()
+                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                        print(exc_type, fname, exc_tb.tb_lineno)
+                        val1, val2, val3 = self.upwards_fib(new_set)
+                        # calculate values  -- 14 vals
+                        self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
+                                                                 '0.236': [self.fib_help(val1, val2, val3, 0.236)],
+                                                                 '0.241': [self.fib_help(val1, val2, val3, 0.241)],
+                                                                 '0.273': [self.fib_help(val1, val2, val3, 0.273)],
+                                                                 '0.283': [self.fib_help(val1, val2, val3, 0.283)],
+                                                                 '0.316': [self.fib_help(val1, val2, val3, 0.316)],
+                                                                 '0.382': [self.fib_help(val1, val2, val3, 0.382)],
+                                                                 '0.5': [self.fib_help(val1, val2, val3, 0.5)],
+                                                                 '0.618': [self.fib_help(val1, val2, val3, 0.618)],
+                                                                 '0.796': [self.fib_help(val1, val2, val3, 0.796)],
+                                                                 '1.556': [self.fib_help(val1, val2, val3, 1.556)],
+                                                                 '3.43': [self.fib_help(val1, val2, val3, 3.43)],
+                                                                 '3.83': [self.fib_help(val1, val2, val3, 3.83)],
+                                                                 '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
+                        self.insert_fib_vals(skip_db=skip_db,interval=interval)  # insert to db
+
         try:
             self.fibonacci_extension = self.fibonacci_extension.drop(['index'],axis=1)
         except:
@@ -969,70 +987,75 @@ val1    val3_________________________          vall2
     ''' Keltner Channels for display data'''
 
     def keltner_channels(self, length: int, factor: int = 2, displace: int = None, skip_db=False,interval='1d'):
-        with threading.Lock():
-            self.data_cp = self.data.copy()
-            # self.data_cp=self.data_cp.reset_index()
-            self.apply_ema(length, length, skip_db=skip_db,interval=interval)  # apply length ema for middle band
-            self.keltner = pd.DataFrame({'middle': [], 'upper': [], 'lower': []}, dtype=float)
-            true_range = pd.DataFrame(columns=['trueRange'], dtype=float)
-            avg_true_range = pd.DataFrame(columns=['AvgTrueRange'], dtype=float)
-            prev_row = None
-            for index, row in self.data_cp.iterrows():
-                # CALCULATE TR ---MAX of ( H – L ; H – C.1 ; C.1 – L )
-                if index == 0:  # previous close is not valid, so just do same day
-                    prev_row = row
-                    true_range = true_range.append(
-                        {'trueRange': max(row['High'] - row['Low'], row['High'] - row['Low'], row['Low'] - row['Low'])},
-                        ignore_index=True)
-                else:  # get previous close vals
-                    true_range = true_range.append({'trueRange': max(row['High'] - row['Low'],
-                                                                     row['High'] - prev_row['Close'],
-                                                                     row['Low'] - prev_row['Close'])},
-                                                   ignore_index=True)
-                    prev_row = row
+        try:
+            with threading.Lock():
+                self.data_cp = self.data.copy()
+                # self.data_cp=self.data_cp.reset_index()
+                self.apply_ema(length, length, skip_db=skip_db,interval=interval)  # apply length ema for middle band
+                self.keltner = pd.DataFrame({'middle': [], 'upper': [], 'lower': []}, dtype=float)
+                true_range = pd.DataFrame(columns=['trueRange'], dtype=float)
+                avg_true_range = pd.DataFrame(columns=['AvgTrueRange'], dtype=float)
+                prev_row = None
+                for index, row in self.data_cp.iterrows():
+                    # CALCULATE TR ---MAX of ( H – L ; H – C.1 ; C.1 – L )
+                    if index == 0:  # previous close is not valid, so just do same day
+                        prev_row = row
+                        true_range = true_range.append(
+                            {'trueRange': max(row['High'] - row['Low'], row['High'] - row['Low'], row['Low'] - row['Low'])},
+                            ignore_index=True)
+                    else:  # get previous close vals
+                        true_range = true_range.append({'trueRange': max(row['High'] - row['Low'],
+                                                                         row['High'] - prev_row['Close'],
+                                                                         row['Low'] - prev_row['Close'])},
+                                                       ignore_index=True)
+                        prev_row = row
 
-                    # iterate through keltner and calculate ATR
-            for index, row in self.data_cp.iterrows():
-                try:
-                    if index == 0 or index <= length or index == len(self.data_cp.index) - 1:
-                        avg_true_range = avg_true_range.append({'AvgTrueRange': 1.33},
-                                                               ignore_index=True)  # add blank values
-                    else:
-                        end_atr = None
-                        for i in range(index - length - 1, index):  # go to range from index - length to index
-                            if end_atr is None:
-                                end_atr = int(true_range['trueRange'][i:i + 1].to_numpy())
-                            else:
-                                # summation of all values
-                                end_atr = int(end_atr + true_range['trueRange'][i:i + 1].to_numpy())
-                        end_atr = end_atr / length
-                        avg_true_range = avg_true_range.append({'AvgTrueRange': end_atr}, ignore_index=True)
-                except Exception as e:
-                    raise Exception("[Error] Failed to calculate Keltner ATR...\n", str(e))
-            # now, calculate upper and lower bands given all data
-            for index, row in avg_true_range.iterrows():
-                try:
-                    if index == len(self.data_cp.index) - 1:  # if last element
-                        self.keltner = self.keltner.append({'middle': (self.applied_studies[f'ema14'][index - 1]),
-                                                            'upper': self.applied_studies[f'ema14'][index - 1]
-                                                                     + (factor * avg_true_range['AvgTrueRange'][
-                                                                                 index - 1]),
-                                                            'lower': self.applied_studies[f'ema14'][index - 1]
-                                                                     - (factor * avg_true_range['AvgTrueRange'][
-                                                                                 index - 1])}
-                                                           , ignore_index=True)
+                        # iterate through keltner and calculate ATR
+                for index, row in self.data_cp.iterrows():
+                    try:
+                        if index == 0 or index <= length or index == len(self.data_cp.index) - 1:
+                            avg_true_range = avg_true_range.append({'AvgTrueRange': 1.33},
+                                                                   ignore_index=True)  # add blank values
+                        else:
+                            end_atr = None
+                            for i in range(index - length - 1, index):  # go to range from index - length to index
+                                if end_atr is None:
+                                    end_atr = int(true_range['trueRange'][i:i + 1].to_numpy())
+                                else:
+                                    # summation of all values
+                                    end_atr = int(end_atr + true_range['trueRange'][i:i + 1].to_numpy())
+                            end_atr = end_atr / length
+                            avg_true_range = avg_true_range.append({'AvgTrueRange': end_atr}, ignore_index=True)
+                    except Exception as e:
+                        raise Exception("[Error] Failed to calculate Keltner ATR...\n", str(e))
+        except:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(fname,exc_type,exc_obj,exc_tb)
+        # now, calculate upper and lower bands given all data
+        for index, row in avg_true_range.iterrows():
+            try:
+                if index == len(self.data_cp.index) - 1:  # if last element
+                    self.keltner = self.keltner.append({'middle': (self.applied_studies[f'ema14'][index - 1]),
+                                                        'upper': self.applied_studies[f'ema14'][index - 1]
+                                                                 + (factor * avg_true_range['AvgTrueRange'][
+                                                                             index - 1]),
+                                                        'lower': self.applied_studies[f'ema14'][index - 1]
+                                                                 - (factor * avg_true_range['AvgTrueRange'][
+                                                                             index - 1])}
+                                                       , ignore_index=True)
 
-                    else:  # else
-                        self.keltner = self.keltner.append({'middle': self.applied_studies[f'ema14'][index],
-                                                            'upper': self.applied_studies[f'ema14'][index]
-                                                                     + float(factor * avg_true_range['AvgTrueRange'][
-                                                                                      index]),
-                                                            'lower': self.applied_studies[f'ema14'][index]
-                                                                     - (factor * avg_true_range['AvgTrueRange'][
-                                                                                 index])}
-                                                           , ignore_index=True)
-                except Exception as e:
-                    raise Exception("[Error] Failed to calculate Keltner Bands...\n", str(e))
+                else:  # else
+                    self.keltner = self.keltner.append({'middle': self.applied_studies[f'ema14'][index],
+                                                        'upper': self.applied_studies[f'ema14'][index]
+                                                                 + float(factor * avg_true_range['AvgTrueRange'][
+                                                                                  index]),
+                                                        'lower': self.applied_studies[f'ema14'][index]
+                                                                 - (factor * avg_true_range['AvgTrueRange'][
+                                                                             index])}
+                                                       , ignore_index=True)
+            except Exception as e:
+                raise Exception("[Error] Failed to calculate Keltner Bands...\n", str(e))
         try:
             self.kelt_cnx = self.db_con.cursor()
         except:
