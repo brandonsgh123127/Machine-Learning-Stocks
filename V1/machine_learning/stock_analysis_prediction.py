@@ -59,11 +59,15 @@ class launcher:
                         self.dis.display_predict_only(color=f'{color}', row=row, col=col, is_divergence=is_divergence)
             else:
                 with self.listLock:
-                    self.dis.display_box(ldata[2], has_actuals=_has_actuals)
+                    self.dis.display_box(ldata[2], has_actuals=_has_actuals) # Display with fib
+                    self.dis.display_box(ldata[2], row=1, col=0, has_actuals=_has_actuals, without_fib=True)#Display without fib
+                    self.dis.display_box(ldata[2], row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True)#Display only fib
         else:
             if unnormalized_data:
                 with self.listLock:
-                    self.dis.display_box(ldata[2], has_actuals=_has_actuals)
+                    self.dis.display_box(ldata[2], has_actuals=_has_actuals) # display with fib
+                    self.dis.display_box(ldata[2], row=1, col=0, has_actuals=_has_actuals, without_fib=True)#Display without fib
+                    self.dis.display_box(ldata[2], row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True)#Display only fib
             else:
                 with self.listLock:
                     if not is_divergence:
@@ -136,48 +140,6 @@ def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False, in
 
     # Generate Data for usage in display_model
     data = gen.generate_data_with_dates(dates[0], dates[1], False, force_generate, interval=n_interval)
-    #
-    # PREDICT LABEL
-
-    # Call display line on first result, rest display predict only
-
-    # if _has_actuals:
-    #     with listLock:
-    #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-    #                 "relu_multilayer_l2", _has_actuals, ticker, 'green', force_generate, False, 1, 0, data, False,
-    #                 0.05))) == 1:
-    #             thread_pool.join_workers()
-    #     with listLock:
-    #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-    #                 "relu_2layer_0regularization", _has_actuals, ticker, 'black', force_generate, False, 1, 0, data, False,
-    #                 0.05))) == 1:
-    #             thread_pool.join_workers()
-    #     with listLock:
-    #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-    #                 "relu_2layer_dropout_l2_noout", _has_actuals, ticker, 'magenta', force_generate, False, 1, 0, data, False,
-    #                 0.05))) == 1:
-    #             thread_pool.join_workers()
-    #
-    # # Call solely display predict only
-    # else:
-    #     with listLock:
-    #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-    #                 "relu_multilayer_l2", _has_actuals, ticker, 'green', force_generate, False, 1, 0, data, False,
-    #                 0.05))) == 1:
-    #             thread_pool.join_workers()
-    #     with listLock:
-    #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-    #                 "relu_2layer_0regularization", _has_actuals, ticker, 'black', force_generate, False, 1, 0, data, False,
-    #                 0.05))) == 1:
-    #             thread_pool.join_workers()
-    #     with listLock:
-    #         while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-    #                 "relu_2layer_dropout_l2_noout", _has_actuals, ticker, 'magenta', force_generate, False, 1, 0, data, False,
-    #                 0.05))) == 1:
-    #             thread_pool.join_workers()
-    # gc.collect()
-    # thread_pool.join_workers()
-    #
     # CHART LABEL
     launch.display_model("relu_1layer_l2", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
                          n_interval)
@@ -238,7 +200,7 @@ def get_preview_prices(ticker: str, force_generation=False):
 
 def find_all_big_moves(tickers: list, force_generation=False, _has_actuals: bool = False, percent: float = 0.02,
                        interval: str = 'Daily') -> list:
-    thread_pool = Thread_Pool(amount_of_threads=4)
+    thread_pool = Thread_Pool(amount_of_threads=1)
     listLock = threading.Lock()
 
     launch = launcher(skip_display=True)
@@ -314,25 +276,4 @@ if __name__ == "__main__":
     _type = sys.argv[1]
     _has_actuals = sys.argv[3] == 'True'
     _force_generate = sys.argv[4] == 'True'
-    # print(_force_generate)
-    # print(_type,_has_actuals,_is_not_closed)
     main(ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='Weekly')
-
-    # path = Path(os.getcwd()).absolute()
-    # watchlist_file = open(f'{path}/data/watchlist/test.csv', 'r')
-    # lines = watchlist_file.readlines()
-    # noted_str = []
-    # tickers1 = []
-    # for line in lines:
-    #     try:
-    #         ticker1 = line[0:line.find(",")].strip().upper()
-    #     except:
-    #         ticker1 = line.strip().upper()
-    #     tickers1.append(ticker1)
-    # noted_moves = find_all_big_moves(tickers1, True, False, 0.01, 'Weekly')
-    # print(noted_moves)
-    # # After setting noted moves, populate self noted to str
-    # for note in noted_moves:
-    #     noted_str.append(f'{note[0]} -> {(((note[2] + note[1]) / note[2]) - 1) * 100}%')
-    # for st in noted_str:
-    #     print(st)
