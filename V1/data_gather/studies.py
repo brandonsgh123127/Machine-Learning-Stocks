@@ -398,7 +398,7 @@ class Studies(Gather):
             if i == len(new_set.index) - 1:  # if last element, skip
                 continue
             # if the last value is greater than prior , do upwards fib, else downwards
-            if not self.data['Low'].iloc[i-1] < new_set['Vals'].iloc[i]:
+            if not self.data['Low'].iloc[i-1] <= new_set['Vals'].iloc[i]:
                 if float(new_set['Vals'].iloc[i + 1]) > row < float(
                         new_set['Vals'].iloc[i - 1]):  # if low is found, jump to this value
                     val3 = row
@@ -407,7 +407,7 @@ class Studies(Gather):
                         if j >= i:
                             continue
                         else:  # find val2 by making sure next local high is valid
-                            if float(new_set['Vals'].iloc[j + 1]) <= sub <= float(
+                            if float(new_set['Vals'].iloc[j + 1]) < sub < float(
                                     new_set['Vals'].iloc[j - 1]):
                                 val2 = sub
                                 # find val3 by getting next low
@@ -415,7 +415,7 @@ class Studies(Gather):
                                     if k >= j:
                                         continue
                                     else:
-                                        if float(new_set['Vals'].iloc[k + 1]) >= low <= float(
+                                        if float(new_set['Vals'].iloc[k + 1]) > low < float(
                                                 new_set['Vals'].iloc[k - 1]):
                                             val1 = low
                                             return (val1, val2, val3)
@@ -443,7 +443,7 @@ class Studies(Gather):
             if self.data['High'].iloc[i-1] < new_set['Vals'].iloc[i]:
                 # attempt downwards fib
                 if float(new_set['Vals'].iloc[i + 1]) < row > float(
-                        new_set['Vals'].iloc[i - 1]):  # if low is found, jump to this value
+                        new_set['Vals'].iloc[i - 1]):  # if high is found, jump to this value
                     val3 = row
                     # find val2 by finding next local high
                     for j, sub in new_set['Vals'].iloc[::-1].iteritems():
@@ -454,13 +454,13 @@ class Studies(Gather):
                                     new_set['Vals'].iloc[j - 1]):
                                 val2 = sub
                                 # find val3 by getting next high
-                                for k, low in new_set['Vals'].iloc[::-1].iteritems():
+                                for k, high in new_set['Vals'].iloc[::-1].iteritems():
                                     if k >= j:
                                         continue
                                     else:
-                                        if float(new_set['Vals'].iloc[k + 1]) < low > float(
+                                        if float(new_set['Vals'].iloc[k + 1]) < high > float(
                                                 new_set['Vals'].iloc[k - 1]):
-                                            val1 = low
+                                            val1 = high
                                             return val1, val2, val3
                                         else:
                                             continue

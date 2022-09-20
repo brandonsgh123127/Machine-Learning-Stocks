@@ -11,7 +11,6 @@ class Neural_Framework(ABC):
     def __init__(self, epochs, batch_size):
         self.model_choice = None
         self.nn_input = None
-        self.nn = None
         self.EPOCHS = epochs
         self.BATCHES = batch_size
         self.path = Path(os.getcwd()).absolute()
@@ -25,10 +24,10 @@ class Neural_Framework(ABC):
         pass
 
     @abstractmethod
-    def run_model(self):
+    def run_model(self, nn: keras.models.Model):
         pass
 
-    def save_model(self):
+    def save_model(self, nn: keras.models.Model):
         self.nn.save(f'{self.path}/data/{self.model_name}')
 
     @staticmethod
@@ -42,14 +41,15 @@ class Neural_Framework(ABC):
     def load_model(self, name=None):
         try:
             self.model_name = name
-            self.nn = keras.models.load_model(
+            nn = keras.models.load_model(
                 f'{self.path}/data/{name}')
             for model_choice, name_loc in self.model_map_names.items():
                 if name == name_loc:
                     self.model_choice = model_choice
+            return nn
         except:
             print(f'[INFO] No model exists for {name}, creating new model...')
 
     @abstractmethod
-    def run_model(self, rand_date=False):
+    def run_model(self, nn: keras.models.Model, rand_date=False):
         pass

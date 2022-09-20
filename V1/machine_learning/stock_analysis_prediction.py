@@ -1,8 +1,9 @@
+import keras
 from V1.data_generator._data_generator import Generator
 from pathlib import Path
 import os
 # import matplotlib.pyplot as plt
-from V1.machine_learning.neural_network import load
+from V1.machine_learning.neural_network import load, Network
 from V1.machine_learning.neural_network_divergence import load as load_divergence
 from V1.data_generator.display_data import Display
 import datetime
@@ -23,14 +24,14 @@ class launcher:
         self.saved_predictions: list = []
         self.listLock = threading.Lock()
 
-    def display_model(self, name: str = "relu_multilayer_l2", _has_actuals: bool = False, ticker: str = "spy",
+    def display_model(self, nn: keras.models.Model = None, name: str = "relu_multilayer_l2", _has_actuals: bool = False, ticker: str = "spy",
                       color: str = "blue", force_generation=False, unnormalized_data=False, row=0, col=1,
                       data=None, is_divergence=False,
                       skip_threshold: float = 0.05,
                       interval: str = '1d'):
         # Call machine learning model
         if not is_divergence:
-            ldata = load(f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
+            ldata = load(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
                          force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False, data=data,
                          interval=interval)
         else:
@@ -80,7 +81,7 @@ class launcher:
 data_gen = Generator()
 
 
-def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False, interval='Daily'):
+def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True, force_generate=False, interval='Daily'):
     thread_pool = Thread_Pool(amount_of_threads=4)
     listLock = threading.Lock()
 
@@ -141,7 +142,7 @@ def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False, in
     # Generate Data for usage in display_model
     data = gen.generate_data_with_dates(dates[0], dates[1], False, force_generate, interval=n_interval)
     # CHART LABEL
-    launch.display_model("relu_1layer_l2", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
+    launch.display_model(nn_dict["relu_1layer_l2"],"relu_1layer_l2", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
                          n_interval)
     gc.collect()
 
@@ -150,33 +151,33 @@ def main(ticker: str = "SPY", has_actuals: bool = True, force_generate=False, in
     if _has_actuals:
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    nn_dict["relu_2layer_0regularization"],"relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
+                    nn_dict["relu_1layer_l2"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
+                    nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
     else:
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    nn_dict["relu_2layer_0regularization"],"relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
+                    nn_dict["relu_1layer_l2"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
+                    nn_dict["relu_2layer_0regularization"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
 
@@ -198,9 +199,9 @@ def get_preview_prices(ticker: str, force_generation=False):
         return ['nan'], ['nan']
 
 
-def find_all_big_moves(tickers: list, force_generation=False, _has_actuals: bool = False, percent: float = 0.02,
+def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=False, _has_actuals: bool = False, percent: float = 0.02,
                        interval: str = 'Daily') -> list:
-    thread_pool = Thread_Pool(amount_of_threads=1)
+    thread_pool = Thread_Pool(amount_of_threads=2)
     listLock = threading.Lock()
 
     launch = launcher(skip_display=True)
@@ -256,7 +257,7 @@ def find_all_big_moves(tickers: list, force_generation=False, _has_actuals: bool
             data = gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
             # print(data,flush=True)
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    "relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
+                    nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
                     percent, n_interval))) == 1:
                 thread_pool.join_workers()
         except Exception as e:

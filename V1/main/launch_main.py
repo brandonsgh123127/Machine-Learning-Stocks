@@ -2,6 +2,8 @@ import sys
 import tkinter as tk
 import os
 
+from V1.machine_learning.neural_network import Network
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from pathlib import Path
 from tkinter import ttk
@@ -40,6 +42,14 @@ class GUI(Thread_Pool):
         self.load_thread: threading.Thread = None
         self.img = None
         self.image = None
+        neural_net = Network(0, 0)
+        names: list = ['relu_1layer_l2', 'relu_2layer_0regularization', 'relu_1layer_l2', 'relu_2layer_l1l2']
+        nn_list: list = [neural_net.load_model(name=name) for name in names]
+        self.nn_dict: dict = {'relu_1layer_l2': nn_list[0],
+                         'relu_2layer_0regularization': nn_list[1],
+                         'relu_1layer_l2': nn_list[2],
+                         'relu_2layer_l1l2': nn_list[3]}
+
 
         self.window = tk.Tk(screenName='Stock Analysis')
         self.window.attributes('-fullscreen', False)
@@ -187,7 +197,7 @@ class GUI(Thread_Pool):
             self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
             if not is_caching:
                 self.generate_button.grid_forget()
-            self.img = analyze_stock(ticker, has_actuals, force_generate=force_generation)[0]
+            self.img = analyze_stock(self.nn_dict, ticker, has_actuals, force_generate=force_generation)[0]
             # self.image = ImageTk.PhotoImage(self.img)
 
             gc.collect()
@@ -219,11 +229,11 @@ class GUI(Thread_Pool):
                 self.generate_button.grid_forget()
             if not has_actuals:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    thread = executor.submit(analyze_stock, ticker, has_actuals, force_generation,
+                    thread = executor.submit(analyze_stock, self.nn_dict, ticker, has_actuals, force_generation,
                                              self.interval_text.get())
             else:
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    thread = executor.submit(analyze_stock, ticker, has_actuals, force_generation,
+                    thread = executor.submit(analyze_stock, self.nn_dict, ticker, has_actuals, force_generation,
                                              self.interval_text.get())
 
             self.img = thread.result()[0]

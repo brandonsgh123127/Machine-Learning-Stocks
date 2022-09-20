@@ -24,7 +24,8 @@ class Network(Neural_Framework):
     def __init__(self, epochs, batch_size):
         super().__init__(epochs, batch_size)
         self.sampler = None
-        self.model_map_names = {"relu_multilayer_l2": 1, "relu_2layer_0regularization": 2, "relu_2layer_dropout_l2_noout": 3, "relu_2layer_l1l2": 4,
+        self.model_map_names = {"relu_multilayer_l2": 1, "relu_2layer_0regularization": 2,
+                                "relu_2layer_dropout_l2_noout": 3, "relu_2layer_l1l2": 4,
                                 "relu_1layer_l2": 5, "relu_2layer_dropout_l2_out": 6}
         self.model_choice: int = None
 
@@ -35,88 +36,88 @@ class Network(Neural_Framework):
         self.model_name = model_choice
         self.model_choice = self.model_map_names.get(model_choice)
         if 0 < self.model_choice <= 6:
-            self.nn_input = keras.Input(shape=(1, 112))  # 14 * 8 cols
+            nn_input = keras.Input(shape=(1, 112))  # 14 * 8 cols
         elif 6 < self.model_choice <= 12:
-            self.nn_input = keras.Input(shape=(1, 112))  # 14 * 8 cols
+            nn_input = keras.Input(shape=(1, 112))  # 14 * 8 cols
 
         if 0 < self.model_choice <= 6:
             if self.model_choice == 1:
-                self.nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3),
-                                             activity_regularizer=keras.regularizers.l2(0.01))(
-                    self.nn_input)
-                self.nn = keras.layers.Dropout(0.25)(self.nn)
-                self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3),
-                                             activity_regularizer=keras.regularizers.l2(0.01))(self.nn)
-                self.nn2 = keras.layers.Dense(1, activation='linear', activity_regularizer=keras.regularizers.l2(0.01))(
-                    self.nn)
+                nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3),
+                                        activity_regularizer=keras.regularizers.l2(0.01))(
+                    nn_input)
+                nn = keras.layers.Dropout(0.25)(nn)
+                nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3),
+                                        activity_regularizer=keras.regularizers.l2(0.01))(nn)
+                nn2 = keras.layers.Dense(1, activation='linear', activity_regularizer=keras.regularizers.l2(0.01))(
+                    nn)
 
             elif self.model_choice == 2:
-                self.nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3))(
-                    self.nn_input)
-                self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-                self.nn = keras.layers.Dropout(0.25)(self.nn)
-                self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.2))(self.nn)
-                self.nn2 = keras.layers.Dense(1, activation='linear')(self.nn)
+                nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3))(
+                    nn_input)
+                nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(nn)
+                nn = keras.layers.Dropout(0.25)(nn)
+                nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.2))(nn)
+                nn2 = keras.layers.Dense(1, activation='linear')(nn)
 
             elif self.model_choice == 3:
-                self.nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3),
-                                             activity_regularizer=keras.regularizers.l2(0.01))(
-                    self.nn_input)
-                self.nn = keras.layers.Dropout(0.25)(self.nn)
-                self.nn = keras.layers.Dense(56, activation=keras.layers.LeakyReLU(alpha=0.3),
-                                             activity_regularizer=keras.regularizers.l2(0.01))(self.nn)
-                self.nn = keras.layers.Dense(22, activation=keras.layers.LeakyReLU(alpha=0.3),
-                                             activity_regularizer=keras.regularizers.l2(0.01))(self.nn)
-                self.nn = keras.layers.Dropout(0.25)(self.nn)
-                self.nn2 = keras.layers.Dense(1, activation='linear')(
-                    self.nn)
+                nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3),
+                                        activity_regularizer=keras.regularizers.l2(0.01))(
+                    nn_input)
+                nn = keras.layers.Dropout(0.25)(nn)
+                nn = keras.layers.Dense(56, activation=keras.layers.LeakyReLU(alpha=0.3),
+                                        activity_regularizer=keras.regularizers.l2(0.01))(nn)
+                nn = keras.layers.Dense(22, activation=keras.layers.LeakyReLU(alpha=0.3),
+                                        activity_regularizer=keras.regularizers.l2(0.01))(nn)
+                nn = keras.layers.Dropout(0.25)(nn)
+                nn2 = keras.layers.Dense(1, activation='linear')(
+                    nn)
 
             elif self.model_choice == 4:
-                self.nn = keras.layers.Dense(112,
-                                             kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                    self.nn_input)
-                self.nn = keras.layers.Dense(44, activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
-                self.nn = keras.layers.Dropout(0.25)(self.nn)
-                self.nn = keras.layers.Dense(12, activation=keras.layers.LeakyReLU(alpha=0.2),
-                                             kernel_regularizer=keras.regularizers.l1_l2(0.01, 0.002))(self.nn)
-                self.nn2 = keras.layers.Dense(1, activation='sigmoid')(self.nn)
+                nn = keras.layers.Dense(112,
+                                        kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
+                    nn_input)
+                nn = keras.layers.Dense(44, activation=keras.layers.LeakyReLU(alpha=0.5))(nn)
+                nn = keras.layers.Dropout(0.25)(nn)
+                nn = keras.layers.Dense(12, activation=keras.layers.LeakyReLU(alpha=0.2),
+                                        kernel_regularizer=keras.regularizers.l1_l2(0.01, 0.002))(nn)
+                nn2 = keras.layers.Dense(1, activation='sigmoid')(nn)
 
             elif self.model_choice == 5:
-                self.nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3))(
-                    self.nn_input)
-                self.nn = keras.layers.Dense(36, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-                self.nn2 = keras.layers.Dense(1, activation='sigmoid')(self.nn)
+                nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3))(
+                    nn_input)
+                nn = keras.layers.Dense(36, activation=keras.layers.LeakyReLU(alpha=0.3))(nn)
+                nn2 = keras.layers.Dense(1, activation='sigmoid')(nn)
 
             elif self.model_choice == 6:
-                self.nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3))(
-                    self.nn_input)
-                self.nn = keras.layers.Dropout(0.33)(self.nn)
-                self.nn = keras.layers.Dense(84, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-                self.nn = keras.layers.Dense(10, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-                self.nn2 = keras.layers.Dense(1, activation='softmax')(
-                    self.nn)
+                nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3))(
+                    nn_input)
+                nn = keras.layers.Dropout(0.33)(nn)
+                nn = keras.layers.Dense(84, activation=keras.layers.LeakyReLU(alpha=0.3))(nn)
+                nn = keras.layers.Dense(10, activation=keras.layers.LeakyReLU(alpha=0.3))(nn)
+                nn2 = keras.layers.Dense(1, activation='softmax')(
+                    nn)
 
             # Convert to a model
-            self.nn = keras.Model(inputs=self.nn_input, outputs=[self.nn2])
-            self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.01, beta_1=0.90, beta_2=0.997), loss='mse',
-                            metrics=['MeanAbsoluteError', 'MeanSquaredError'])
+            nn = keras.Model(inputs=nn_input, outputs=[nn2])
+            nn.compile(optimizer=keras.optimizers.Adam(lr=0.01, beta_1=0.90, beta_2=0.997), loss='mse',
+                       metrics=['MeanAbsoluteError', 'MeanSquaredError'])
 
         elif 6 < self.model_choice <= 12:
             if self.model_choice == 1:
-                self.nn = keras.layers.Dense(112,
-                                             kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None),
-                                             activity_regularizer=keras.regularizers.l1(0.03))(
-                    self.nn_input)
-                # self.nn = keras.layers.Dropout(0.1)(self.nn)
+                nn = keras.layers.Dense(112,
+                                        kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None),
+                                        activity_regularizer=keras.regularizers.l1(0.03))(
+                    nn_input)
+                # nn = keras.layers.Dropout(0.1)(nn)
                 keras.regularizers.l2(0.01)
-                self.nn = keras.layers.Dense(64, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-                self.nn2 = keras.layers.Dense(1, activation='linear')(self.nn)
+                nn = keras.layers.Dense(64, activation=keras.layers.LeakyReLU(alpha=0.3))(nn)
+                nn2 = keras.layers.Dense(1, activation='linear')(nn)
             # Convert to a model
-            self.nn = keras.Model(inputs=self.nn_input, outputs=[self.nn2])
-            self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.01, beta_1=0.90, beta_2=0.997), loss='mse',
-                            metrics=['MeanAbsoluteError', 'MeanSquaredError'])
+            nn = keras.Model(inputs=nn_input, outputs=[nn2])
+            nn.compile(optimizer=keras.optimizers.Adam(lr=0.01, beta_1=0.90, beta_2=0.997), loss='mse',
+                       metrics=['MeanAbsoluteError', 'MeanSquaredError'])
 
-        return self.nn
+        return nn
 
     # Used for generation of data via the start
     def generate_sample(self, _has_actuals=False, rand_date=None):
@@ -138,7 +139,7 @@ class Network(Neural_Framework):
             return 1
         return 0
 
-    def run_model(self, rand_date=False):
+    def run_model(self, nn: keras.models.Model = None, rand_date=False):
         self.sampler = Sample()
         models = {}
         try:
@@ -190,9 +191,9 @@ class Network(Neural_Framework):
             tensorboard_callback = tf.keras.callbacks.TensorBoard(
                 log_dir=f'./logs/{self.model_name}', profile_batch=(2, 5))
             # Use fit for generating with ease.  Validation data included for analysis of loss
-            disp = self.nn.fit(x=np.stack(train), y=np.stack(train_targets), batch_size=75, epochs=1,
-                               validation_split=0.177,
-                               callbacks=[tensorboard_callback])
+            disp = nn.fit(x=np.stack(train), y=np.stack(train_targets), batch_size=75, epochs=1,
+                          validation_split=0.177,
+                          callbacks=[tensorboard_callback])
             models[i] = disp.history
             self.save_model()
 
@@ -203,7 +204,7 @@ class Network(Neural_Framework):
 
     def load_model(self, name="relu_1layer"):
         self.model_choice = self.model_map_names.get(name)
-        super().load_model(name)
+        return super().load_model(name)
 
 
 listLock = threading.Lock()
@@ -427,8 +428,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 
 """Load Specified Model"""
 
-
-def load(ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer", force_generation=False,
+def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer", force_generation=False,
          device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = None, interval: str = '1d'):
     # Connect to local DB
     path = Path(os.getcwd()).absolute()
@@ -468,9 +468,6 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer
 
     # Start ML calculations
     if predicted is None or force_generation:
-        neural_net = Network(0, 0)
-        neural_net.load_model(name=name)
-
         # Actually gather data and insert if query is not met
         sampler = Sample(ticker=ticker, force_generate=force_generation)
         # sampler.__init__(ticker)
@@ -498,7 +495,7 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer
                 else:
                     train = (np.reshape(sampler.normalized_data[-14:].to_numpy(), (1, 1, 112)))
                 train = np.asarray(train).astype('float32')
-                prediction = neural_net.nn.predict(np.stack(train))
+                prediction = nn.predict(np.stack(train))
         predicted = pd.DataFrame((np.reshape(prediction, (1, 1))), columns=['Close'])  # NORMALIZED
 
         # Upload data to DB given prediction has finished
