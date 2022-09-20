@@ -119,7 +119,7 @@ def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True, forc
         valid_date = (valid_date - datetime.timedelta(days=1))
     e_date = valid_date
 
-    n_interval = '1d' if interval == 'Daily' else '1wk' if interval == 'Weekly' else '1mo' if interval == 'Monthly' else '1y'
+    n_interval = '1d' if interval == 'Daily' else '1wk' if interval == 'Weekly' else '1mo' if interval == 'Monthly' else '1y' if interval == 'Yearly' else interval
 
     if '1d' in n_interval:
         dates = (e_date - datetime.timedelta(days=75), e_date)  # month worth of data
@@ -136,6 +136,8 @@ def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True, forc
         dates = (begin_date, e_date)  # ~5 months
     elif '1mo' in n_interval:
         dates = ((e_date - datetime.timedelta(days=600)).replace(day=1), e_date.replace(day=1))  # ~20 months
+    elif '1y' not in n_interval:
+        dates = (e_date - datetime.timedelta(days=75), e_date)  # month worth of data
 
     _has_actuals = has_actuals
 
@@ -177,7 +179,7 @@ def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True, forc
                 thread_pool.join_workers()
         with listLock:
             while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
-                    nn_dict["relu_2layer_0regularization"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
+                    nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
                     0.05, n_interval))) == 1:
                 thread_pool.join_workers()
 
@@ -230,7 +232,9 @@ def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=False, _ha
         valid_date = (valid_date - datetime.timedelta(days=1))
     e_date = valid_date
 
-    n_interval = '1d' if interval == 'Daily' else '1wk' if interval == 'Weekly' else '1mo' if interval == 'Monthly' else '1y'
+    n_interval = '1d' if interval == 'Daily' else '1wk' if interval == 'Weekly' else\
+        '1mo' if interval == 'Monthly' else\
+            '1y' if interval == 'Yearly' else interval
 
     if '1d' in n_interval:
         dates = (e_date - datetime.timedelta(days=75), e_date)  # month worth of data
@@ -248,7 +252,8 @@ def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=False, _ha
         dates = (begin_date, e_date)  # ~5 months
     elif '1mo' in n_interval:
         dates = ((e_date - datetime.timedelta(days=600)).replace(day=1), e_date.replace(day=1))  # ~20 months
-
+    elif '1y' not in n_interval:
+        dates = (e_date - datetime.timedelta(days=75), e_date)  # months worth of data
     path = Path(os.getcwd()).absolute()
     gen = Generator(None, path, force_generation)
     for ticker in tickers:
@@ -277,4 +282,12 @@ if __name__ == "__main__":
     _type = sys.argv[1]
     _has_actuals = sys.argv[3] == 'True'
     _force_generate = sys.argv[4] == 'True'
-    main(ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='Weekly')
+    neural_net = Network(0, 0)
+    names: list = ['relu_1layer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2', 'relu_2layer_l1l2']
+    nn_list: list = [neural_net.load_model(name=name) for name in names]
+    nn_dict: dict = {'relu_1layer_l2': nn_list[0],
+                          'relu_2layer_0regularization': nn_list[1],
+                          'relu_2layer_l1l2': nn_list[2],
+                          'relu_2layer_l1l2': nn_list[3]}
+
+    main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='15m')

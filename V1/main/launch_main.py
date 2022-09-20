@@ -43,11 +43,11 @@ class GUI(Thread_Pool):
         self.img = None
         self.image = None
         neural_net = Network(0, 0)
-        names: list = ['relu_1layer_l2', 'relu_2layer_0regularization', 'relu_1layer_l2', 'relu_2layer_l1l2']
+        names: list = ['relu_1layer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2', 'relu_2layer_l1l2']
         nn_list: list = [neural_net.load_model(name=name) for name in names]
         self.nn_dict: dict = {'relu_1layer_l2': nn_list[0],
                          'relu_2layer_0regularization': nn_list[1],
-                         'relu_1layer_l2': nn_list[2],
+                         'relu_2layer_l1l2': nn_list[2],
                          'relu_2layer_l1l2': nn_list[3]}
 
 
@@ -344,7 +344,7 @@ class GUI(Thread_Pool):
         # self.next_page_button.pack(side='bottom')
         self.cache_queue.put(threading.Thread(target=self.load_dropdown, args=()))
         self.interval_dropdown = tk.OptionMenu(self.content, self.interval_text,
-                                               *['Daily', 'Weekly', 'Monthly', 'Yearly'])
+                                               *['Daily', 'Weekly', 'Monthly', 'Yearly', '5m', '15m', '30m', '1h'])
         self.interval_dropdown.grid(column=4, row=0)
 
         # self.cache_queue.put(threading.Thread(target=self.load_model,args=('SPY',False,False,True,False)))

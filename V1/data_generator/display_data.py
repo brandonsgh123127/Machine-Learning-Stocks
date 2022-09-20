@@ -51,6 +51,7 @@ class Display:
                     data = data.iloc[int(data_len / 1.33 + 1):-1].reset_index().astype('float')
                 else:
                     data = data.iloc[:-1].reset_index().astype('float')
+                print(data)
                 if not without_fib and not only_fib:
                     self.fib_display = self.fib_display.reset_index()
                     if len(self.fib_display.index) < data_len:
@@ -70,7 +71,6 @@ class Display:
                 self.fib_display = self.fib_display.loc[
                     self.fib_display.index.repeat(int(data_len/len(self.fib_display.index))+1)]
                 self.fib_display = self.fib_display.reset_index().astype('float')
-
             data = data.reset_index().drop(columns=['index']).astype('float')
         except:
             pass

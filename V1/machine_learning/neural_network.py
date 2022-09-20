@@ -219,6 +219,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 
     # First, get to date id
     check_cache_tdata_db_stmt = ''
+    is_utilizing_yfinance = False
     # Retrieve the stock-id, and data-point id in a single select statement
     if '1d' in interval:
         check_cache_tdata_db_stmt = """SELECT `stocks`.`dailydata`.`data-id`,
@@ -244,6 +245,14 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
             INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`yearlydata`.`stock-id`
              AND `stocks`.`yearlydata`.`date`= DATE(%(date)s)
              """
+    else:
+        is_utilizing_yfinance = True
+        check_cache_tdata_db_stmt = f"""SELECT `stocks`.`{interval}data`.`data-id`,
+             `stocks`.`{interval}data`.`stock-id` FROM `stocks`.`{interval}data` USE INDEX (`id-and-date`)
+            INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`{interval}data`.`stock-id`
+             AND `stocks`.`{interval}data`.`date`= %(date)s
+             """
+
     # check if currently weekend/holiday
     valid_datetime = datetime.datetime.utcnow()
     holidays = USFederalHolidayCalendar().holidays(start=valid_datetime,
@@ -278,6 +287,15 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
             if valid_date in holidays:
                 valid_datetime = (valid_datetime - datetime.timedelta(days=1))
                 valid_date = (valid_date - datetime.timedelta(days=1))
+        if is_utilizing_yfinance:  # This means this is a minute/HR/Days interval.  We'll need to set the time as part of the interval
+            if 'h' in interval:
+                valid_datetime = valid_datetime.replace(minute=0, second=0, microsecond=0)
+            elif 'm' in interval:
+                min_value = interval.replace('m', '')
+                valid_datetime = valid_datetime.replace(
+                    minute=int(min_value) * int(valid_datetime.minute // int(min_value)), second=0, microsecond=0)
+            elif 'd' in interval:
+                valid_datetime = valid_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
     elif '1wk' in interval:
         begin_day = abs(valid_date.weekday())
         if begin_day != 0:
@@ -353,9 +371,17 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
          WHERE stocks.`yearlydata`.`stock-id` = %(stock-id)s
            AND stocks.`yearlydata`.`date` = DATE(%(date)s)
             """
+    else:
+        check_cache_fdata_db_stmt = f"""SELECT `stocks`.`{interval}data`.`data-id` 
+         FROM stocks.`{interval}data` USE INDEX (`stockid-and-date`)
+         WHERE stocks.`{interval}data`.`stock-id` = %(stock-id)s
+           AND stocks.`{interval}data`.`date` = %(date)s
+            """
 
     retrieve_data_result = cnx.execute(check_cache_fdata_db_stmt, {'stock-id': stock_id,
-                                                                   'date': valid_date}, multi=True)
+                                                                   'date': valid_date if not is_utilizing_yfinance else
+                                                                   valid_datetime.strftime("%Y-%m-%d %H:%M:%S")},
+                                       multi=True)
     for retrieve_result in retrieve_data_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
@@ -399,6 +425,14 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
            AND `stocks`.`yearly-nn-data`.`to-date-id` = %(to-date-id)s
             AND `stocks`.`yearly-nn-data`.`model` = %(model)s
             """
+    else:
+        check_cache_nn_db_stmt = f"""SELECT `stocks`.`{interval}-nn-data`.`close`,`stocks`.`{interval}-nn-data`.`open` 
+         FROM stocks.`{interval}-nn-data` USE INDEX (`from-to-model`,`stockid`) WHERE
+        `stock-id` = %(stock-id)s
+           AND `stocks`.`{interval}-nn-data`.`from-date-id` = %(from-date-id)s
+           AND `stocks`.`{interval}-nn-data`.`to-date-id` = %(to-date-id)s
+            AND `stocks`.`{interval}-nn-data`.`model` = %(model)s
+            """
     try:
 
         check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt, {'stock-id': stock_id,
@@ -428,7 +462,9 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 
 """Load Specified Model"""
 
-def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer", force_generation=False,
+
+def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer",
+         force_generation=False,
          device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = None, interval: str = '1d'):
     # Connect to local DB
     path = Path(os.getcwd()).absolute()
@@ -497,7 +533,7 @@ def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = 
                 train = np.asarray(train).astype('float32')
                 prediction = nn.predict(np.stack(train))
         predicted = pd.DataFrame((np.reshape(prediction, (1, 1))), columns=['Close'])  # NORMALIZED
-
+        is_utilizing_yfinance = False
         # Upload data to DB given prediction has finished
         if '1d' in interval:
             check_cache_nn_db_stmt = """REPLACE INTO `stocks`.`daily-nn-data` (`nn-id`, `stock-id`, 
@@ -522,6 +558,14 @@ def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = 
             """
         elif '1y' in interval:
             check_cache_nn_db_stmt = """REPLACE INTO `stocks`.`yearly-nn-data` (`nn-id`, `stock-id`, 
+                                                                    `from-date-id`,`to-date-id`,
+                                                                    `model`,`close`,`open` 
+                                                            VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(stock-id)s,%(from-date-id)s,
+                                                            %(to-date-id)s,%(model)s,%(close)s,%(open)s)
+            """
+        else:
+            is_utilizing_yfinance = True
+            check_cache_nn_db_stmt = f"""REPLACE INTO `stocks`.`{interval}-nn-data` (`nn-id`, `stock-id`, 
                                                                     `from-date-id`,`to-date-id`,
                                                                     `model`,`close`,`open` 
                                                             VALUES (AES_ENCRYPT(%(id)s, UNHEX(SHA2(%(id)s,512))),%(stock-id)s,%(from-date-id)s,

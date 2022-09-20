@@ -1,4 +1,5 @@
 from yahoo_fin.stock_info import get_data
+import yfinance as yf
 from yahoo_fin.options import get_options_chain
 import datetime
 from pandas_datareader import data as pdr
@@ -136,6 +137,7 @@ class Gather:
             self.cnx = self.db_con.cursor()
             self.cnx.autocommit = True
             check_cache_studies_db_stmt=''
+            is_utilizing_yfinance: bool = False
             if '1d' in interval:
                 # Before inserting data, check cached data, verify if there is data there...
                 check_cache_studies_db_stmt = """SELECT `stocks`.`dailydata`.`date`,`stocks`.`dailydata`.`open`,
@@ -181,6 +183,18 @@ class Gather:
                    AND `stocks`.`yearlydata`.`date` <= DATE(%(edate)s)
                    ORDER BY stocks.`yearlydata`.`date` ASC
                     """
+            else:
+                is_utilizing_yfinance = True
+                check_cache_studies_db_stmt = f"""SELECT `stocks`.`{interval}data`.`date`,`stocks`.`{interval}data`.`open`,
+                `stocks`.`{interval}data`.`high`,`stocks`.`{interval}data`.`low`,
+                `stocks`.`{interval}data`.`close`,`stocks`.`{interval}data`.`adj-close`
+                 FROM stocks.`{interval}data` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
+                 ON `stock-id` = stocks.stock.`id` 
+                  AND stocks.stock.`stock` = %(stock)s
+                   AND `stocks`.`{interval}data`.`date` >= DATE(%(sdate)s)
+                   AND `stocks`.`{interval}data`.`date` <= DATE(%(edate)s)
+                   ORDER BY stocks.`{interval}data`.`date` ASC
+                    """
 
             try:
                 check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,
@@ -202,7 +216,7 @@ class Gather:
                         else:
                             new_data = new_data.append({'Date': date, 'Open': float(res[1]), 'High': float(res[2]),
                                                         'Low': float(res[3]), 'Close': float(res[4]),
-                                                        'Adj. Close': float(res[5])}, ignore_index=True)
+                                                        'Adj. Close': float(res[5]) if not is_utilizing_yfinance else float(res[4])}, ignore_index=True)
                             # check if date is there, if not fail this
                             if date in date_range:
                                 date_range.remove(date)
@@ -221,7 +235,12 @@ class Gather:
                 self.data['Date'] = pd.to_datetime(self.data['Date'])
             except:
                 print('[INFO] Could not convert Date col to datetime')
-        # Actually gather data if query is not met
+        #
+        #
+        # Actually gather data
+        # if query is not met
+        #
+        #
         else:
             # if not _force_generate:
             with threading.Lock():
@@ -233,7 +252,13 @@ class Gather:
                 self.cnx.autocommit = True
                 self.data = None
                 try:
-                    self.data = get_data(self.indicator.upper(), start_date=start_date.strftime("%Y-%m-%d"),
+                    if is_utilizing_yfinance:
+                        ticker = yf.Ticker(self.indicator.upper())
+                        self.data = ticker.history(interval=interval, start=(end_date + datetime.timedelta(days=-1)).strftime('%Y-%m-%d'),
+                                              end=(end_date + datetime.timedelta(days=6)).strftime('%Y-%m-%d'))
+
+                    else:
+                        self.data = get_data(self.indicator.upper(), start_date=start_date.strftime("%Y-%m-%d"),
                                          end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
                                          interval=interval)
                 except AssertionError as a:
@@ -248,9 +273,16 @@ class Gather:
                         retries = retries + 1
                         time.sleep(2 * (retries / 1.33))
                         try:
-                            self.data = get_data(self.indicator.upper(), start_date=start_date.strftime("%Y-%m-%d"),
-                                                 end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
-                                                 interval=interval)
+                            if is_utilizing_yfinance:
+                                ticker = yf.Ticker(self.indicator.upper())
+                                self.data = ticker.history(interval=interval,
+                                                      start=(end_date + -datetime.timedelta(days=1)).strftime(
+                                                          '%Y-%m-%d'),
+                                                      end=(end_date + datetime.timedelta(days=6)).strftime('%Y-%m-%d'))
+                            else:
+                                self.data = get_data(self.indicator.upper(), start_date=start_date.strftime("%Y-%m-%d"),
+                                                     end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
+                                                     interval=interval)
                             break
                         except AssertionError as a:
                             raise Exception(
@@ -290,12 +322,11 @@ class Gather:
                                 exc_type, exc_obj, exc_tb = sys.exc_info()
                                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                                 print(exc_type, fname, exc_tb.tb_lineno)
-
                         else:
                             for r in res:
                                 self.new_uuid_gen = binascii.b2a_hex(str.encode(str(r[0]), "utf8"))
                 try:
-                    self.data['Date']
+                    self.data['Date'] or self.data['Datetime']
                 except KeyError or NotImplementedError:
                     try:
                         self.data['Date'] = self.data.index
@@ -303,14 +334,35 @@ class Gather:
                     except Exception as e:
                         print('[Error] Failed to add \'Date\' column into data!\n{}'.format(str(e)))
                 # Rename rows back to original state
-                self.data = self.data.transpose().drop(['ticker'])
+                try:
+                    self.data = self.data.transpose().drop(['ticker'])
+                except:
+                    pass
                 self.data = self.data.transpose().rename(
                     columns={"open": "Open", "high": "High", "low": "Low", "close": "Close", "adjclose": "Adj Close",
                              "volume": "Volume"})
                 try:
-                    self.data['Date'] = pd.to_datetime(self.data['Date'])
+                    if not is_utilizing_yfinance:
+                        self.data['Date'] = pd.to_datetime(self.data['Date'])
+                    else:
+                        self.data = self.data.rename(columns={'Datetime':'Date'})
+                        self.data = self.data.drop(['Datetime'],axis=0).transpose()
+                        self.data['Adj Close'] = self.data.loc[:, 'Close']
                 except Exception as e:
                     print('[INFO] Could not convert Date col to datetime', str(e))
+                if is_utilizing_yfinance:
+                    try:
+                        self.data = self.data.drop(['Dividends'],axis=1)
+                    except Exception:
+                        pass
+                    try:
+                        self.data = self.data.drop(['index'],axis=1)
+                    except:
+                        pass
+                    try:
+                        self.data = self.data.drop(['Stock Splits'],axis=1)
+                    except:
+                        pass
                 if not skip_db:
                     # Append dates to database
                     for index, row in self.data.iterrows():
@@ -330,17 +382,32 @@ class Gather:
                             insert_date_stmt = """REPLACE INTO `stocks`.`yearlydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
                             VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
                             DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                        else:
+                            insert_date_stmt = f"""REPLACE INTO `stocks`.`{interval}data` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                            VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
+                            %(Date)s,%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
                         try:
                             # print(row.name)
-                            insert_date_resultado = self.cnx.execute(insert_date_stmt, {
-                                'data_id': f'{self.indicator}{row["Date"].strftime("%Y-%m-%d")}',
-                                'stock': f'{self.indicator.upper()}',
-                                'Date': row['Date'].strftime("%Y-%m-%d"),
-                                'Open': row['Open'],
-                                'High': row['High'],
-                                'Low': row['Low'],
-                                'Close': row['Close'],
-                                'Adj Close': row['Adj Close']}, multi=True)
+                            if is_utilizing_yfinance:
+                                insert_date_resultado = self.cnx.execute(insert_date_stmt, {
+                                    'data_id': f'{self.indicator}{row["Date"].strftime("%Y-%m-%d %H:%M:%S")}',
+                                    'stock': f'{self.indicator.upper()}',
+                                    'Date': row['Date'].strftime("%Y-%m-%d %H:%M:%S"),
+                                    'Open': row['Open'],
+                                    'High': row['High'],
+                                    'Low': row['Low'],
+                                    'Close': row['Close'],
+                                    'Adj Close': row['Adj Close']}, multi=True)
+                            else:
+                                insert_date_resultado = self.cnx.execute(insert_date_stmt, {
+                                    'data_id': f'{self.indicator}{row["Date"].strftime("%Y-%m-%d")}',
+                                    'stock': f'{self.indicator.upper()}',
+                                    'Date': row['Date'].strftime("%Y-%m-%d"),
+                                    'Open': row['Open'],
+                                    'High': row['High'],
+                                    'Low': row['Low'],
+                                    'Close': row['Close'],
+                                    'Adj Close': row['Adj Close']}, multi=True)
 
                         except mysql.connector.errors.IntegrityError as e:
                             pass
@@ -442,6 +509,6 @@ class Gather:
         return response.json()
 if __name__ == '__main__':
     d = Gather("SPY")
-    d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=200),end_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=8),_force_generate=False,interval='1wk')
+    d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=3),end_date=datetime.datetime.utcnow().date(),_force_generate=False,interval='15m')
     print(d.data)
 # d.get_option_data(datetime.date(year=2021,month=11,day=12))

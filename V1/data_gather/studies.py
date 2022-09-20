@@ -1,3 +1,5 @@
+import pytz
+
 from V1.data_gather._data_gather import Gather
 import pandas as pd
 from pandas.tseries.holiday import USFederalHolidayCalendar
@@ -128,6 +130,7 @@ class Studies(Gather):
                     except:
                         self.ema_cnx = self.db_con2.cursor()
                     self.ema_cnx.autocommit = True
+                    is_utilizing_yfinance = False
                     if '1d' in interval:
                         check_cache_studies_db_stmt = """SELECT `stocks`.`dailydata`.`date`,
                         `stocks`.`daily-study-data`.`val1` 
@@ -191,6 +194,23 @@ class Studies(Gather):
                                 AND stocks.`yearly-study-data`.`data-id` = stocks.`yearlydata`.`data-id`
                                 AND stocks.`yearly-study-data`.`study-id` = %(id)s 
                                 ORDER BY stocks.`yearlydata`.`date` ASC
+                                """
+                    else:
+                        is_utilizing_yfinance = True
+                        check_cache_studies_db_stmt = f"""SELECT `stocks`.`{interval}data`.`date`,
+                            `stocks`.`{interval}-study-data`.`val1` 
+                             FROM stocks.`{interval}data` USE INDEX (`id-and-date`)
+                              INNER JOIN stocks.stock USE INDEX(`stockid`)
+                            ON `stock-id` = stocks.stock.`id` 
+                              AND stocks.stock.`stock` = %(stock)s
+                                AND `stocks`.`{interval}data`.`date` >= %(bdate)s
+                                AND `stocks`.`{interval}data`.`date` <= %(edate)s
+                               INNER JOIN stocks.`{interval}-study-data` USE INDEX (`ids`)
+                                ON
+                                stocks.stock.`id` = stocks.`{interval}-study-data`.`stock-id`
+                                AND stocks.`{interval}-study-data`.`data-id` = stocks.`{interval}data`.`data-id`
+                                AND stocks.`{interval}-study-data`.`study-id` = %(id)s 
+                                ORDER BY stocks.`{interval}data`.`date` ASC
                                 """
                     try:
                         check_cache_studies_db_result = self.ema_cnx.execute(check_cache_studies_db_stmt,
@@ -305,8 +325,58 @@ class Studies(Gather):
                              AND `stocks`.`yearlydata`.`date`<= DATE(%(edate)s)
                              ORDER BY stocks.`yearlydata`.`date` ASC 
                              """
+                    else:
+                        val1 = self.data["Date"].iloc[0].strftime('%Y-%m-%d %H:%M:%S')
+                        val2 = self.data["Date"].iloc[-1].strftime('%Y-%m-%d %H:%M:%S')
+                        retrieve_data_stmt = f"""SELECT `stocks`.`{interval}data`.`data-id`,
+                             `stocks`.`{interval}data`.`stock-id`, `stocks`.`{interval}data`.`date` FROM `stocks`.`{interval}data` USE INDEX (`id-and-date`)
+                            INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`{interval}data`.`stock-id`
+                             AND `stocks`.`{interval}data`.`date` >= '{str(val1)}'
+                             ORDER BY `stocks`.`{interval}data`.`date` ASC 
+                             """
+                    if is_utilizing_yfinance:
+                        retrieve_data_stmt = retrieve_data_stmt.replace('\'\'','\'')
+                        retrieve_data_result = self.ema_cnx.execute(retrieve_data_stmt,
+                                                                {'stock': f'{self.indicator.upper()}',
+                                                                 'bdate': self.data["Date"].iloc[0].strftime(
+                                                                     '%Y-%m-%d %H:%M:%S').translate("'") if isinstance(
+                                                                     self.data["Date"].iloc[0], datetime.datetime) else
+                                                                 self.data["Date"].iloc[0],
+                                                                 'edate': self.data["Date"].iloc[-1].strftime(
+                                                                     '%Y-%m-%d %H:%M:%S').translate("'") if isinstance(
+                                                                     self.data["Date"].iloc[-1], datetime.datetime) else
+                                                                 self.data["Date"].iloc[-1]}, multi=True)
+                        # Since we couldn't query a single range, we need to another another query to get the range
+                        self.data_ids = []
+                        self.stock_ids = []
 
-                    retrieve_data_result = self.ema_cnx.execute(retrieve_data_stmt,
+                        stock_id = ''
+                        data_id = ''
+
+                        for retrieve_result in retrieve_data_result:
+                            id_res = retrieve_result.fetchall()
+                            for res in id_res:
+                                if len(res) == 0:
+                                    print(f'[ERROR] Failed to locate a data id under {retrieve_data_result}')
+                                    raise Exception()
+                                else:
+                                    try:
+                                        # compare dates to ensure it is in a range
+                                        if pytz.UTC.localize(res[2]) <= self.data["Date"].iloc[-1]:
+                                            stock_id = res[1].decode('latin1')
+                                            data_id = res[0].decode('latin1')
+                                            self.stock_ids.append(res[1].decode('latin1'))
+                                            self.data_ids.append(res[0].decode('latin1'))
+                                        else:
+                                            break
+                                    except Exception as e:
+                                        print(f'[ERROR] failed to query stock id/data_id for ema insert!\n{str(e)}')
+                        # Add one more, as there is a bug where the lengths don't match data, causing failure
+                        self.stock_ids.append(stock_id)
+                        self.data_ids.append(data_id)
+
+                    else:
+                        retrieve_data_result = self.ema_cnx.execute(retrieve_data_stmt,
                                                                 {'stock': f'{self.indicator.upper()}',
                                                                  'bdate': self.data["Date"].iloc[0].strftime(
                                                                      '%Y-%m-%d') if isinstance(
@@ -316,28 +386,27 @@ class Studies(Gather):
                                                                      '%Y-%m-%d') if isinstance(
                                                                      self.data["Date"].iloc[-1], datetime.datetime) else
                                                                  self.data["Date"].iloc[-1]}, multi=True)
-                    self.stock_ids = []
-                    self.data_ids = []
-                    stock_id=''
-                    data_id=''
-                    for retrieve_result in retrieve_data_result:
-                        id_res = retrieve_result.fetchall()
-                        for res in id_res:
-                            if len(res) == 0:
-                                print(f'[ERROR] Failed to locate a data id under {retrieve_data_result}')
-                                raise Exception()
-                            else:
-                                try:
-                                    stock_id=res[1].decode('latin1')
-                                    data_id=res[0].decode('latin1')
-                                    self.stock_ids.append(res[1].decode('latin1'))
-                                    self.data_ids.append(res[0].decode('latin1'))
-                                except Exception as e:
-                                    print(f'[ERROR] failed to query stock id/data_id for ema insert!\n{str(e)}')
-                    # Add one more, as there is a bug where the lengths don't match data, causing failure
-                    self.stock_ids.append(stock_id)
-                    self.data_ids.append(data_id)
-
+                        self.data_ids = []
+                        self.stock_ids = []
+                        stock_id=''
+                        data_id=''
+                        for retrieve_result in retrieve_data_result:
+                            id_res = retrieve_result.fetchall()
+                            for res in id_res:
+                                if len(res) == 0:
+                                    print(f'[ERROR] Failed to locate a data id under {retrieve_data_result}')
+                                    raise Exception()
+                                else:
+                                    try:
+                                        stock_id=res[1].decode('latin1')
+                                        data_id=res[0].decode('latin1')
+                                        self.stock_ids.append(res[1].decode('latin1'))
+                                        self.data_ids.append(res[0].decode('latin1'))
+                                    except Exception as e:
+                                        print(f'[ERROR] failed to query stock id/data_id for ema insert!\n{str(e)}')
+                        # Add one more, as there is a bug where the lengths don't match data, causing failure
+                        self.stock_ids.append(stock_id)
+                        self.data_ids.append(data_id)
                     # Execute insert for study-data
                     if '1d' in interval:
                         insert_studies_db_stmt = "REPLACE INTO `stocks`.`daily-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"
@@ -347,15 +416,26 @@ class Studies(Gather):
                         insert_studies_db_stmt = "REPLACE INTO `stocks`.`monthly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"
                     elif '1y' in interval:
                         insert_studies_db_stmt = "REPLACE INTO `stocks`.`yearly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"
+                    else:
+                        insert_studies_db_stmt = f"REPLACE INTO `stocks`.`{interval}-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`) VALUES (%s,%s,%s,%s,%s)"
+
                     insert_list = []
                     for index, id in self.data.iterrows():
                         emastr = f'ema{length}'
-                        insert_tuple = (
-                            f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",512)))',
-                            f'{self.stock_ids[index]}',
-                            f'{self.data_ids[index]}',
-                            f'{self.study_id}',
-                            self.applied_studies[emastr].iloc[index])
+                        if is_utilizing_yfinance:
+                            insert_tuple = (
+                                f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator.upper()}{length}",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator.upper()}{length}",512)))',
+                                f'{self.stock_ids[index]}',
+                                f'{self.data_ids[index]}',
+                                f'{self.study_id}',
+                                self.applied_studies[emastr].iloc[index])
+                        else:
+                            insert_tuple = (
+                                f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",512)))',
+                                f'{self.stock_ids[index]}',
+                                f'{self.data_ids[index]}',
+                                f'{self.study_id}',
+                                self.applied_studies[emastr].iloc[index])
                         insert_list.append(insert_tuple)  # add tuple to list
                     # Call execution statement to insert data in one shot
                     try:
@@ -477,6 +557,7 @@ class Studies(Gather):
     def insert_fib_vals(self, skip_db, interval):
         # Insert data if not in db...
         if not skip_db:
+            is_utilizing_yfinance = False
             if '1d' in interval:
                 insert_studies_db_stmt = """REPLACE INTO `stocks`.`daily-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
                                             `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
@@ -497,28 +578,57 @@ class Studies(Gather):
                                             `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
                     VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """
+            else:
+                is_utilizing_yfinance = True
+                insert_studies_db_stmt = f"""REPLACE INTO `stocks`.`{interval}-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
+                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    """
+
             insert_list = []
             self.fibonacci_extension = self.fibonacci_extension.reset_index().astype(float)
             for index, row in self.data.iterrows():
-                insert_tuple = (
-                    f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",512)))',
-                    f'{self.stock_ids[index]}',
-                    f'{self.data_ids[index]}',
-                    f'{self.study_id}',
-                    self.fibonacci_extension.at[0, "0.202"],
-                    self.fibonacci_extension.at[0, "0.236"],
-                    self.fibonacci_extension.at[0, "0.241"],
-                    self.fibonacci_extension.at[0, "0.273"],
-                    self.fibonacci_extension.at[0, "0.283"],
-                    self.fibonacci_extension.at[0, "0.316"],
-                    self.fibonacci_extension.at[0, "0.382"],
-                    self.fibonacci_extension.at[0, "0.5"],
-                    self.fibonacci_extension.at[0, "0.618"],
-                    self.fibonacci_extension.at[0, "0.796"],
-                    self.fibonacci_extension.at[0, "1.556"],
-                    self.fibonacci_extension.at[0, "3.43"],
-                    self.fibonacci_extension.at[0, "3.83"],
-                    self.fibonacci_extension.at[0, "5.44"])
+                if is_utilizing_yfinance:
+                    insert_tuple = (
+                        f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator.upper()}fibonacci",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator.upper()}fibonacci",512)))',
+                        f'{self.stock_ids[index]}',
+                        f'{self.data_ids[index]}',
+                        f'{self.study_id}',
+                        self.fibonacci_extension.at[0, "0.202"],
+                        self.fibonacci_extension.at[0, "0.236"],
+                        self.fibonacci_extension.at[0, "0.241"],
+                        self.fibonacci_extension.at[0, "0.273"],
+                        self.fibonacci_extension.at[0, "0.283"],
+                        self.fibonacci_extension.at[0, "0.316"],
+                        self.fibonacci_extension.at[0, "0.382"],
+                        self.fibonacci_extension.at[0, "0.5"],
+                        self.fibonacci_extension.at[0, "0.618"],
+                        self.fibonacci_extension.at[0, "0.796"],
+                        self.fibonacci_extension.at[0, "1.556"],
+                        self.fibonacci_extension.at[0, "3.43"],
+                        self.fibonacci_extension.at[0, "3.83"],
+                        self.fibonacci_extension.at[0, "5.44"])
+
+                else:
+                    insert_tuple = (
+                        f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",512)))',
+                        f'{self.stock_ids[index]}',
+                        f'{self.data_ids[index]}',
+                        f'{self.study_id}',
+                        self.fibonacci_extension.at[0, "0.202"],
+                        self.fibonacci_extension.at[0, "0.236"],
+                        self.fibonacci_extension.at[0, "0.241"],
+                        self.fibonacci_extension.at[0, "0.273"],
+                        self.fibonacci_extension.at[0, "0.283"],
+                        self.fibonacci_extension.at[0, "0.316"],
+                        self.fibonacci_extension.at[0, "0.382"],
+                        self.fibonacci_extension.at[0, "0.5"],
+                        self.fibonacci_extension.at[0, "0.618"],
+                        self.fibonacci_extension.at[0, "0.796"],
+                        self.fibonacci_extension.at[0, "1.556"],
+                        self.fibonacci_extension.at[0, "3.43"],
+                        self.fibonacci_extension.at[0, "3.83"],
+                        self.fibonacci_extension.at[0, "5.44"])
                 insert_list.append(insert_tuple)  # add tuple to list
                 # duplicate row by 1
                 self.fibonacci_extension = self.fibonacci_extension.append([self.fibonacci_extension.iloc[0]] * 1,
@@ -641,6 +751,7 @@ val1    val3_________________________          vall2
             self.fib_cnx = self.db_con.cursor()
             self.fib_cnx.autocommit = True
             retrieve_data_stmt=''
+            is_utilizing_yfinance = False
             # Retrieve the stock-id, and data-point id in a single select statement
             if '1d' in interval:
                 retrieve_data_stmt = """SELECT `stocks`.`dailydata`.`data-id`,
@@ -674,36 +785,83 @@ val1    val3_________________________          vall2
                      AND `stocks`.`yearlydata`.`date`<= DATE(%(edate)s)
                      ORDER BY stocks.`yearlydata`.`date` ASC 
                      """
-            retrieve_data_result = self.fib_cnx.execute(retrieve_data_stmt, {'stock': f'{self.indicator.upper()}',
-                                                                             'bdate': self.data["Date"].iloc[
-                                                                                 0].strftime('%Y-%m-%d') if isinstance(
+            else:
+                is_utilizing_yfinance = True
+                val1 = self.data["Date"].iloc[0].strftime('%Y-%m-%d %H:%M:%S')
+                val2 = self.data["Date"].iloc[-1].strftime('%Y-%m-%d %H:%M:%S')
+                retrieve_data_stmt = f"""SELECT `stocks`.`{interval}data`.`data-id`,
+                     `stocks`.`{interval}data`.`stock-id`, `stocks`.`{interval}data`.`date` FROM `stocks`.`{interval}data` USE INDEX (`id-and-date`)
+                    INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`{interval}data`.`stock-id`
+                     AND `stocks`.`{interval}data`.`date`>= '{val1}'
+                     ORDER BY stocks.`{interval}data`.`date` ASC 
+                     """
+            if is_utilizing_yfinance:
+                retrieve_data_result = self.fib_cnx.execute(retrieve_data_stmt, {'stock': f'{self.indicator.upper()}',
+                                                                                 'bdate': self.data["Date"].iloc[
+                                                                                     0].strftime(
+                                                                                     '%Y-%m-%d %H:%M:%S') if isinstance(
+                                                                                     self.data["Date"].iloc[0],
+                                                                                     datetime.datetime) else
                                                                                  self.data["Date"].iloc[0],
-                                                                                 datetime.datetime) else
-                                                                             self.data["Date"].iloc[0],
-                                                                             'edate': self.data["Date"].iloc[
-                                                                                 -1].strftime('%Y-%m-%d') if isinstance(
-                                                                                 self.data["Date"].iloc[-1],
-                                                                                 datetime.datetime) else
-                                                                             self.data["Date"].iloc[-1]},
-                                                        multi=True)
-            self.stock_ids = []
-            self.data_ids = []
-            # self.data=self.data.drop(['Date'],axis=1)
-            for retrieve_result in retrieve_data_result:
-                id_res = retrieve_result.fetchall()
-                if len(id_res) == 0:
-                    print(
-                        f'[INFO] Failed to locate any data-ids/stock-ids from {self.data["Date"].iloc[0].strftime("%Y-%m-%d")} to {self.data["Date"].iloc[-1].strftime("%Y-%m-%d")} under {retrieve_data_result}')
-                    break
-                else:
-                    for res in id_res:
-                        try:
-                            self.stock_ids.append(res[1].decode('latin1'))
-                            self.data_ids.append(res[0].decode('latin1'))
-                        except Exception as e:
-                            print(
-                                f'[ERROR] Failed to grab stock id/data id for {self.indicator} for fib retrieval!\n{str(e)}')
-                            break
+                                                                                 'edate': self.data["Date"].iloc[
+                                                                                     -1].strftime(
+                                                                                     '%Y-%m-%d %H:%M:%S') if isinstance(
+                                                                                     self.data["Date"].iloc[-1],
+                                                                                     datetime.datetime) else
+                                                                                 self.data["Date"].iloc[-1]},
+                                                            multi=True)
+                self.stock_ids = []
+                self.data_ids = []
+                # self.data=self.data.drop(['Date'],axis=1)
+                for retrieve_result in retrieve_data_result:
+                    id_res = retrieve_result.fetchall()
+                    if len(id_res) == 0:
+                        print(
+                            f'[INFO] Failed to locate any data-ids/stock-ids from {self.data["Date"].iloc[0].strftime("%Y-%m-%d")} to {self.data["Date"].iloc[-1].strftime("%Y-%m-%d")} under {retrieve_data_result}')
+                        break
+                    else:
+                        for res in id_res:
+                            try:
+                                if pytz.UTC.localize(res[2]) <= self.data["Date"].iloc[-1]:
+                                    self.stock_ids.append(res[1].decode('latin1'))
+                                    self.data_ids.append(res[0].decode('latin1'))
+                                else:
+                                    break
+                            except Exception as e:
+                                print(
+                                    f'[ERROR] Failed to grab stock id/data id for {self.indicator} for fib retrieval!\n{str(e)}')
+                                break
+            else:
+                retrieve_data_result = self.fib_cnx.execute(retrieve_data_stmt, {'stock': f'{self.indicator.upper()}',
+                                                                                 'bdate': self.data["Date"].iloc[
+                                                                                     0].strftime('%Y-%m-%d') if isinstance(
+                                                                                     self.data["Date"].iloc[0],
+                                                                                     datetime.datetime) else
+                                                                                 self.data["Date"].iloc[0],
+                                                                                 'edate': self.data["Date"].iloc[
+                                                                                     -1].strftime('%Y-%m-%d') if isinstance(
+                                                                                     self.data["Date"].iloc[-1],
+                                                                                     datetime.datetime) else
+                                                                                 self.data["Date"].iloc[-1]},
+                                                            multi=True)
+                self.stock_ids = []
+                self.data_ids = []
+                # self.data=self.data.drop(['Date'],axis=1)
+                for retrieve_result in retrieve_data_result:
+                    id_res = retrieve_result.fetchall()
+                    if len(id_res) == 0:
+                        print(
+                            f'[INFO] Failed to locate any data-ids/stock-ids from {self.data["Date"].iloc[0].strftime("%Y-%m-%d")} to {self.data["Date"].iloc[-1].strftime("%Y-%m-%d")} under {retrieve_data_result}')
+                        break
+                    else:
+                        for res in id_res:
+                            try:
+                                self.stock_ids.append(res[1].decode('latin1'))
+                                self.data_ids.append(res[0].decode('latin1'))
+                            except Exception as e:
+                                print(
+                                    f'[ERROR] Failed to grab stock id/data id for {self.indicator} for fib retrieval!\n{str(e)}')
+                                break
 
             # Before inserting data, check cached data, verify if there is data there...
             if '1d' in interval:
@@ -782,21 +940,56 @@ val1    val3_________________________          vall2
                     AND stocks.`yearly-study-data`.`data-id` = stocks.`yearlydata`.`data-id`
                     AND stocks.`yearly-study-data`.`study-id` = %(id)s ORDER BY stocks.`yearlydata`.`date` ASC
                     """
+            else:
+                check_cache_studies_db_stmt = f"""SELECT `stocks`.`{interval}data`.`date`,
+                `stocks`.`{interval}-study-data`.`val1`,`stocks`.`{interval}-study-data`.`val2`,
+                `stocks`.`{interval}-study-data`.`val3`,`stocks`.`{interval}-study-data`.`val4`,
+                `stocks`.`{interval}-study-data`.`val5`,`stocks`.`{interval}-study-data`.`val6`,
+                `stocks`.`{interval}-study-data`.`val7`,`stocks`.`{interval}-study-data`.`val8`,
+                `stocks`.`{interval}-study-data`.`val9`,`stocks`.`{interval}-study-data`.`val10`,
+                `stocks`.`{interval}-study-data`.`val11`,`stocks`.`{interval}-study-data`.`val12`,
+                `stocks`.`{interval}-study-data`.`val13`,`stocks`.`{interval}-study-data`.`val14` 
+                 FROM stocks.`{interval}data` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
+                ON `stocks`.`{interval}data`.`stock-id` = stocks.stock.`id` 
+                  AND stocks.stock.`stock` = %(stock)s
+                   AND `stocks`.`{interval}data`.`date` >= %(bdate)s
+                   AND `stocks`.`{interval}data`.`date` <= %(edate)s
+                   INNER JOIN stocks.`{interval}-study-data` USE INDEX (`ids`) ON
+                    stocks.stock.`id` = stocks.`{interval}-study-data`.`stock-id`
+                    AND stocks.`{interval}-study-data`.`data-id` = stocks.`{interval}data`.`data-id`
+                    AND stocks.`{interval}-study-data`.`study-id` = %(id)s ORDER BY stocks.`{interval}data`.`date` ASC
+                    """
+
 
             try:
-                check_cache_studies_db_result = self.fib_cnx.execute(check_cache_studies_db_stmt,
-                                                                     {'stock': self.indicator.upper(),
-                                                                      'bdate': self.data["Date"].iloc[0].strftime(
-                                                                          '%Y-%m-%d') if isinstance(
+                if is_utilizing_yfinance:
+                    check_cache_studies_db_result = self.fib_cnx.execute(check_cache_studies_db_stmt,
+                                                                         {'stock': self.indicator.upper(),
+                                                                          'bdate': self.data["Date"].iloc[0].strftime(
+                                                                              '%Y-%m-%d %H:%M:%S') if isinstance(
+                                                                              self.data["Date"].iloc[0],
+                                                                              datetime.datetime) else
                                                                           self.data["Date"].iloc[0],
-                                                                          datetime.datetime) else
-                                                                      self.data["Date"].iloc[0],
-                                                                      'edate': self.data["Date"].iloc[-1].strftime(
-                                                                          '%Y-%m-%d') if isinstance(
+                                                                          'edate': self.data["Date"].iloc[-1].strftime(
+                                                                              '%Y-%m-%d %H:%M:%S') if isinstance(
+                                                                              self.data["Date"].iloc[-1],
+                                                                              datetime.datetime) else
                                                                           self.data["Date"].iloc[-1],
-                                                                          datetime.datetime) else
-                                                                      self.data["Date"].iloc[-1],
-                                                                      'id': self.study_id}, multi=True)
+                                                                          'id': self.study_id}, multi=True)
+                else:
+                    check_cache_studies_db_result = self.fib_cnx.execute(check_cache_studies_db_stmt,
+                                                                         {'stock': self.indicator.upper(),
+                                                                          'bdate': self.data["Date"].iloc[0].strftime(
+                                                                              '%Y-%m-%d') if isinstance(
+                                                                              self.data["Date"].iloc[0],
+                                                                              datetime.datetime) else
+                                                                          self.data["Date"].iloc[0],
+                                                                          'edate': self.data["Date"].iloc[-1].strftime(
+                                                                              '%Y-%m-%d') if isinstance(
+                                                                              self.data["Date"].iloc[-1],
+                                                                              datetime.datetime) else
+                                                                          self.data["Date"].iloc[-1],
+                                                                          'id': self.study_id}, multi=True)
                 # Retrieve date, verify it is in date range, remove from date range
                 for res in check_cache_studies_db_result:
                     # print(str(res.statement))
@@ -1126,6 +1319,7 @@ val1    val3_________________________          vall2
                 self.kelt_cnx = self.db_con2.cursor()
             self.kelt_cnx.autocommit = True
             retrieve_data_stmt=''
+            is_utilizing_yfinance = False
             if '1d' in interval:
                 retrieve_data_stmt = """SELECT `stocks`.`dailydata`.`data-id`,
                  `stocks`.`dailydata`.`stock-id` FROM `stocks`.`dailydata` USE INDEX (`id-and-date`)
@@ -1158,19 +1352,45 @@ val1    val3_________________________          vall2
                      AND `stocks`.`yearlydata`.`date`<= DATE(%(edate)s)
                      ORDER BY stocks.`yearlydata`.`date` ASC 
                      """
-            retrieve_data_result = self.kelt_cnx.execute(retrieve_data_stmt, {'stock': f'{self.indicator.upper()}',
-                                                                              'bdate': self.data["Date"].iloc[
-                                                                                  0].strftime('%Y-%m-%d') if isinstance(
+            else:
+                is_utilizing_yfinance = True
+                retrieve_data_stmt = f"""SELECT `stocks`.`{interval}data`.`data-id`,
+                     `stocks`.`{interval}data`.`stock-id` FROM `stocks`.`{interval}data` USE INDEX (`id-and-date`)
+                    INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = %(stock)s AND `stocks`.`stock`.`id` = `stocks`.`{interval}data`.`stock-id`
+                     AND `stocks`.`{interval}data`.`date`>= %(bdate)s
+                     AND `stocks`.`{interval}data`.`date`<= %(edate)s
+                     ORDER BY stocks.`{interval}data`.`date` ASC 
+                     """
+
+            if is_utilizing_yfinance:
+                retrieve_data_result = self.kelt_cnx.execute(retrieve_data_stmt, {'stock': f'{self.indicator.upper()}',
+                                                                                  'bdate': self.data["Date"].iloc[
+                                                                                      0].strftime(
+                                                                                      '%Y-%m-%d %H:%M:%S') if isinstance(
+                                                                                      self.data["Date"].iloc[0],
+                                                                                      datetime.datetime) else
                                                                                   self.data["Date"].iloc[0],
-                                                                                  datetime.datetime) else
-                                                                              self.data["Date"].iloc[0],
-                                                                              'edate': self.data["Date"].iloc[
-                                                                                  -1].strftime(
-                                                                                  '%Y-%m-%d') if isinstance(
-                                                                                  self.data["Date"].iloc[-1],
-                                                                                  datetime.datetime) else
-                                                                              self.data["Date"].iloc[-1]},
-                                                         multi=True)
+                                                                                  'edate': self.data["Date"].iloc[
+                                                                                      -1].strftime(
+                                                                                      '%Y-%m-%d %H:%M:%S') if isinstance(
+                                                                                      self.data["Date"].iloc[-1],
+                                                                                      datetime.datetime) else
+                                                                                  self.data["Date"].iloc[-1]},
+                                                             multi=True)
+            else:
+                retrieve_data_result = self.kelt_cnx.execute(retrieve_data_stmt, {'stock': f'{self.indicator.upper()}',
+                                                                                  'bdate': self.data["Date"].iloc[
+                                                                                      0].strftime('%Y-%m-%d') if isinstance(
+                                                                                      self.data["Date"].iloc[0],
+                                                                                      datetime.datetime) else
+                                                                                  self.data["Date"].iloc[0],
+                                                                                  'edate': self.data["Date"].iloc[
+                                                                                      -1].strftime(
+                                                                                      '%Y-%m-%d') if isinstance(
+                                                                                      self.data["Date"].iloc[-1],
+                                                                                      datetime.datetime) else
+                                                                                  self.data["Date"].iloc[-1]},
+                                                             multi=True)
             self.stock_ids = []
             self.data_ids = []
             stock_id=''
@@ -1209,17 +1429,31 @@ val1    val3_________________________          vall2
                 insert_studies_db_stmt = """REPLACE INTO `stocks`.`yearly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,`val2`,`val3`) 
                     VALUES (%s,%s,%s,%s,%s,%s,%s)
                     """
+            else:
+                insert_studies_db_stmt = f"""REPLACE INTO `stocks`.`{interval}-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,`val2`,`val3`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s)
+                    """
             insert_list = []
             for index, row in self.keltner.iterrows():
                 try:
-                    insert_tuple = (
-                        f'AES_ENCRYPT("{self.data_cp.loc[index, :]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}", UNHEX(SHA2("{self.data_cp.loc[index, :]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}",512)))',
-                        f'{self.stock_ids[index]}',
-                        f'{self.data_ids[index]}',
-                        f'{self.study_id}',
-                        row["middle"],
-                        row["upper"],
-                        row["lower"])
+                    if is_utilizing_yfinance:
+                        insert_tuple = (
+                            f'AES_ENCRYPT("{self.data_cp.loc[index, :]["Date"].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator}keltner{length}{factor}", UNHEX(SHA2("{self.data_cp.loc[index, :]["Date"].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator}keltner{length}{factor}",512)))',
+                            f'{self.stock_ids[index]}',
+                            f'{self.data_ids[index]}',
+                            f'{self.study_id}',
+                            row["middle"],
+                            row["upper"],
+                            row["lower"])
+                    else:
+                        insert_tuple = (
+                            f'AES_ENCRYPT("{self.data_cp.loc[index, :]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}", UNHEX(SHA2("{self.data_cp.loc[index, :]["Date"].strftime("%Y-%m-%d")}{self.indicator}keltner{length}{factor}",512)))',
+                            f'{self.stock_ids[index]}',
+                            f'{self.data_ids[index]}',
+                            f'{self.study_id}',
+                            row["middle"],
+                            row["upper"],
+                            row["lower"])
                 except Exception as e:
                     print('[ERROR] Failed to set keltner tuple',e,flush=True)
                 insert_list.append(insert_tuple)
