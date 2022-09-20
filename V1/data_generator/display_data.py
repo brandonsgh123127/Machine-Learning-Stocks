@@ -91,11 +91,11 @@ class Display:
                 try:
                     self.fib_display = self.fib_display.set_axis(
                         ['index', '0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
-                         '1.556', '3.43', '3.83', '5.44'], 1)
+                         '1.556', '2.493', '3.43', '3.83', '5.44'], 1)
                 except:
                     self.fib_display = self.fib_display.set_axis(
                         ['0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
-                         '1.556', '3.43', '3.83', '5.44'], 1)
+                         '1.556', '2.493', '3.43', '3.83', '5.44'], 1)
                 # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.keltner_display.index) + 2)]
                 self.fib_display['0.202'].transpose().plot.line(ax=self.axes[row, col], color='blue', x='0.202', y='0.202')
                 self.fib_display['0.236'].transpose().plot.line(ax=self.axes[row, col], color='blue')
@@ -108,6 +108,7 @@ class Display:
                 self.fib_display['0.618'].transpose().plot.line(ax=self.axes[row, col], color='purple')
                 self.fib_display['0.796'].transpose().plot.line(ax=self.axes[row, col], color='brown')
                 self.fib_display['1.556'].transpose().plot.line(ax=self.axes[row, col], color='blue')
+                self.fib_display['2.493'].transpose().plot.line(ax=self.axes[row, col], color='brown')
                 self.fib_display['3.43'].transpose().plot.line(ax=self.axes[row, col], color='brown')
                 self.fib_display['3.83'].transpose().plot.line(ax=self.axes[row, col], color='brown')
                 self.fib_display['5.44'].transpose().plot.line(ax=self.axes[row, col], color='pink')

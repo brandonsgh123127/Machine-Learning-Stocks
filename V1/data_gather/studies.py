@@ -560,29 +560,29 @@ class Studies(Gather):
             is_utilizing_yfinance = False
             if '1d' in interval:
                 insert_studies_db_stmt = """REPLACE INTO `stocks`.`daily-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """
             elif '1wk' in interval:
                 insert_studies_db_stmt = """REPLACE INTO `stocks`.`weekly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                                `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                                `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`) 
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         """
             elif '1wk' in interval:
                 insert_studies_db_stmt = """REPLACE INTO `stocks`.`monthly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """
             elif '1y' in interval:
                 insert_studies_db_stmt = """REPLACE INTO `stocks`.`yearly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """
             else:
                 is_utilizing_yfinance = True
                 insert_studies_db_stmt = f"""REPLACE INTO `stocks`.`{interval}-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`) 
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """
 
             insert_list = []
@@ -605,6 +605,7 @@ class Studies(Gather):
                         self.fibonacci_extension.at[0, "0.618"],
                         self.fibonacci_extension.at[0, "0.796"],
                         self.fibonacci_extension.at[0, "1.556"],
+                        self.fibonacci_extension.at[0, "2.493"],
                         self.fibonacci_extension.at[0, "3.43"],
                         self.fibonacci_extension.at[0, "3.83"],
                         self.fibonacci_extension.at[0, "5.44"])
@@ -626,6 +627,7 @@ class Studies(Gather):
                         self.fibonacci_extension.at[0, "0.618"],
                         self.fibonacci_extension.at[0, "0.796"],
                         self.fibonacci_extension.at[0, "1.556"],
+                        self.fibonacci_extension.at[0, "2.493"],
                         self.fibonacci_extension.at[0, "3.43"],
                         self.fibonacci_extension.at[0, "3.83"],
                         self.fibonacci_extension.at[0, "5.44"])
@@ -743,7 +745,7 @@ val1    val3_________________________          vall2
             new_data = pd.DataFrame(columns=['Date', 'Open', 'High', 'Low', 'Close', 'Adj. Close'])
             fib_data = pd.DataFrame(
                 columns=['0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
-                         '1.556', '3.43', '3.83', '5.44'])
+                         '1.556', '2.493', '3.43', '3.83', '5.44'])
             try:
                 self.fib_cnx.close()
             except:
@@ -872,7 +874,7 @@ val1    val3_________________________          vall2
                 `stocks`.`daily-study-data`.`val7`,`stocks`.`daily-study-data`.`val8`,
                 `stocks`.`daily-study-data`.`val9`,`stocks`.`daily-study-data`.`val10`,
                 `stocks`.`daily-study-data`.`val11`,`stocks`.`daily-study-data`.`val12`,
-                `stocks`.`daily-study-data`.`val13`,`stocks`.`daily-study-data`.`val14` 
+                `stocks`.`daily-study-data`.`val13`,`stocks`.`daily-study-data`.`val14`,`stocks`.`daily-study-data`.`val15` 
                  FROM stocks.`dailydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
                 ON `stocks`.`dailydata`.`stock-id` = stocks.stock.`id` 
                   AND stocks.stock.`stock` = %(stock)s
@@ -891,7 +893,7 @@ val1    val3_________________________          vall2
                 `stocks`.`weekly-study-data`.`val7`,`stocks`.`weekly-study-data`.`val8`,
                 `stocks`.`weekly-study-data`.`val9`,`stocks`.`weekly-study-data`.`val10`,
                 `stocks`.`weekly-study-data`.`val11`,`stocks`.`weekly-study-data`.`val12`,
-                `stocks`.`weekly-study-data`.`val13`,`stocks`.`weekly-study-data`.`val14` 
+                `stocks`.`weekly-study-data`.`val13`,`stocks`.`weekly-study-data`.`val14`,`stocks`.`weekly-study-data`.`val15`
                  FROM stocks.`weeklydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
                 ON `stocks`.`weeklydata`.`stock-id` = stocks.stock.`id` 
                   AND stocks.stock.`stock` = %(stock)s
@@ -910,7 +912,7 @@ val1    val3_________________________          vall2
                 `stocks`.`monthly-study-data`.`val7`,`stocks`.`monthly-study-data`.`val8`,
                 `stocks`.`monthly-study-data`.`val9`,`stocks`.`monthly-study-data`.`val10`,
                 `stocks`.`monthly-study-data`.`val11`,`stocks`.`monthly-study-data`.`val12`,
-                `stocks`.`monthly-study-data`.`val13`,`stocks`.`monthly-study-data`.`val14` 
+                `stocks`.`monthly-study-data`.`val13`,`stocks`.`monthly-study-data`.`val14`,`stocks`.`monthly-study-data`.`val15` 
                  FROM stocks.`monthlydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
                 ON `stocks`.`monthlydata`.`stock-id` = stocks.stock.`id` 
                   AND stocks.stock.`stock` = %(stock)s
@@ -929,7 +931,7 @@ val1    val3_________________________          vall2
                 `stocks`.`yearly-study-data`.`val7`,`stocks`.`yearly-study-data`.`val8`,
                 `stocks`.`yearly-study-data`.`val9`,`stocks`.`yearly-study-data`.`val10`,
                 `stocks`.`yearly-study-data`.`val11`,`stocks`.`yearly-study-data`.`val12`,
-                `stocks`.`yearly-study-data`.`val13`,`stocks`.`yearly-study-data`.`val14` 
+                `stocks`.`yearly-study-data`.`val13`,`stocks`.`yearly-study-data`.`val14`,`stocks`.`yearly-study-data`.`val15` 
                  FROM stocks.`yearlydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
                 ON `stocks`.`yearlydata`.`stock-id` = stocks.stock.`id` 
                   AND stocks.stock.`stock` = %(stock)s
@@ -948,7 +950,7 @@ val1    val3_________________________          vall2
                 `stocks`.`{interval}-study-data`.`val7`,`stocks`.`{interval}-study-data`.`val8`,
                 `stocks`.`{interval}-study-data`.`val9`,`stocks`.`{interval}-study-data`.`val10`,
                 `stocks`.`{interval}-study-data`.`val11`,`stocks`.`{interval}-study-data`.`val12`,
-                `stocks`.`{interval}-study-data`.`val13`,`stocks`.`{interval}-study-data`.`val14` 
+                `stocks`.`{interval}-study-data`.`val13`,`stocks`.`{interval}-study-data`.`val14`,`stocks`.`{interval}-study-data`.`val15`
                  FROM stocks.`{interval}data` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
                 ON `stocks`.`{interval}data`.`stock-id` = stocks.stock.`id` 
                   AND stocks.stock.`stock` = %(stock)s
@@ -1012,8 +1014,9 @@ val1    val3_________________________          vall2
                                                         '0.283': r[5], '0.316': r[6],
                                                         '0.382': r[7], '0.5': r[8],
                                                         '0.618': r[9], '0.796': r[10],
-                                                        '1.556': r[11], '3.43': r[12],
-                                                        '3.83': r[13], '5.44': r[14]},
+                                                        '1.556': r[11], '2.493': r[12],
+                                                        '3.43': r[13],
+                                                        '3.83': r[14], '5.44': r[15]},
                                                        ignore_index=True)
                             # check if date is there, if not fail this
                             if date in date_range:
@@ -1104,6 +1107,7 @@ val1    val3_________________________          vall2
                                                                  '0.618': [self.fib_help(val1, val2, val3, 0.618)],
                                                                  '0.796': [self.fib_help(val1, val2, val3, 0.796)],
                                                                  '1.556': [self.fib_help(val1, val2, val3, 1.556)],
+                                                                 '2.493': [self.fib_help(val1, val2, val3, 2.493)],
                                                                  '3.43': [self.fib_help(val1, val2, val3, 3.43)],
                                                                  '3.83': [self.fib_help(val1, val2, val3, 3.83)],
                                                                  '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
@@ -1128,6 +1132,7 @@ val1    val3_________________________          vall2
                                                                      '0.618': [self.fib_help(val1, val2, val3, 0.618)],
                                                                      '0.796': [self.fib_help(val1, val2, val3, 0.796)],
                                                                      '1.556': [self.fib_help(val1, val2, val3, 1.556)],
+                                                                     '2.493': [self.fib_help(val1, val2, val3, 2.493)],
                                                                      '3.43': [self.fib_help(val1, val2, val3, 3.43)],
                                                                      '3.83': [self.fib_help(val1, val2, val3, 3.83)],
                                                                      '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
@@ -1144,6 +1149,7 @@ val1    val3_________________________          vall2
                                  '0.618': [self.fib_help(val1, val2, val3, 0.618)],
                                  '0.796': [self.fib_help(val1, val2, val3, 0.796)],
                                  '1.556': [self.fib_help(val1, val2, val3, 1.556)],
+                                 '2.493': [self.fib_help(val1, val2, val3, 2.493)],
                                  '3.43': [self.fib_help(val1, val2, val3, 3.43)],
                                  '3.83': [self.fib_help(val1, val2, val3, 3.83)],
                                  '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
@@ -1165,6 +1171,7 @@ val1    val3_________________________          vall2
                                                                  '0.618': [self.fib_help(val1, val2, val3, 0.618)],
                                                                  '0.796': [self.fib_help(val1, val2, val3, 0.796)],
                                                                  '1.556': [self.fib_help(val1, val2, val3, 1.556)],
+                                                                 '2.493': [self.fib_help(val1, val2, val3, 2.493)],
                                                                  '3.43': [self.fib_help(val1, val2, val3, 3.43)],
                                                                  '3.83': [self.fib_help(val1, val2, val3, 3.83)],
                                                                  '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
