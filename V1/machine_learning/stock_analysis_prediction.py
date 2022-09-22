@@ -184,7 +184,7 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
 async def get_preview_prices(ticker: str, force_generation=False):
     loop = asyncio.get_event_loop()
     try:
-        res = loop.run_until_complete(data_gen.generate_quick_data,ticker, force_generation)
+        res = await data_gen.generate_quick_data(ticker, force_generation)
 
         return res
     except Exception as e:
@@ -252,15 +252,14 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
     for ticker in tickers:
         try:
             gen.set_ticker(ticker)
-            data_task = await loop.run_in_executor(launch._executor,gen.generate_data_with_dates,dates[0], dates[1], False, force_generation, True, n_interval)
-            data = loop.run_until_complete(asyncio.gather(data_task))[0]
+            data= await gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
             # print(data,flush=True)
-            task_list.append(await loop.run_in_executor(launch._executor,launch.display_model,
+            task_list.append(launch.display_model(
                     nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
                     percent, n_interval))
         except Exception as e:
             print(f'[ERROR] Could not generate an NN dataset for {ticker}!  Continuing...', flush=True)
-    loop.run_until_complete(asyncio.gather(*task_list))
+    [await task for task in task_list]
     saved_predictions: list = []
     launch.saved_predictions.join()
     for prediction in launch.saved_predictions:

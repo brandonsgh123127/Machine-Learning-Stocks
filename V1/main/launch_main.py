@@ -78,9 +78,9 @@ class GUI(Thread_Pool):
         # self.output_image = tk.Canvas(self.window,width=1400,height=1400,bg='white')
         self.load_layout = tk.Canvas(self.content, width=100, height=100, bg='white')
 
-        self.window.bind('<Return>', lambda event=1: self.loop.run_until_complete(self.generate_callback()))
-        self.window.bind('<F5>', lambda event=1: self.loop.run_until_complete(self.dropdown_callback()))
-        self.window.bind('<F9>', lambda event=1: self.loop.run_until_complete(self.find_biggest_moves_callback()))
+        self.window.bind('<Return>', lambda event=1: self.job_queue.put(self.generate_callback()))
+        self.window.bind('<F5>', lambda event=1: self.job_queue.put(self.dropdown_callback()))
+        self.window.bind('<F9>', lambda event=1: self.job_queue.put(self.find_biggest_moves_callback()))
         s = ttk.Style(self.window)
         self.page_loc = 1  # Map page number to location
         try:  # if image exists, don't recreate
@@ -141,7 +141,7 @@ class GUI(Thread_Pool):
             else:
                 pnl_percent_task = self.loop.run_in_executor(self._executor,get_preview_prices,ticker,False)
                 percent_task_list.append(pnl_percent_task)
-        pnl_percent = self.loop.run_until_complete(asyncio.gather(*percent_task_list))
+        pnl_percent = await percent_task_list
         for index,val in enumerate(pnl_percent):
            self.watchlist.append(f'{ticker_queue.get()}     {val}')
 
@@ -172,7 +172,7 @@ class GUI(Thread_Pool):
             except:
                 ticker = line.strip().upper()
             tickers.append(ticker)
-        noted_moves = self.loop.run_until_complete(find_all_big_moves,self.nn_dict,tickers,_force_generation,_has_actuals,
+        noted_moves = await find_all_big_moves(self.nn_dict,tickers,_force_generation,_has_actuals,
                                          percent, self.interval_text.get())
         # After setting noted moves, populate self noted to str
         await noted_moves
@@ -196,7 +196,6 @@ class GUI(Thread_Pool):
         await self.generate_callback(event)
 
     async def generate_callback(self, event=None):
-        print('testing')
         if self.page_loc == 1:
             self.job_queue.put(self.load_model(
                 self.stock_input.get(), self.boolean1.get(), False, self.force_bool.get()))
@@ -244,11 +243,11 @@ class GUI(Thread_Pool):
             if not is_caching:
                 self.generate_button.grid_forget()
             if not has_actuals:
-                analysis_task = self.loop.run_until_complete(analyze_stock(self.nn_dict, ticker, has_actuals, force_generation,
-                                             self.interval_text.get()))
+                analysis_task = await analyze_stock(self.nn_dict, ticker, has_actuals, force_generation,
+                                             self.interval_text.get())
             else:
-                analysis_task = self.loop.run_until_complete(analyze_stock(self.nn_dict, ticker, has_actuals, force_generation,
-                                             self.interval_text.get()))
+                analysis_task = await analyze_stock(self.nn_dict, ticker, has_actuals, force_generation,
+                                             self.interval_text.get())
 
             # analysis_res = asyncio.gather(analysis_task)
             self.img = analysis_task[0]
@@ -337,10 +336,9 @@ class GUI(Thread_Pool):
     """ Manages GUI-side.  Button actions map to functions"""
 
     async def run(self):
-        infinite_task_loop = self.loop.create_task(ui.task_loop())
-        # t = threading.Thread(target=ui.task_loop, args=())
-        # t.daemon = True
-        # t.start()
+        t = threading.Thread(target=self.loop_in_thread, args=(self.loop,))
+        t.daemon = True
+        t.start()
         self.content.pack(side='top')
         self.load_layout.grid(column=3, row=9)
         self.stock_label = tk.Label(self.content, text="Stock:")
@@ -356,7 +354,7 @@ class GUI(Thread_Pool):
         self.force_refresh.grid(column=2, row=2)
         self.has_actuals = ttk.Checkbutton(self.content, text="Compare Predicted", variable=self.boolean1)
         self.has_actuals.grid(column=4, row=1)
-        self.generate_button = ttk.Button(self.content, text="Generate", command= lambda event=1: self.loop.run_until_complete(self.generate_callback()))
+        self.generate_button = ttk.Button(self.content, text="Generate", command= lambda event=1: self.job_queue.put(self.generate_callback()))
         self.generate_button.grid(column=3, row=2)
         # self.next_page_button.pack(side='bottom')
         # self.cache_queue.put(await self.loop.run_in_executor(self._executor,self.load_dropdown))
@@ -375,7 +373,9 @@ class GUI(Thread_Pool):
                 time.sleep(2)
 
     """ Constant loop that checks for tasks to-be completed.  Manages Computations"""
-
+    def loop_in_thread(self,loop):
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.task_loop())
     async def task_loop(self):
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
@@ -388,17 +388,15 @@ class GUI(Thread_Pool):
             self.obj = None
             load_task: Task = None
 
-
             jobs_list=[]
             # Queue for when the generate button is submitted and any other button actions go here
             while self.job_queue.qsize() > 0:
                 self.is_retrieving = True
                 self.generate_button.grid_forget()
-                tmp_thread = loop.run_in_executor(_executor,self.job_queue.get)
+                tmp_thread = await self.job_queue.get()
                 jobs_list.append(tmp_thread)
             try:
-                await asyncio.gather(*jobs_list)
-                print('gathered job')
+                [await job for job in jobs_list]
             except Exception as e:  # Already started the thread, ignore, add back to queue
                 print(f"[INFO] Failed to gather async job tasking from tasking loop!\nException:\n\t{e}")
 
@@ -408,11 +406,10 @@ class GUI(Thread_Pool):
                 self.is_retrieving = True
                 self.background_tasks_label.grid(column=3, row=6)
                 # self.generate_button.grid_forget()
-                tmp_thread = await loop.run_in_executor(_executor,self.job_queue.get)
+                tmp_thread = await self.cache_queue.get()
                 cached_list.append(tmp_thread)
             try:
-                await asyncio.gather(*cached_list)
-                print('gathered cache job')
+                [await item for item in cached_list]
             except Exception as e:  # Already started the thread, just add back, ignoring error
                 print(f"[INFO] Failed to gather async cached tasking from tasking loop!\nException:\n\t{e}")
                 pass
@@ -444,7 +441,7 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     ui = GUI(loop)
     task1 = asyncio.Task(ui.run())
-    task_loop_task = loop.run_until_complete(task1)
+    run_task = loop.run_until_complete(task1)
     loop.run_forever()
 
 
