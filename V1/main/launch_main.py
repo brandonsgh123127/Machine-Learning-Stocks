@@ -110,8 +110,9 @@ class GUI(Thread_Pool):
 
 
     async def dropdown_callback(self, event=None):
-        if isinstance(event, tk.Event):
-            self.cache_queue.put(self.load_dropdown(type(event)))
+        self.cache_queue.put(self.load_dropdown(type(event)))
+
+        return 0
 
     async def find_biggest_moves_callback(self, event=None):
         await self.search_big_moves(event, self.force_bool.get(),

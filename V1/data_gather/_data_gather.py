@@ -121,7 +121,7 @@ class Gather:
                             skip_db=False, interval: str = '1d',ticker: Optional[str] = "", update_self = True):
         # Date range utilized for query...
         date_range = [d.strftime('%Y-%m-%d') for d in pd.date_range(start_date, end_date)]  # start/end date list
-        is_utilizing_yfinance: bool = False
+        is_utilizing_yfinance: bool = False if '1d' in interval or '1wk' in interval or '1m' in interval or '1y' in interval else True
 
         if not skip_db:
             holidays = USFederalHolidayCalendar().holidays(start=f'{start_date.year}-01-01',
@@ -267,11 +267,29 @@ class Gather:
                     if is_utilizing_yfinance:
                         ticker_obj = yf.Ticker(self.indicator.upper() if not ticker else ticker.upper())
                         if update_self:
-                            self.data = ticker_obj.history(interval=interval, start=(end_date + datetime.timedelta(days=-1)).strftime('%Y-%m-%d'),
-                                              end=(end_date + datetime.timedelta(days=6)).strftime('%Y-%m-%d'))
+                            self.data = ticker_obj.history(interval=interval,
+                                                           start=((start_date - datetime.timedelta(hours=3)).strftime(
+                                                               '%Y-%m-%d') if '5m' in interval else
+                                                                   (start_date - datetime.timedelta(hours=18)).strftime(
+                                                                      '%Y-%m-%d') if '15m' in interval else
+                                                                    (start_date - datetime.timedelta(days=2)).strftime(
+                                                                      '%Y-%m-%d') if '30m' in interval else (start_date - datetime.timedelta(
+                                                                      days=5)).strftime(
+                                                                      '%Y-%m-%d')),
+                                                           end=(end_date + datetime.timedelta(days=6)).strftime(
+                                                               '%Y-%m-%d'))
                         else:
-                            data = ticker_obj.history(interval=interval, start=(end_date + datetime.timedelta(days=-1)).strftime('%Y-%m-%d'),
-                                              end=(end_date + datetime.timedelta(days=6)).strftime('%Y-%m-%d'))
+                            data = ticker_obj.history(interval=interval,
+                                                      start=((start_date - datetime.timedelta(hours=3)).strftime(
+                                                          '%Y-%m-%d') if '5m' in interval else
+                                                             (start_date - datetime.timedelta(hours=18)).strftime(
+                                                                 '%Y-%m-%d') if '15m' in interval else
+                                                             (start_date - datetime.timedelta(days=2)).strftime(
+                                                                 '%Y-%m-%d') if '30m' in interval else (
+                                                                         start_date - datetime.timedelta(
+                                                                     days=5)).strftime(
+                                                                 '%Y-%m-%d')),
+                                                      end=(end_date + datetime.timedelta(days=6)).strftime('%Y-%m-%d'))
 
                     else:
                         if update_self:
@@ -299,14 +317,34 @@ class Gather:
                                 ticker_obj = yf.Ticker(self.indicator.upper() if not ticker else ticker.upper())
                                 if update_self:
                                     self.data = ticker_obj.history(interval=interval,
-                                                          start=(end_date + -datetime.timedelta(days=1)).strftime(
-                                                              '%Y-%m-%d'),
-                                                          end=(end_date + datetime.timedelta(days=6)).strftime('%Y-%m-%d'))
+                                                                   start=((start_date - datetime.timedelta(
+                                                                       hours=3)).strftime(
+                                                                       '%Y-%m-%d') if '5m' in interval else
+                                                                          (start_date - datetime.timedelta(
+                                                                              hours=18)).strftime(
+                                                                              '%Y-%m-%d') if '15m' in interval else
+                                                                          (start_date - datetime.timedelta(
+                                                                              days=2)).strftime(
+                                                                              '%Y-%m-%d') if '30m' in interval else (
+                                                                                      start_date - datetime.timedelta(
+                                                                                  days=5)).strftime(
+                                                                              '%Y-%m-%d')),
+                                                                   end=(end_date + datetime.timedelta(days=6)).strftime(
+                                                                       '%Y-%m-%d'))
                                 else:
                                     data = ticker_obj.history(interval=interval,
-                                                          start=(end_date + -datetime.timedelta(days=1)).strftime(
-                                                              '%Y-%m-%d'),
-                                                          end=(end_date + datetime.timedelta(days=6)).strftime('%Y-%m-%d'))
+                                                              start=(
+                                                                  (start_date - datetime.timedelta(hours=3)).strftime(
+                                                                      '%Y-%m-%d') if '5m' in interval else
+                                                                  (start_date - datetime.timedelta(hours=18)).strftime(
+                                                                      '%Y-%m-%d') if '15m' in interval else
+                                                                  (start_date - datetime.timedelta(days=2)).strftime(
+                                                                      '%Y-%m-%d') if '30m' in interval else (
+                                                                              start_date - datetime.timedelta(
+                                                                          days=5)).strftime(
+                                                                      '%Y-%m-%d')),
+                                                              end=(end_date + datetime.timedelta(days=6)).strftime(
+                                                                  '%Y-%m-%d'))
 
                             else:
                                 if update_self:

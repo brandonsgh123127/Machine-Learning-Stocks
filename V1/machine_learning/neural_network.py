@@ -525,12 +525,17 @@ def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = 
             pass
         try:
             sampler.data = sampler.data.drop(['Date'], axis=1)
-        except:
+        except Exception as e:
             print('[ERROR] Failed to drop "High" and "Low" from sampler data!', str(e))
-
         if not force_generation:
             print(f'[INFO] Did not query all specified dates within range for nn-data retrieval!')
         with listLock:
+            # Verify that the data has at least the correct shape needed...
+            try:
+                np.reshape(sampler.normalized_data.iloc[-14:].to_numpy(), (1, 1, 112))
+            except Exception as e:
+                print(f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
+                return None, None, None, None, None, None
             with tf.device(device_opt):
                 if has_actuals:
                     train = (np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(), (1, 1, 112)))

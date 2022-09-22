@@ -144,7 +144,7 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
     elif '1mo' in n_interval:
         dates = ((e_date - datetime.timedelta(days=600)).replace(day=1), e_date.replace(day=1))  # ~20 months
     elif '1y' not in n_interval:
-        dates = (e_date - datetime.timedelta(days=75), e_date)  # month worth of data
+        dates = (e_date - datetime.timedelta(days=2), e_date)  # month worth of data
 
     _has_actuals = has_actuals
 
@@ -241,9 +241,9 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
 
         dates = (begin_date, e_date)  # ~5 months
     elif '1mo' in n_interval:
-        dates = ((e_date - datetime.timedelta(days=600)).replace(day=1), e_date)  # ~20 months
+        dates = ((e_date - datetime.timedelta(months=15)).replace(day=1), e_date)  # ~20 months
     elif '1y' not in n_interval:
-        dates = (e_date - datetime.timedelta(days=75), e_date)  # months worth of data
+        dates = (e_date - datetime.timedelta(days=2), e_date)  # months worth of data
     path = Path(os.getcwd()).absolute()
     gen = Generator(None, path, force_generation)
     task_list = []
@@ -256,7 +256,7 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
                     nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
                     percent, n_interval))
         except Exception as e:
-            print(f'[ERROR] Could not generate an NN dataset for {ticker}!  Continuing...', flush=True)
+            print(f'[ERROR] Could not generate an NN dataset for {ticker}!  Continuing...\n\tException: {e}', flush=True)
     [await task for task in task_list]
     saved_predictions: list = []
     while not launch.saved_predictions.empty():

@@ -137,7 +137,6 @@ class Generator():
         query_params.update(query_param2);
         query_params.update(query_param3);
         query_params.update(query_param4)
-
         try:
             self.studies.data = self.studies.data.drop(['Volume'], axis=1)
         except:
