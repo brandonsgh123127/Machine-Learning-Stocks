@@ -73,7 +73,7 @@ class GUI(Thread_Pool):
         self.interval_text = StringVar(self.content)
         self.interval_text.set('Daily')  # default value
         self.stock_input = tk.Entry(self.content)
-        self.quick_select.trace('w', self.quick_gen)
+        self.quick_select.trace('w', lambda event=1,event2=1,event3=1: self.job_queue.put(self.quick_gen(event)))
         self.generate_button = ttk.Button(self.content, text="Generate", command=self.generate_callback)
         # self.output_image = tk.Canvas(self.window,width=1400,height=1400,bg='white')
         self.load_layout = tk.Canvas(self.content, width=100, height=100, bg='white')
