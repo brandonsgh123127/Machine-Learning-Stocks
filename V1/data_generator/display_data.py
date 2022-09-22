@@ -1,3 +1,5 @@
+import queue
+
 import matplotlib.pyplot as plt
 import pandas as pd
 from pathlib import Path
@@ -145,6 +147,11 @@ class Display:
                                      medianprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(
                                          data.iloc[-2]['Close']) else 'green'),
                                      autorange=True)
+            color_identifiers = queue.Queue()
+            for i,d in data.iterrows():
+                color_identifiers.put('red' if float(data.iloc[i]['Close']) < float(
+                                             data.iloc[i]['Open']) else 'green')
+
         if not without_fib and not only_fib:
             self.keltner_display = self.keltner_display.iloc[
                                    int(len(self.keltner_display.index) / 1.33 + 1):].reset_index().astype('float')
