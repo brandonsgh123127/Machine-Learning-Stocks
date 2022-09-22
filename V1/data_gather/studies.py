@@ -50,7 +50,7 @@ class Studies(Gather):
         return self.timeframe
 
     # Save EMA to self defined applied_studies
-    def apply_ema(self, length, span=None, half=None, skip_db=False, interval='1d'):
+    async def apply_ema(self, length, span=None, half=None, skip_db=False, interval='1d'):
         # Now, Start the process for inserting ema data...
         date_range = [d.strftime('%Y-%m-%d') for d in
                       pd.date_range(self.data.iloc[0]['Date'], self.data.iloc[-1]['Date'])]  # start/end date list
@@ -670,7 +670,7 @@ class Studies(Gather):
 val1    val3_________________________          vall2
         '''
 
-    def apply_fibonacci(self, skip_db=False, interval='1d'):
+    async def apply_fibonacci(self, skip_db=False, interval='1d'):
         date_range = [d.strftime('%Y-%m-%d') for d in
                       pd.date_range(self.data.iloc[0]['Date'], self.data.iloc[-1]['Date'])]  # start/end date list
         self.fib_cnx = self.db_con.cursor()
@@ -1186,16 +1186,17 @@ val1    val3_________________________          vall2
 
     ''' Keltner Channels for display data'''
 
-    def keltner_channels(self, length: int, factor: int = 2, displace: int = None, skip_db=False,interval='1d'):
+    async def keltner_channels(self, length: int, factor: int = 2, displace: int = None, skip_db=False,interval='1d'):
         try:
             with threading.Lock():
                 self.data_cp = self.data.copy()
                 # self.data_cp=self.data_cp.reset_index()
-                self.apply_ema(length, length, skip_db=skip_db,interval=interval)  # apply length ema for middle band
+                ema_task = self.apply_ema(length, length, skip_db=skip_db,interval=interval)  # apply length ema for middle band
                 self.keltner = pd.DataFrame({'middle': [], 'upper': [], 'lower': []}, dtype=float)
                 true_range = pd.DataFrame(columns=['trueRange'], dtype=float)
                 avg_true_range = pd.DataFrame(columns=['AvgTrueRange'], dtype=float)
                 prev_row = None
+                await ema_task
                 for index, row in self.data_cp.iterrows():
                     # CALCULATE TR ---MAX of ( H – L ; H – C.1 ; C.1 – L )
                     if index == 0:  # previous close is not valid, so just do same day

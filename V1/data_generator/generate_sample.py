@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from pathlib import Path
 import sys
-
+import asyncio
 '''
 This class will retrieve any file given, and take a sample of data, and retrieve only a static subset for prediction analysis
 '''

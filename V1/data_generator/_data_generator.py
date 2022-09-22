@@ -8,6 +8,7 @@ import threading
 import time
 import datetime
 import sys
+import asyncio
 
 '''
     This class allows for unification of data, studies and news for future machine learning training.
@@ -28,15 +29,15 @@ class Generator():
         else:
             self.path = Path(os.getcwd()).absolute()
 
-    def generate_data(self):
+    async def generate_data(self):
         # studies.__init__()
         with threading.Lock():
             studies = Studies(self.ticker)
             dates = studies.gen_random_dates()
             # Loop until valid data populates
             try:
-                if studies.set_data_from_range(studies.date_set[0], studies.date_set[1],
-                                               _force_generate=True) != 0 or studies.data.isnull().values.any() or len(
+                if await studies.set_data_from_range(studies.date_set[0], studies.date_set[1],
+                                                     _force_generate=True) != 0 or studies.data.isnull().values.any() or len(
                     studies.data) < 16:
                     print(f'[ERROR] Failed to generate data for {self.ticker}')
                     return 1
@@ -77,7 +78,7 @@ class Generator():
 
         # Generates the P/L and percent of current day
 
-    def generate_quick_data(self, ticker: str = None, force_generation=False):
+    def generate_quick_data(self, ticker: str = None, force_generation=False) -> str:
         self.studies.set_indicator(ticker)
         if ticker is not None:
             self.ticker = ticker
@@ -106,25 +107,24 @@ class Generator():
                                              end - datetime.timedelta(
                                                  days=1), _force_generate=force_generation)
         try:
-            return [round(self.studies.data[['Close']].iloc[-2:].diff().iloc[1].to_list()[0], 3),
-                    f'{round(self.studies.data[["Close"]].iloc[-2:].pct_change().iloc[1].to_list()[0] * 100, 3)}%']
+            return f'{round(self.studies.data[["Close"]].iloc[-2:].diff().iloc[1].to_list()[0], 3)}     {round(self.studies.data[["Close"]].iloc[-2:].pct_change().iloc[1].to_list()[0] * 100, 3)}%'
         except Exception as e:
             print(f'[ERROR] Failed to gather quick data for {ticker}...\n', str(e))
-            return ['n/a', 'n/a']
+            return 'n/a     n/a'
 
-    def generate_data_with_dates(self, date1=None, date2=None, is_not_closed=False, force_generate=False,
+    async def generate_data_with_dates(self, date1=None, date2=None, is_not_closed=False, force_generate=False,
                                  skip_db=False, interval='1d'):
         self.studies = Studies(self.ticker, force_generate=force_generate)
         self.studies.date_set = (date1, date2)
-
         # Loop until valid data populates
         try:
-            self.studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval)
+            ema_task = self.studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval)
 
             # self.studies.data = self.studies.data.reset_index()
         except Exception as e:
             print(f'[ERROR] Failed to generate data!\n', str(e))
             raise Exception
+        await ema_task
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
         query_param1 = {"query": "{}".format(self.ticker)}
         query_param2 = {"maxResults": "500"}
@@ -156,11 +156,11 @@ class Generator():
         # print(self.studies.data)
         try:
             date_diff = self.studies.get_date_difference(self.studies.date_set[0], self.studies.date_set[1])
-            self.studies.apply_ema("14", date_diff, skip_db=skip_db,interval=interval)
+            await self.studies.apply_ema("14", date_diff, skip_db=skip_db, interval=interval)
             # print(len(self.studies.data),len(self.studies.applied_studies['ema14']))
-            self.studies.apply_ema("30", date_diff, skip_db=skip_db,interval=interval)
-            self.studies.apply_fibonacci(skip_db=skip_db,interval=interval)
-            self.studies.keltner_channels(20, 1.3, None, skip_db=skip_db,interval=interval)
+            await self.studies.apply_ema("30", date_diff, skip_db=skip_db, interval=interval)
+            await self.studies.apply_fibonacci(skip_db=skip_db, interval=interval)
+            await self.studies.keltner_channels(20, 1.3, None, skip_db=skip_db, interval=interval)
             # Final join
 
         except Exception as e:

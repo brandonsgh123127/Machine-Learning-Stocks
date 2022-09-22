@@ -18,7 +18,7 @@ import mysql.connector
 import xml.etree.ElementTree as ET
 import datetime
 from V1.threading_impl.Thread_Pool import Thread_Pool
-
+import asyncio
 
 class Network(Neural_Framework):
     def __init__(self, epochs, batch_size):

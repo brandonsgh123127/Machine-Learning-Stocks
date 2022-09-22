@@ -71,7 +71,7 @@ class Normalizer():
         Utilize mysql to gather data.  Gathers stock data from table.
     '''
 
-    def mysql_read_data(self, ticker, date=None, force_generate=False, skip_db=False,interval='1d'):
+    async def mysql_read_data(self, ticker, date=None, force_generate=False, skip_db=False,interval='1d'):
         try:
             self.cnx = self.db_con.cursor(buffered=True)
             self.cnx.autocommit = True
@@ -100,6 +100,7 @@ class Normalizer():
             self.gen.set_ticker(ticker)
             vals = self.gen.generate_data_with_dates(initial_date - datetime.timedelta(days=40), initial_date,
                                                      force_generate=force_generate, skip_db=skip_db, interval=interval)
+            await vals
             self.studies = vals[1]
             self.data = vals[0]
             self.fib = vals[2]

@@ -1,3 +1,5 @@
+import queue
+
 import keras
 from V1.data_generator._data_generator import Generator
 from pathlib import Path
@@ -12,7 +14,8 @@ import sys
 import gc
 from V1.threading_impl.Thread_Pool import Thread_Pool
 from pandas.tseries.holiday import USFederalHolidayCalendar
-
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 class launcher:
     def __init__(self, skip_display: bool = False):
@@ -21,10 +24,11 @@ class launcher:
             self.dis: Display = Display()
         self.skip_display = skip_display
         self.listLock = threading.Lock()
-        self.saved_predictions: list = []
+        self.saved_predictions: queue.Queue = queue.SimpleQueue()
         self.listLock = threading.Lock()
+        self._executor = ThreadPoolExecutor(4)
 
-    def display_model(self, nn: keras.models.Model = None, name: str = "relu_multilayer_l2", _has_actuals: bool = False, ticker: str = "spy",
+    async def display_model(self, nn: keras.models.Model = None, name: str = "relu_multilayer_l2", _has_actuals: bool = False, ticker: str = "spy",
                       color: str = "blue", force_generation=False, unnormalized_data=False, row=0, col=1,
                       data=None, is_divergence=False,
                       skip_threshold: float = 0.05,
@@ -42,10 +46,10 @@ class launcher:
         if self.skip_display:
             predict_close = ldata[0]['Close'].iloc[0]
             if isinstance(data, tuple):  # if tuple, take 1st df and get close
-                self.saved_predictions.append((ticker, predict_close, data[0]['Close'].iloc[-1]))
+                self.saved_predictions.put((ticker, predict_close, data[0]['Close'].iloc[-1]))
                 return ticker, predict_close, data[0]['Close'].iloc[-1]
             else:
-                self.saved_predictions.append((ticker, predict_close, data['Close'].iloc[-1]))
+                self.saved_predictions.put((ticker, predict_close, data['Close'].iloc[-1]))
                 return ticker, predict_close, data.iloc[-1]
         # read data for loading into display portion
         with self.listLock:
@@ -81,9 +85,9 @@ class launcher:
 data_gen = Generator()
 
 
-def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True, force_generate=False, interval='Daily'):
-    thread_pool = Thread_Pool(amount_of_threads=4)
+async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True, force_generate=False, interval='Daily'):
     listLock = threading.Lock()
+    loop = asyncio.get_event_loop()
 
     launch = launcher()
     if ticker is not None:
@@ -142,66 +146,53 @@ def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True, forc
     _has_actuals = has_actuals
 
     # Generate Data for usage in display_model
-    data = gen.generate_data_with_dates(dates[0], dates[1], False, force_generate, interval=n_interval)
-    # CHART LABEL
-    launch.display_model(nn_dict["relu_1layer_l2"],"relu_1layer_l2", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
+    data_task = await loop.run_in_executor(launch._executor,gen.generate_data_with_dates,dates[0], dates[1], False, force_generate, False, n_interval)
+    data = await asyncio.gather(data_task)
+    data = data[0]
+
+    # BOX PLOT CALL
+    box_plot_task = await loop.run_in_executor(launch._executor,launch.display_model,nn_dict["relu_1layer_l2"],"relu_1layer_l2", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
                          n_interval)
-    gc.collect()
 
     #
     # Model_Out_2 LABEL
     if _has_actuals:
-        with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+        task1 = await loop.run_in_executor(launch._executor,launch.display_model,
                     nn_dict["relu_2layer_0regularization"],"relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval))) == 1:
-                thread_pool.join_workers()
-        with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+                    0.05, n_interval)
+        task2 = await loop.run_in_executor(launch._executor,launch.display_model,
                     nn_dict["relu_1layer_l2"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval))) == 1:
-                thread_pool.join_workers()
-        with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+                    0.05, n_interval)
+        task3 = await loop.run_in_executor(launch._executor,launch.display_model,
                     nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval))) == 1:
-                thread_pool.join_workers()
+                    0.05, n_interval)
     else:
-        with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+        task1 = await loop.run_in_executor(launch._executor,launch.display_model,
                     nn_dict["relu_2layer_0regularization"],"relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval))) == 1:
-                thread_pool.join_workers()
-        with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+                    0.05, n_interval)
+        task2 = await loop.run_in_executor(launch._executor,launch.display_model,
                     nn_dict["relu_1layer_l2"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval))) == 1:
-                thread_pool.join_workers()
-        with listLock:
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+                    0.05, n_interval)
+        task3 = await loop.run_in_executor(launch._executor,launch.display_model,
                     nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval))) == 1:
-                thread_pool.join_workers()
-
+                    0.05, n_interval)
     gc.collect()
-    thread_pool.join_workers()
-
+    await asyncio.gather(box_plot_task, task1, task2, task3)
     launch.dis.fig.canvas.draw()  # draw image before returning
     return launch.dis.fig, launch.dis.axes
-    # return PIL.Image.frombytes('RGB',launch.dis.fig.canvas.get_width_height(),launch.dis.fig.canvas.tostring_rgb())
-    # #Return Canvas as image in output
 
-
-def get_preview_prices(ticker: str, force_generation=False):
+async def get_preview_prices(ticker: str, force_generation=False):
+    loop = asyncio.get_event_loop()
     try:
-        res = data_gen.generate_quick_data(ticker, force_generation)
+        res = loop.run_until_complete(data_gen.generate_quick_data,ticker, force_generation)
+
         return res
     except Exception as e:
         print(f'[ERROR] No data generated for {ticker}!  Continuing...')
-        return ['nan'], ['nan']
+        return 'nan     nan'
 
 
-def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=False, _has_actuals: bool = False, percent: float = 0.02,
+async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=False, _has_actuals: bool = False, percent: float = 0.02,
                        interval: str = 'Daily') -> list:
     thread_pool = Thread_Pool(amount_of_threads=2)
     listLock = threading.Lock()
@@ -256,20 +247,22 @@ def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=False, _ha
         dates = (e_date - datetime.timedelta(days=75), e_date)  # months worth of data
     path = Path(os.getcwd()).absolute()
     gen = Generator(None, path, force_generation)
+    loop = asyncio.get_running_loop()
+    task_list = []
     for ticker in tickers:
         try:
             gen.set_ticker(ticker)
-            data = gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
+            data_task = await loop.run_in_executor(launch._executor,gen.generate_data_with_dates,dates[0], dates[1], False, force_generation, True, n_interval)
+            data = loop.run_until_complete(asyncio.gather(data_task))[0]
             # print(data,flush=True)
-            while thread_pool.start_worker(threading.Thread(target=launch.display_model, args=(
+            task_list.append(await loop.run_in_executor(launch._executor,launch.display_model,
                     nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
-                    percent, n_interval))) == 1:
-                thread_pool.join_workers()
+                    percent, n_interval))
         except Exception as e:
             print(f'[ERROR] Could not generate an NN dataset for {ticker}!  Continuing...', flush=True)
-    thread_pool.join_workers()
-
+    loop.run_until_complete(asyncio.gather(*task_list))
     saved_predictions: list = []
+    launch.saved_predictions.join()
     for prediction in launch.saved_predictions:
         prior_close: int = prediction[2]
         if abs(((prior_close + prediction[1]) / prior_close) - 1) >= percent:
@@ -282,6 +275,7 @@ if __name__ == "__main__":
     _type = sys.argv[1]
     _has_actuals = sys.argv[3] == 'True'
     _force_generate = sys.argv[4] == 'True'
+    loop = asyncio.new_event_loop()
     neural_net = Network(0, 0)
     names: list = ['relu_1layer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2', 'relu_2layer_l1l2']
     nn_list: list = [neural_net.load_model(name=name) for name in names]
@@ -290,4 +284,4 @@ if __name__ == "__main__":
                           'relu_2layer_l1l2': nn_list[2],
                           'relu_2layer_l1l2': nn_list[3]}
 
-    main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='15m')
+    loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='15m'))

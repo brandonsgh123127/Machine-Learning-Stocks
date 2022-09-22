@@ -1,3 +1,5 @@
+import asyncio
+
 from yahoo_fin.stock_info import get_data
 import yfinance as yf
 from yahoo_fin.options import get_options_chain
@@ -114,7 +116,7 @@ class Gather:
             return self.indicator
             # retrieve pandas_datareader object of datetime
 
-    def set_data_from_range(self, start_date: datetime.datetime, end_date: datetime.datetime, _force_generate=False,
+    async def set_data_from_range(self, start_date: datetime.datetime, end_date: datetime.datetime, _force_generate=False,
                             skip_db=False, interval: str = '1d'):
         # Date range utilized for query...
         date_range = [d.strftime('%Y-%m-%d') for d in pd.date_range(start_date, end_date)]  # start/end date list
@@ -283,6 +285,7 @@ class Gather:
                                 self.data = get_data(self.indicator.upper(), start_date=start_date.strftime("%Y-%m-%d"),
                                                      end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
                                                      interval=interval)
+                            await self.data
                             break
                         except AssertionError as a:
                             raise Exception(
@@ -508,7 +511,8 @@ class Gather:
             raise Exception(response.status_code, response.text)
         return response.json()
 if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
     d = Gather("SPY")
-    d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=3),end_date=datetime.datetime.utcnow().date(),_force_generate=False,interval='15m')
+    loop.run_until_complete(d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=3),end_date=datetime.datetime.utcnow().date(),_force_generate=False,interval='15m'))
     print(d.data)
 # d.get_option_data(datetime.date(year=2021,month=11,day=12))
