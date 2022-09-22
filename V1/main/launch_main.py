@@ -80,7 +80,7 @@ class GUI(Thread_Pool):
 
         self.window.bind('<Return>', lambda event=1: self.job_queue.put(self.generate_callback()))
         self.window.bind('<F5>', lambda event=1: self.job_queue.put(self.dropdown_callback()))
-        self.window.bind('<F9>', lambda event=1: self.job_queue.put(self.find_biggest_moves_callback()))
+        self.window.bind('<F9>', lambda event=1: self.cache_queue.put(self.find_biggest_moves_callback()))
         s = ttk.Style(self.window)
         self.page_loc = 1  # Map page number to location
         try:  # if image exists, don't recreate
@@ -114,10 +114,10 @@ class GUI(Thread_Pool):
             self.cache_queue.put(self.load_dropdown(type(event)))
 
     async def find_biggest_moves_callback(self, event=None):
-        if isinstance(event, tk.Event):
-            self.cache_queue.put(self.search_big_moves(type(event), self.force_bool.get(),
-                                                                 self.boolean1.get(),
-                                                                 0.015))
+        await self.search_big_moves(event, self.force_bool.get(),
+                                                             self.boolean1.get(),
+                                                             0.015)
+        return 0
 
     """
         Loads the dropdown bar with current prices for all stocks located under 'default.csv'.
@@ -136,12 +136,12 @@ class GUI(Thread_Pool):
             except:
                 ticker = line.strip().upper()
             if event is not None:
-                pnl_percent_task = self.loop.run_in_executor(self._executor,get_preview_prices,ticker, True)
+                pnl_percent_task = get_preview_prices(ticker, True)
                 percent_task_list.append(pnl_percent_task)
             else:
-                pnl_percent_task = self.loop.run_in_executor(self._executor,get_preview_prices,ticker,False)
+                pnl_percent_task = get_preview_prices(ticker,False)
                 percent_task_list.append(pnl_percent_task)
-        pnl_percent = await percent_task_list
+        pnl_percent = [await task for task in percent_task_list]
         for index,val in enumerate(pnl_percent):
            self.watchlist.append(f'{ticker_queue.get()}     {val}')
 
@@ -172,10 +172,10 @@ class GUI(Thread_Pool):
             except:
                 ticker = line.strip().upper()
             tickers.append(ticker)
-        noted_moves = await find_all_big_moves(self.nn_dict,tickers,_force_generation,_has_actuals,
+        noted_moves = find_all_big_moves(self.nn_dict,tickers,_force_generation,_has_actuals,
                                          percent, self.interval_text.get())
         # After setting noted moves, populate self noted to str
-        await noted_moves
+        noted_moves = await noted_moves
         for note in noted_moves:
             self.noted_str.append(f'{note[0]} >>> {round((((note[2] + note[1]) / note[2]) - 1) * 100, 2)}%')
 
@@ -189,6 +189,7 @@ class GUI(Thread_Pool):
         self.noted_dropdown = tk.OptionMenu(self.content, self.quick_select, *self.noted_str)
         self.noted_dropdown.grid(column=5, row=20)
         watchlist_file.close()
+        return 0
 
     async def quick_gen(self, event, *args, **vargs):
         self.stock_input.delete(0, tk.END)
@@ -357,7 +358,7 @@ class GUI(Thread_Pool):
         self.generate_button = ttk.Button(self.content, text="Generate", command= lambda event=1: self.job_queue.put(self.generate_callback()))
         self.generate_button.grid(column=3, row=2)
         # self.next_page_button.pack(side='bottom')
-        # self.cache_queue.put(await self.loop.run_in_executor(self._executor,self.load_dropdown))
+        self.cache_queue.put(self.load_dropdown())
         self.interval_dropdown = tk.OptionMenu(self.content, self.interval_text,
                                                *['Daily', 'Weekly', 'Monthly', 'Yearly', '5m', '15m', '30m', '1h'])
         self.interval_dropdown.grid(column=4, row=0)

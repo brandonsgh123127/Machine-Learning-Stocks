@@ -1,5 +1,7 @@
 from pathlib import Path
 import os
+from typing import Optional
+
 from V1.data_gather.news_scraper import News_Scraper
 from V1.data_gather.studies import Studies
 import random
@@ -78,8 +80,7 @@ class Generator():
 
         # Generates the P/L and percent of current day
 
-    def generate_quick_data(self, ticker: str = None, force_generation=False) -> str:
-        self.studies.set_indicator(ticker)
+    async def generate_quick_data(self, ticker: str = None, force_generation=False) -> str:
         if ticker is not None:
             self.ticker = ticker
         # When UTC time is past 9AM EST, we would like to stay until UTC goes to the next day
@@ -91,30 +92,31 @@ class Generator():
         else:
             start = datetime.datetime.utcnow() - datetime.timedelta(
                 days=2)
-            end = datetime.datetime.utcnow() - datetime.timedelta(
-                days=1)
-        if end.date().weekday() == 5:
-            self.studies.set_data_from_range(start - datetime.timedelta(days=1),
-                                             end, _force_generate=force_generation)
-        elif end.date().weekday() == 6:
-            self.studies.set_data_from_range(start - datetime.timedelta(days=2),
-                                             end, _force_generate=force_generation)
+            end = datetime.datetime.utcnow()
+        if end.date().weekday() == 5:# Saturday
+            data = await self.studies.set_data_from_range(start - datetime.timedelta(days=1),
+                                             end, _force_generate=force_generation,ticker=ticker,update_self=False)
+        elif end.date().weekday() == 6: # Sunday
+            data = await self.studies.set_data_from_range(start - datetime.timedelta(days=2),
+                                             end, _force_generate=force_generation,ticker=ticker,update_self=False)
         elif end.date().weekday() == 0:  # monday
-            self.studies.set_data_from_range(start - datetime.timedelta(days=3),
-                                             end, _force_generate=force_generation)
+            data = await self.studies.set_data_from_range(start - datetime.timedelta(days=3),
+                                             end, _force_generate=force_generation,ticker=ticker,update_self=False)
         else:
-            self.studies.set_data_from_range(start,
+            data = await self.studies.set_data_from_range(start,
                                              end - datetime.timedelta(
-                                                 days=1), _force_generate=force_generation)
+                                                 days=1), _force_generate=force_generation,ticker=ticker,update_self=False)
+        if data is None:
+            return 'n/a     n/a'
         try:
-            return f'{round(self.studies.data[["Close"]].iloc[-2:].diff().iloc[1].to_list()[0], 3)}     {round(self.studies.data[["Close"]].iloc[-2:].pct_change().iloc[1].to_list()[0] * 100, 3)}%'
+            return f'{round(data[["Close"]].iloc[-2:].diff().iloc[1].to_list()[0], 3)}     {round(data[["Close"]].iloc[-2:].pct_change().iloc[1].to_list()[0] * 100, 3)}%'
         except Exception as e:
             print(f'[ERROR] Failed to gather quick data for {ticker}...\n', str(e))
             return 'n/a     n/a'
 
     async def generate_data_with_dates(self, date1=None, date2=None, is_not_closed=False, force_generate=False,
-                                 skip_db=False, interval='1d'):
-        self.studies = Studies(self.ticker, force_generate=force_generate)
+                                 skip_db=False, interval='1d', ticker: Optional[str] = None):
+        self.studies = Studies(self.ticker if not ticker else ticker, force_generate=force_generate)
         self.studies.date_set = (date1, date2)
         # Loop until valid data populates
         try:
@@ -126,7 +128,7 @@ class Generator():
             raise Exception
         await ema_task
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
-        query_param1 = {"query": "{}".format(self.ticker)}
+        query_param1 = {"query": "{}".format(self.ticker if not ticker else ticker)}
         query_param2 = {"maxResults": "500"}
         query_param3 = {"fromDate": "{}".format(self.studies.date_set[0].strftime("%Y%m%d%H%M"))}
         query_param4 = {"toDate": "{}".format(self.studies.date_set[1].strftime("%Y%m%d%H%M"))}
@@ -167,7 +169,7 @@ class Generator():
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
-            print(f'[ERROR] Failed to generate studies for {self.ticker}!\n{str(e)}')
+            print(f'[ERROR] Failed to generate studies for {self.ticker if not ticker else ticker}!\n{str(e)}')
             return
         return self.studies.data, self.studies.applied_studies, self.studies.fibonacci_extension, self.studies.keltner
 

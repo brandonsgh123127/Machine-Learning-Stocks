@@ -1,3 +1,4 @@
+import inspect
 import queue
 
 import keras
@@ -42,6 +43,8 @@ class launcher:
             ldata = load_divergence(f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
                                     force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False,
                                     data=data, interval=interval)
+        if ldata[0] is None: # If None, that means no data was passed into load (ticker is bad now, or failed to generate data)
+            return ticker, None, None
         # if skipping display, return only predicted value and last val, as that is what we care about.
         if self.skip_display:
             predict_close = ldata[0]['Close'].iloc[0]
@@ -181,8 +184,7 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
     launch.dis.fig.canvas.draw()  # draw image before returning
     return launch.dis.fig, launch.dis.axes
 
-async def get_preview_prices(ticker: str, force_generation=False):
-    loop = asyncio.get_event_loop()
+async def get_preview_prices(ticker: str, force_generation=False) -> str:
     try:
         res = await data_gen.generate_quick_data(ticker, force_generation)
 
@@ -194,8 +196,6 @@ async def get_preview_prices(ticker: str, force_generation=False):
 
 async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=False, _has_actuals: bool = False, percent: float = 0.02,
                        interval: str = 'Daily') -> list:
-    thread_pool = Thread_Pool(amount_of_threads=2)
-    listLock = threading.Lock()
 
     launch = launcher(skip_display=True)
 
@@ -233,7 +233,6 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
         cur_day = abs(e_date.weekday())
         if cur_day != 0:
             e_date = e_date - datetime.timedelta(days=cur_day + 2)
-
         # change begin date to a monday
         begin_date = e_date - datetime.timedelta(days=250)
         begin_day = abs(begin_date.weekday())
@@ -242,17 +241,16 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
 
         dates = (begin_date, e_date)  # ~5 months
     elif '1mo' in n_interval:
-        dates = ((e_date - datetime.timedelta(days=600)).replace(day=1), e_date.replace(day=1))  # ~20 months
+        dates = ((e_date - datetime.timedelta(days=600)).replace(day=1), e_date)  # ~20 months
     elif '1y' not in n_interval:
         dates = (e_date - datetime.timedelta(days=75), e_date)  # months worth of data
     path = Path(os.getcwd()).absolute()
     gen = Generator(None, path, force_generation)
-    loop = asyncio.get_running_loop()
     task_list = []
     for ticker in tickers:
         try:
             gen.set_ticker(ticker)
-            data= await gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
+            data = await gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
             # print(data,flush=True)
             task_list.append(launch.display_model(
                     nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
@@ -261,8 +259,8 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
             print(f'[ERROR] Could not generate an NN dataset for {ticker}!  Continuing...', flush=True)
     [await task for task in task_list]
     saved_predictions: list = []
-    launch.saved_predictions.join()
-    for prediction in launch.saved_predictions:
+    while not launch.saved_predictions.empty():
+        prediction = launch.saved_predictions.get()
         prior_close: int = prediction[2]
         if abs(((prior_close + prediction[1]) / prior_close) - 1) >= percent:
             saved_predictions.append(prediction)

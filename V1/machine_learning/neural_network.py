@@ -465,7 +465,12 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 
 def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer",
          force_generation=False,
-         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = None, interval: str = '1d'):
+         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = (), interval: str = '1d'):
+    # Check to see if empty data value was passed in.
+    # If true, exit out of function
+    if data is None:
+        return None, None, None, None, None, None
+
     # Connect to local DB
     path = Path(os.getcwd()).absolute()
     tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
@@ -508,8 +513,9 @@ def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = 
         sampler = Sample(ticker=ticker, force_generate=force_generation)
         # sampler.__init__(ticker)
         # If data is populated, go ahead and utilize it, skip over data check for normalizer...
-        if data is not None:
+        if isinstance(data,tuple) and len(data) != 0:
             sampler.set_sample_data(data[0], data[1], data[2], data[3])
+        # if not type tuple, then this means that no data was passed in...
         train = None
         sampler.generate_sample(_has_actuals=has_actuals, out=8, rand_date=rand_date, interval=interval)
         try:  # verify there is no extra 'index' column
