@@ -1114,7 +1114,6 @@ val1    val3_________________________          vall2
                 data['Low'] = data['Low'].astype('float')
                 # new_set.columns = ['Index', 'Vals']
                 pd.set_option('display.max_columns', None)
-                print(new_set)
                 # attempt upwards fib
 
             if data['High'].iloc[-1] >= new_set['High'].max():

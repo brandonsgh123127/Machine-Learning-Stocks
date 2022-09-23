@@ -207,6 +207,30 @@ class GUI(Thread_Pool):
                 self.stock_input.get(), self.boolean1.get(), False, self.force_bool.get()))
 
     """Analyze stock through charting"""
+    async   def image_retrieval_thread(self, loop, task):
+        asyncio.set_event_loop(loop)
+        await task
+        self.img = task[0]
+        # self.image = ImageTk.PhotoImage(self.img)
+
+        gc.collect()
+        # time.sleep(5)
+        # self.output_image.delete('all')
+        # self.output_image.pack(side='top')
+        try:
+            self.canvas.get_tk_widget().destroy()
+        except:
+            pass
+        self.canvas = FigureCanvasTkAgg(self.img, master=self.window)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(side='bottom', fill='both', expand=1)
+        # self.output_image.create_image(800,500,image=self.image)
+        # self.output_image.pack(side='bottom')
+        self.background_tasks_label.config(text=f'Currently pre-loading a few stocks, this may take a bit...')
+        # self.generate_button.grid(column=3, row=2)
+        self.stock_input.focus_set()
+        self.stock_input.select_range(0, tk.END)
+        return 0
 
     async def analyze_model(self, ticker, has_actuals, is_not_closed, is_caching=False, force_generation=False):
         if self.page_loc == 2:  # Analyze page
@@ -214,28 +238,9 @@ class GUI(Thread_Pool):
             if not is_caching:
                 self.generate_button.grid_forget()
             analyze_task = analyze_stock(self.nn_dict, ticker, has_actuals, force_generate=force_generation)
-            await analyze_task
-            self.img = analyze_task[0]
-            # self.image = ImageTk.PhotoImage(self.img)
-
-            gc.collect()
-            # time.sleep(5)
-            # self.output_image.delete('all')
-            # self.output_image.pack(side='top')
-            try:
-                self.canvas.get_tk_widget().destroy()
-            except:
-                pass
-            self.canvas = FigureCanvasTkAgg(self.img, master=self.window)
-            self.canvas.draw()
-            self.canvas.get_tk_widget().pack(side='bottom', fill='both', expand=1)
-            # self.output_image.create_image(800,500,image=self.image)
-            # self.output_image.pack(side='bottom')
-            self.background_tasks_label.config(text=f'Currently pre-loading a few stocks, this may take a bit...')
-            # self.generate_button.grid(column=3, row=2)
-        self.stock_input.focus_set()
-        self.stock_input.select_range(0, tk.END)
-        return 0
+            t = threading.Thread(target=self.image_retrieval_thread, args=(self.loop,analyze_task))
+            t.daemon = True
+            t.start()
 
     """Load a Analysis/Predict model for predicting values"""
 
@@ -339,9 +344,13 @@ class GUI(Thread_Pool):
     """ Manages GUI-side.  Button actions map to functions"""
 
     async def run(self):
-        t = threading.Thread(target=self.loop_in_thread, args=(self.loop,))
+        t = threading.Thread(target=self.job_loop_in_thread, args=(self.loop,))
         t.daemon = True
         t.start()
+        t = threading.Thread(target=self.cache_loop_in_thread, args=(self.loop,))
+        t.daemon = True
+        t.start()
+
         self.content.pack(side='top')
         self.load_layout.grid(column=3, row=9)
         self.stock_label = tk.Label(self.content, text="Stock:")
@@ -376,10 +385,14 @@ class GUI(Thread_Pool):
                 time.sleep(2)
 
     """ Constant loop that checks for tasks to-be completed.  Manages Computations"""
-    def loop_in_thread(self,loop):
+    def job_loop_in_thread(self,loop):
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.task_loop())
-    async def task_loop(self):
+        loop.run_until_complete(self.jobtask_loop())
+
+    def cache_loop_in_thread(self, loop):
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.cachetask_loop())
+    async def jobtask_loop(self):
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
         _executor = ThreadPoolExecutor(8)
@@ -402,6 +415,40 @@ class GUI(Thread_Pool):
                 [await job for job in jobs_list]
             except Exception as e:  # Already started the thread, ignore, add back to queue
                 print(f"[INFO] Failed to gather async job tasking from tasking loop!\nException:\n\t{e}")
+
+            # Reset Screen to original state
+            try:
+                try:
+                    sys.stdout = open(os.devnull, 'w')
+                    self.join_workers()
+                    gc.collect()
+                    sys.stdout = sys.__stdout__
+                except:
+                    sys.stdout = sys.__stdout__
+                    pass
+                if self.is_empty() and len(self.threads) == 0:
+                    self.is_retrieving = False
+                    self.background_tasks_label.grid_forget()
+                    self.generate_button.grid(column=3, row=2)
+                else:
+                    if not self.is_retrieving:
+                        self.background_tasks_label.grid(column=3, row=6)
+                        self.generate_button.grid_forget()
+                        self.is_retrieving = True
+            except:
+                pass
+
+    async def cachetask_loop(self):
+        loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(loop)
+        _executor = ThreadPoolExecutor(8)
+        loop.set_default_executor(_executor)
+        while True:
+            time.sleep(2)
+            if self.exited:
+                raise ChildProcessError('[INFO] Application Signal End.')
+            self.obj = None
+            load_task: Task = None
 
             cached_list = []
             # Queue for begin caching on stocks
@@ -438,7 +485,6 @@ class GUI(Thread_Pool):
                         self.is_retrieving = True
             except:
                 pass
-
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
