@@ -255,7 +255,7 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
     task_list = []
     for ticker in tickers:
         try:
-            launch.gen.set_ticker(ticker)
+            await launch.gen.set_ticker(ticker)
             data = await launch.gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
             # print(data,flush=True)
             task_list.append(launch.display_model(
