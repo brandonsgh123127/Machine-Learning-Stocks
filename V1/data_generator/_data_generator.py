@@ -63,6 +63,7 @@ class Generator():
             except:
                 pass
             # studies.set_data_from_range(dates[0],dates[1])
+            self.studies.set_force_generate(True)
             studies.apply_ema("14", self.studies.get_date_difference(dates[0], dates[1]))
             # studies.set_data_from_range(dates[0],dates[1])
             studies.apply_ema("30", self.studies.get_date_difference(dates[0], dates[1]))
@@ -93,6 +94,7 @@ class Generator():
             start = datetime.datetime.utcnow() - datetime.timedelta(
                 days=2)
             end = datetime.datetime.utcnow()
+        self.studies.set_force_generate(force_generation)
         if end.date().weekday() == 5:# Saturday
             data = await self.studies.set_data_from_range(start - datetime.timedelta(days=1),
                                              end, _force_generate=force_generation,ticker=ticker,update_self=False)
@@ -116,13 +118,13 @@ class Generator():
 
     async def generate_data_with_dates(self, date1=None, date2=None, is_not_closed=False, force_generate=False,
                                  skip_db=False, interval='1d', ticker: Optional[str] = None):
-        self.studies = Studies(self.ticker if not ticker else ticker, force_generate=force_generate)
-        self.studies.date_set = (date1, date2)
+        studies = Studies(self.ticker if not ticker else ticker, force_generate=force_generate)
+        studies.date_set = (date1, date2)
         # Loop until valid data populates
         try:
-            ema_task = self.studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval)
+            ema_task = studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval)
 
-            # self.studies.data = self.studies.data.reset_index()
+            # studies.data = studies.data.reset_index()
         except Exception as e:
             print(f'[ERROR] Failed to generate data!\n', str(e))
             raise Exception
@@ -130,38 +132,38 @@ class Generator():
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
         query_param1 = {"query": "{}".format(self.ticker if not ticker else ticker)}
         query_param2 = {"maxResults": "500"}
-        query_param3 = {"fromDate": "{}".format(self.studies.date_set[0].strftime("%Y%m%d%H%M"))}
-        query_param4 = {"toDate": "{}".format(self.studies.date_set[1].strftime("%Y%m%d%H%M"))}
+        query_param3 = {"fromDate": "{}".format(studies.date_set[0].strftime("%Y%m%d%H%M"))}
+        query_param4 = {"toDate": "{}".format(studies.date_set[1].strftime("%Y%m%d%H%M"))}
         query_params = {}
         query_params.update(query_param1);
         query_params.update(query_param2);
         query_params.update(query_param3);
         query_params.update(query_param4)
         try:
-            self.studies.data = self.studies.data.drop(['Volume'], axis=1)
+            studies.data = studies.data.drop(['Volume'], axis=1)
         except:
             pass
 
         try:
-            self.studies.data = self.studies.data.drop(['Adj Close'], axis=1)
+            studies.data = studies.data.drop(['Adj Close'], axis=1)
         except:
             pass
         try:
-            self.studies.data = self.studies.data.drop(['index'], axis=1)
+            studies.data = studies.data.drop(['index'], axis=1)
         except:
             pass
         try:
-            self.studies.data = self.studies.data.drop(['level_0'], axis=1)
+            studies.data = studies.data.drop(['level_0'], axis=1)
         except:
             pass
-        # print(self.studies.data)
+        # print(studies.data)
         try:
-            date_diff = self.studies.get_date_difference(self.studies.date_set[0], self.studies.date_set[1])
-            await self.studies.apply_ema("14", date_diff, skip_db=skip_db, interval=interval)
-            # print(len(self.studies.data),len(self.studies.applied_studies['ema14']))
-            await self.studies.apply_ema("30", date_diff, skip_db=skip_db, interval=interval)
-            await self.studies.apply_fibonacci(skip_db=skip_db, interval=interval)
-            await self.studies.keltner_channels(20, 1.3, None, skip_db=skip_db, interval=interval)
+            date_diff = studies.get_date_difference(studies.date_set[0], studies.date_set[1])
+            await studies.apply_ema("14", date_diff, skip_db=skip_db, interval=interval)
+            # print(len(studies.data),len(studies.applied_studies['ema14']))
+            await studies.apply_ema("30", date_diff, skip_db=skip_db, interval=interval)
+            await studies.apply_fibonacci(skip_db=skip_db, interval=interval)
+            await studies.keltner_channels(20, 1.3, None, skip_db=skip_db, interval=interval)
             # Final join
 
         except Exception as e:
@@ -170,12 +172,12 @@ class Generator():
             print(exc_type, fname, exc_tb.tb_lineno)
             print(f'[ERROR] Failed to generate studies for {self.ticker if not ticker else ticker}!\n{str(e)}')
             return
-        return self.studies.data, self.studies.applied_studies, self.studies.fibonacci_extension, self.studies.keltner
+        return studies.data, studies.applied_studies, studies.fibonacci_extension, studies.keltner
 
     def get_ticker(self):
         return self.ticker
 
-    def set_ticker(self, ticker):
+    async def set_ticker(self, ticker):
         self.studies.set_indicator(ticker)
         self.news.set_indicator(ticker)
         self.ticker = ticker

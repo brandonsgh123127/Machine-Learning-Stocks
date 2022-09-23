@@ -2,6 +2,8 @@ import inspect
 import queue
 
 import keras
+
+from V1.data_generator import Sample
 from V1.data_generator._data_generator import Generator
 from pathlib import Path
 import os
@@ -19,7 +21,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 class launcher:
-    def __init__(self, skip_display: bool = False):
+    def __init__(self, skip_display: bool = False, force_generation: bool = False):
         self._type = None
         if not skip_display:
             self.dis: Display = Display()
@@ -28,6 +30,8 @@ class launcher:
         self.saved_predictions: queue.Queue = queue.SimpleQueue()
         self.listLock = threading.Lock()
         self._executor = ThreadPoolExecutor(4)
+        self.gen = Generator(None, Path(os.getcwd()).absolute(), force_generation)
+        self.sampler = Sample(ticker=None,force_generate=False)
 
     async def display_model(self, nn: keras.models.Model = None, name: str = "relu_multilayer_l2", _has_actuals: bool = False, ticker: str = "spy",
                       color: str = "blue", force_generation=False, unnormalized_data=False, row=0, col=1,
@@ -35,10 +39,11 @@ class launcher:
                       skip_threshold: float = 0.05,
                       interval: str = '1d'):
         # Call machine learning model
+        self.sampler.set_ticker(ticker)
         if not is_divergence:
             ldata = load(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
                          force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False, data=data,
-                         interval=interval)
+                         interval=interval, sampler=self.sampler)
         else:
             ldata = load_divergence(f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
                                     force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False,
@@ -85,8 +90,6 @@ class launcher:
         return ticker, ldata[0], ldata[1]
 
 
-data_gen = Generator()
-
 
 async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True, force_generate=False, interval='Daily'):
     listLock = threading.Lock()
@@ -97,9 +100,7 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
         ticker = ticker
     else:
         raise ValueError("Failed to find ticker name!")
-    path = Path(os.getcwd()).absolute()
 
-    gen = Generator(ticker.upper(), path, force_generate)
     # if current trading day, set prediction for tomorrow in date name
     dates = []
     # Confirm end date is valid 
@@ -149,8 +150,9 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
     _has_actuals = has_actuals
 
     # Generate Data for usage in display_model
-    data_task = await loop.run_in_executor(launch._executor,gen.generate_data_with_dates,dates[0], dates[1], False, force_generate, False, n_interval)
+    data_task = await loop.run_in_executor(launch._executor,launch.gen.generate_data_with_dates,dates[0], dates[1], False, force_generate, False, n_interval,ticker)
     data = await asyncio.gather(data_task)
+    del data_task
     data = data[0]
 
     # BOX PLOT CALL
@@ -181,12 +183,15 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
                     0.05, n_interval)
     gc.collect()
     await asyncio.gather(box_plot_task, task1, task2, task3)
+    del box_plot_task, task1, task2, task3
     launch.dis.fig.canvas.draw()  # draw image before returning
     return launch.dis.fig, launch.dis.axes
 
 async def get_preview_prices(ticker: str, force_generation=False) -> str:
     try:
+        data_gen = Generator()
         res = await data_gen.generate_quick_data(ticker, force_generation)
+        del data_gen
 
         return res
     except Exception as e:
@@ -245,12 +250,12 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
     elif '1y' not in n_interval:
         dates = (e_date - datetime.timedelta(days=2), e_date)  # months worth of data
     path = Path(os.getcwd()).absolute()
-    gen = Generator(None, path, force_generation)
+
     task_list = []
     for ticker in tickers:
         try:
-            gen.set_ticker(ticker)
-            data = await gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
+            launch.gen.set_ticker(ticker)
+            data = await launch.gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
             # print(data,flush=True)
             task_list.append(launch.display_model(
                     nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,

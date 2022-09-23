@@ -43,6 +43,8 @@ class Studies(Gather):
 
         self._force_generate = force_generate
 
+    def set_force_generate(self, is_force_generation: bool):
+        self._force_generate = is_force_generation
     def set_timeframe(self, new_timeframe):
         self.timeframe = new_timeframe
 

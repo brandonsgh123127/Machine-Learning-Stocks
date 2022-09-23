@@ -105,6 +105,7 @@ class Normalizer():
             self.data = vals[0]
             self.fib = vals[2]
             self.keltner = vals[3]
+            del vals
         except Exception as e:
             print(
                 f'[ERROR] Failed to retrieve data points for {ticker} from {initial_date.strftime("%Y-%m-%d")} to {(initial_date - datetime.timedelta(days=40)).strftime("%Y-%m-%d")}!\n',
@@ -118,6 +119,7 @@ class Normalizer():
         return
 
     def reset_data(self):
+        del self.studies,self.data,self.fib,self.keltner
         self.studies = None
         self.data = None
         self.fib = None
@@ -324,6 +326,7 @@ class Normalizer():
         self.normalized_data = self.normalized_data[-15:]
         self.unnormalized_data = self.normalized_data
         try:
+
             scaler = self.min_max.fit(self.unnormalized_data)
             self.normalized_data = pd.DataFrame(scaler.fit_transform(self.unnormalized_data), columns=['Close EMA14 Euclidean',
                                                                                                      'Close EMA30 Euclidean',

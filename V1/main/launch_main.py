@@ -145,6 +145,7 @@ class GUI(Thread_Pool):
         pnl_percent = [await task for task in percent_task_list]
         for index,val in enumerate(pnl_percent):
            self.watchlist.append(f'{ticker_queue.get()}     {val}')
+        del pnl_percent, percent_task_list
 
         # destroy object before proceeding
         try:

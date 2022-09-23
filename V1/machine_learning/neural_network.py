@@ -23,7 +23,7 @@ import asyncio
 class Network(Neural_Framework):
     def __init__(self, epochs, batch_size):
         super().__init__(epochs, batch_size)
-        self.sampler = None
+        self.sampler: Sample = None
         self.model_map_names = {"relu_multilayer_l2": 1, "relu_2layer_0regularization": 2,
                                 "relu_2layer_dropout_l2_noout": 3, "relu_2layer_l1l2": 4,
                                 "relu_1layer_l2": 5, "relu_2layer_dropout_l2_out": 6}
@@ -465,7 +465,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 
 def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer",
          force_generation=False,
-         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = (), interval: str = '1d'):
+         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = (), interval: str = '1d', sampler: Sample = None):
     # Check to see if empty data value was passed in.
     # If true, exit out of function
     if data is None:
@@ -504,13 +504,12 @@ def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = 
         stock_id = vals[1]
         from_date_id = vals[2]
         to_date_id = vals[3]
+        del vals
     except Exception as e:
         pass
 
     # Start ML calculations
     if predicted is None or force_generation:
-        # Actually gather data and insert if query is not met
-        sampler = Sample(ticker=ticker, force_generate=force_generation)
         # sampler.__init__(ticker)
         # If data is populated, go ahead and utilize it, skip over data check for normalizer...
         if isinstance(data,tuple) and len(data) != 0:
@@ -607,7 +606,9 @@ def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = 
     unnormalized_predict_values = sampler.data.append(pd.DataFrame([[unnormalized_prediction[0, 1] +
                                                                      sampler.data['Close'].iloc[-1]]],
                                                                    columns=['Close']), ignore_index=True)
+    del unnormalized_prediction
     predicted_unnormalized = pd.concat([unnormalized_predict_values])
+    del unnormalized_predict_values
 
     return sampler.unnormalize(predicted), sampler.unnormalized_data.tail(
         1), predicted_unnormalized, sampler.keltner, sampler.fib, sampler.studies
