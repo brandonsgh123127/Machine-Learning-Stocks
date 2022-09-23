@@ -54,24 +54,24 @@ class Display:
                 else:
                     data = data.iloc[:-1].reset_index().astype('float')
                 if not without_fib and not only_fib:
-                    self.fib_display = self.fib_display.reset_index()
-                    if len(self.fib_display.index) < data_len:
-                        self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(data_len - len(self.fib_display.index) + 4)]
-                    self.fib_display = self.fib_display.iloc[int(data_len / 1.33 + 1):].reset_index().astype('float')
+                    fib_display = self.fib_display.reset_index()
+                    if len(fib_display.index) < data_len:
+                        fib_display = fib_display.loc[fib_display.index.repeat(data_len - len(fib_display.index) + 4)]
+                    fib_display = fib_display.iloc[int(data_len / 1.33 + 1):].reset_index().astype('float')
                     self.studies = self.studies.iloc[int(data_len / 1.33 + 1):].reset_index().astype('float')
             else:
                 if not only_fib:
                     data = data.iloc[int(data_len / 1.33 + 1):]
                 if not without_fib and not only_fib:
-                    if len(self.fib_display.index) < data_len:
-                        self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(data_len - len(self.fib_display.index) + 4)]
-                    self.fib_display = self.fib_display.iloc[int(data_len / 1.33 + 1):].reset_index().astype('float')
+                    fib_display = self.fib_display.reset_index()
+                    if len(fib_display.index) > data_len:
+                        fib_display = fib_display.iloc[-data_len:]
                     self.studies = self.studies.iloc[int(data_len / 1.33 + 1):].reset_index().astype('float')
             # if only_fib, expand the data so it covers the length of the elongated data
             if only_fib:
-                self.fib_display = self.fib_display.loc[
-                    self.fib_display.index.repeat(int(data_len/len(self.fib_display.index))+1)]
-                self.fib_display = self.fib_display.reset_index().astype('float')
+                fib_display = self.fib_display.loc[
+                    self.fib_display.index.repeat(int(data_len/len(self.fib_display))+1)]
+                fib_display = self.fib_display.reset_index().astype('float')
             data = data.reset_index().drop(columns=['index']).astype('float')
         except:
             pass
@@ -80,7 +80,7 @@ class Display:
         except:
             pass
         try:
-            self.fib_display = self.fib_display.drop(columns=['level_0'])
+            fib_display = fib_display.drop(columns=['level_0'])
         except:
             pass
         try:
@@ -90,30 +90,30 @@ class Display:
         if not without_fib:
             try:
                 try:
-                    self.fib_display = self.fib_display.set_axis(
+                    fib_display = fib_display.set_axis(
                         ['index', '0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
                          '1.556', '2.493', '3.43', '3.83', '5.44'], 1)
                 except:
-                    self.fib_display = self.fib_display.set_axis(
+                    fib_display = fib_display.set_axis(
                         ['0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
                          '1.556', '2.493', '3.43', '3.83', '5.44'], 1)
-                # self.fib_display = self.fib_display.loc[self.fib_display.index.repeat(len(self.keltner_display.index) + 2)]
-                self.fib_display['0.202'].transpose().plot.line(ax=self.axes[row, col], color='blue', x='0.202', y='0.202')
-                self.fib_display['0.236'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                self.fib_display['0.241'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                self.fib_display['0.273'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                self.fib_display['0.283'].transpose().plot.line(ax=self.axes[row, col], color='orange')
-                self.fib_display['0.316'].transpose().plot.line(ax=self.axes[row, col], color='orange')
-                self.fib_display['0.382'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                self.fib_display['0.5'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                self.fib_display['0.618'].transpose().plot.line(ax=self.axes[row, col], color='purple')
-                self.fib_display['0.796'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                self.fib_display['1.556'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                self.fib_display['2.493'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                self.fib_display['3.43'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                self.fib_display['3.83'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                self.fib_display['5.44'].transpose().plot.line(ax=self.axes[row, col], color='pink')
-                self.fib_display = self.fib_display.reset_index(drop=True)
+                # fib_display = fib_display.loc[fib_display.index.repeat(len(self.keltner_display.index) + 2)]
+                fib_display['0.202'].transpose().plot.line(ax=self.axes[row, col], color='blue', x='0.202', y='0.202')
+                fib_display['0.236'].transpose().plot.line(ax=self.axes[row, col], color='blue')
+                fib_display['0.241'].transpose().plot.line(ax=self.axes[row, col], color='blue')
+                fib_display['0.273'].transpose().plot.line(ax=self.axes[row, col], color='brown')
+                fib_display['0.283'].transpose().plot.line(ax=self.axes[row, col], color='orange')
+                fib_display['0.316'].transpose().plot.line(ax=self.axes[row, col], color='orange')
+                fib_display['0.382'].transpose().plot.line(ax=self.axes[row, col], color='blue')
+                fib_display['0.5'].transpose().plot.line(ax=self.axes[row, col], color='blue')
+                fib_display['0.618'].transpose().plot.line(ax=self.axes[row, col], color='purple')
+                fib_display['0.796'].transpose().plot.line(ax=self.axes[row, col], color='brown')
+                fib_display['1.556'].transpose().plot.line(ax=self.axes[row, col], color='blue')
+                fib_display['2.493'].transpose().plot.line(ax=self.axes[row, col], color='brown')
+                fib_display['3.43'].transpose().plot.line(ax=self.axes[row, col], color='brown')
+                fib_display['3.83'].transpose().plot.line(ax=self.axes[row, col], color='brown')
+                fib_display['5.44'].transpose().plot.line(ax=self.axes[row, col], color='pink')
+                fib_display = fib_display.reset_index(drop=True)
             except:
                 pass
         if has_actuals:

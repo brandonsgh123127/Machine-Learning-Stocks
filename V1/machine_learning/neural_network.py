@@ -517,6 +517,7 @@ def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = 
         # if not type tuple, then this means that no data was passed in...
         train = None
         sampler.generate_sample(_has_actuals=has_actuals, out=8, rand_date=rand_date, interval=interval)
+        sampler.trim_data(has_actuals)
         try:  # verify there is no extra 'index' column
             sampler.data = sampler.data.drop(['index'], axis=1)
         except Exception as e:

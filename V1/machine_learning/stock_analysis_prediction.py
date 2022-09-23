@@ -40,6 +40,7 @@ class launcher:
                       interval: str = '1d'):
         # Call machine learning model
         self.sampler.set_ticker(ticker)
+        self.sampler.reset_data()
         if not is_divergence:
             ldata = load(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
                          force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False, data=data,
@@ -286,4 +287,4 @@ if __name__ == "__main__":
                           'relu_2layer_l1l2': nn_list[2],
                           'relu_2layer_l1l2': nn_list[3]}
 
-    loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='15m'))
+    loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='1d'))

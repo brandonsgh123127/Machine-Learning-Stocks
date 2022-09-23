@@ -118,6 +118,22 @@ class Sample(Normalizer):
         self.studies = studies
         self.fib = fib
         self.keltner = keltner
+    def reset_data(self):
+        del self.data, self.studies, self.fib,self.keltner, self.normalized_data, self.unnormalized_data
+        self.data = None
+        self.studies = None
+        self.fib = None
+        self.keltner = None
+        self.normalized_data = None
+        self.unnormalized_data = None
+        self.studies = None
+    def trim_data(self, has_actuals: bool = False):
+        self.data = self.data.iloc[-30 if has_actuals else -29:]
+        self.studies = self.studies.iloc[-30 if has_actuals else -29:]
+        self.fib = self.fib.iloc[-30 if has_actuals else -29:]
+        self.keltner = self.keltner.iloc[-30 if has_actuals else -29:]
+        self.unnormalized_data = self.unnormalized_data.iloc[-30 if has_actuals else -29:]
+        self.normalized_data = self.normalized_data.iloc[-30 if has_actuals else -29:]
 # for i in range(1,21000):
 # sampler = Sample()
 # sampler = Sample()

@@ -123,12 +123,11 @@ class Generator():
         # Loop until valid data populates
         try:
             ema_task = studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval)
-
+            await ema_task
             # studies.data = studies.data.reset_index()
         except Exception as e:
             print(f'[ERROR] Failed to generate data!\n', str(e))
             raise Exception
-        await ema_task
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
         query_param1 = {"query": "{}".format(self.ticker if not ticker else ticker)}
         query_param2 = {"maxResults": "500"}

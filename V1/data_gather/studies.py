@@ -1,4 +1,6 @@
+import numpy as np
 import pytz
+from scipy.signal import argrelextrema
 
 from V1.data_gather._data_gather import Gather
 import pandas as pd
@@ -472,90 +474,110 @@ class Studies(Gather):
             return val3 - ((val2 - val1) * -fib_val)
 
     def upwards_fib(self, new_set):
-        # After this, iterate new list and find which direction stock may go
-        val1 = None
-        val2 = None
-        val3 = None
-        for i, row in new_set['Vals'].iloc[::-1].iteritems():  # reverse order iteration
-            if i == len(new_set.index) - 1:  # if last element, skip
-                continue
-            # if the last value is greater than prior , do upwards fib, else downwards
-            if not self.data['Low'].iloc[i-1] <= new_set['Vals'].iloc[i]:
-                if float(new_set['Vals'].iloc[i + 1]) > row < float(
-                        new_set['Vals'].iloc[i - 1]):  # if low is found, jump to this value
-                    val3 = row
-                    # find val2 by finding next local high
-                    for j, sub in new_set['Vals'].iloc[::-1].iteritems():
-                        if j >= i:
-                            continue
-                        else:  # find val2 by making sure next local high is valid
-                            if float(new_set['Vals'].iloc[j + 1]) < sub < float(
-                                    new_set['Vals'].iloc[j - 1]):
-                                val2 = sub
-                                # find val3 by getting next low
-                                for k, low in new_set['Vals'].iloc[::-1].iteritems():
-                                    if k >= j:
-                                        continue
-                                    else:
-                                        if float(new_set['Vals'].iloc[k + 1]) > low < float(
-                                                new_set['Vals'].iloc[k - 1]):
-                                            val1 = low
-                                            return (val1, val2, val3)
-                                        else:
-                                            continue
-                                break
-                            else:
-                                continue
+        try:
+            # After this, iterate new list and find which direction stock may go
+            val1 = None
+            val2 = None
+            val3 = None
+            if len(new_set) == 0:
+                return val1, val2, val3
+            for i, row in new_set.iterrows():  # reverse order iteration
+                if i == len(new_set) -1:
                     break
-                else:
-                    continue
-            else:
-                pass
-        return val1, val2, val3
+                # if the next value is greater than prior , do upwards fib, else downwards
+                if new_set['Low'].idxmin() != len(new_set) - 2 or new_set['Low'].iloc[i+1] > row['Low']:
+                    val3 = row['Low']
 
-    def downwards_fib(self, new_set):
-        # After this, iterate new list and find which direction stock may go
-        val1 = None
-        val2 = None
-        val3 = None
-        for i, row in new_set['Vals'].iloc[::-1].iteritems():  # val 1
-            if i == len(new_set.index) - 1:  # if last element, skip
-                continue
-            # if the last value is greater than 10 days prior , do downwards fib
-            if self.data['High'].iloc[i-1] < new_set['Vals'].iloc[i]:
-                # attempt downwards fib
-                if float(new_set['Vals'].iloc[i + 1]) < row > float(
-                        new_set['Vals'].iloc[i - 1]):  # if high is found, jump to this value
-                    val3 = row
+                    if new_set['Low'].idxmin() != len(new_set) - 2:
+                        i = new_set['Low'].idxmin()
+
                     # find val2 by finding next local high
-                    for j, sub in new_set['Vals'].iloc[::-1].iteritems():
-                        if j >= i:
+                    for j, sub in new_set.iterrows():
+                        if j <= i:
                             continue
-                        else:  # find val2 by making sure next local low is valid
-                            if float(new_set['Vals'].iloc[j + 1]) > sub < float(
-                                    new_set['Vals'].iloc[j - 1]):
-                                val2 = sub
-                                # find val3 by getting next high
-                                for k, high in new_set['Vals'].iloc[::-1].iteritems():
-                                    if k >= j:
+                        # find val2 by making sure next local high is valid
+                        if float(new_set['High'].iloc[j + 1]) <= sub['High'] or (new_set['High'].idxmax() != len(new_set) - 2 and new_set['High'].idxmax() > new_set['Low'].idxmin()):
+                            val2 = sub['High']
+
+                            if (new_set['High'].idxmax() != len(new_set) - 2 and new_set['High'].idxmax() > new_set['Low'].idxmin()):
+                                j = new_set['High'].idxmax()
+                            # find val3 by getting next low
+                            if new_set['Low'].min() != val3:
+                                val1 = new_set['Low'].min()
+                            else:
+                                for k, low in new_set.iterrows():
+                                    if k <= j:
                                         continue
                                     else:
-                                        if float(new_set['Vals'].iloc[k + 1]) < high > float(
-                                                new_set['Vals'].iloc[k - 1]):
-                                            val1 = high
+                                        if float(new_set['Low'].iloc[k + 1]) >= low['Low'] <= float(
+                                                new_set['Low'].iloc[k - 1]):
+                                            val1 = low['Low']
                                             return val1, val2, val3
                                         else:
                                             continue
                                 break
-                            else:
-                                continue
+                        else:
+                            continue
                     break
                 else:
-                    continue
-            else:
-                pass
-        return val1, val2, val3
+                    return self.upwards_fib(new_set[1:])
+            return val1, val2, val3
+        except IndexError:
+            return None,None,None
+        except:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
 
+    def downwards_fib(self, new_set):
+        try:
+            # After this, iterate new list and find which direction stock may go
+            val1 = None
+            val2 = None
+            val3 = None
+            if len(new_set) == 0:
+                return val1, val2, val3
+            for i, row in new_set.iterrows():  # reverse order iteration
+                if i == len(new_set) -1:
+                    break
+                # if the next value is less than prior , do downwards fib, else
+                if new_set['High'].idxmax() != len(new_set) - 2 or new_set['High'].iloc[i+1] <= row['High']:
+                    val3 = new_set['High'].max() if new_set['High'].idxmax() != len(new_set) - 2 else row['High']
+                    if new_set['High'].idxmax() != len(new_set) - 2:
+                        i = new_set['High'].idxmax()
+                    # find val2 by finding next local high
+                    for j, sub in new_set.iterrows():
+                        if j <= i:
+                            continue
+                        # find val2 by making sure next local low is valid
+                        if float(new_set['Low'].iloc[j + 1]) >= sub['Low'] or (new_set['Low'].idxmin() != len(new_set) - 2 and new_set['Low'].idxmin() < new_set['High'].idxmax()):
+                            val2 = new_set['Low'].min() if (new_set['Low'].idxmin() != len(new_set) - 2 and new_set['Low'].idxmin() < new_set['High'].idxmax()) else sub['Low']
+                            if (new_set['Low'].idxmin() != len(new_set) - 2 and new_set['Low'].idxmin() < new_set['High'].idxmax()):
+                                j = new_set['Low'].idxmin()
+                            # find val3 by getting next low
+                            if new_set['High'].max() != val3:
+                                val1 = new_set['High'].max()
+                            else:
+                                for k, high in new_set.iterrows():
+                                    if k <= j:
+                                        continue
+                                    else:
+                                        if float(new_set['High'].iloc[k + 1]) <= high['High']:
+                                            val1 = high['High']
+                                            return val1, val2, val3
+                                        else:
+                                            continue
+                                break
+                        else:
+                            continue
+                    break
+                else:
+                    return self.downwards_fib(new_set[1:])
+            return val1, val2, val3
+        except:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
     def insert_fib_vals(self, skip_db, interval):
         # Insert data if not in db...
         if not skip_db:
@@ -1066,37 +1088,63 @@ val1    val3_________________________          vall2
                 # iterate through data to find all min and max
                 try:
                     # self.data = self.data.set
-                    self.data = self.data.reset_index()
+                    data = self.data.copy()
+                    data = data.reset_index()
                     # self.data=self.data.drop(['Date'],axis=1)
                     # print(self.data)
                 except Exception as e:
                     pass
-                local_max_high = self.data.High[
-                    (self.data.High.shift(1) < self.data.High) & (self.data.High.shift(-1) < self.data.High)]
-                local_min_high = self.data.High[
-                    (self.data.High.shift(1) > self.data.High) & (self.data.High.shift(-1) > self.data.High)]
+                local_max_high = data.iloc[argrelextrema(data.High.values, np.greater_equal,
+                                                              order=2)[0]]
                 # local_max_high = local_max_high.reset_index()
-                local_min_high = local_min_high.rename({"High": 'min_high'}, axis='columns')
-                local_max_low = self.data.Low[
-                    (self.data.Low.shift(1) < self.data.Low) & (self.data.Low.shift(-1) < self.data.Low)]
-                local_min_low = self.data.Low[
-                    (self.data.Low.shift(1) > self.data.Low) & (self.data.Low.shift(-1) > self.data.Low)]
-                local_min_low = local_min_low.rename({"Low": 'min_low'}, axis='columns')
+                local_max_low = data.iloc[argrelextrema(data.Low.values, np.less_equal,
+                                                             order=2)[0]]
 
-                local_max_low = local_max_low.rename({"Low": 'max_low'}, axis='columns')
-                # local_min_low = local_min_low.reset_index()
-                local_max_high = local_max_high.rename({"High": 'max_high'}, axis='columns')
+                # local_max_low = local_max_low.rename({"Low": 'max_low'}, axis='columns')
+                # local_max_high = local_max_high.rename({"High": 'max_high'}, axis='columns')
 
                 # After finding min and max values, we can look for local mins and maxes by iterating
-                new_set = pd.concat(
-                    [local_max_low, local_max_high, local_min_low, local_min_high]).sort_index().reset_index()
-                new_set.columns = ['Index', 'Vals']
-                new_set = new_set.drop(['Index'], axis=1)
+                new_set = pd.concat([local_max_high,local_max_low]).sort_values(by=['Date']).drop_duplicates().reset_index()
 
+                new_set['High'] = new_set['High'].astype('float')
+                self.data['High'] = self.data['High'].astype('float')
+                data['High'] = data['High'].astype('float')
+                new_set['Low'] = new_set['Low'].astype('float')
+                self.data['Low'] = self.data['Low'].astype('float')
+                data['Low'] = data['Low'].astype('float')
+                # new_set.columns = ['Index', 'Vals']
+                pd.set_option('display.max_columns', None)
+                print(new_set)
                 # attempt upwards fib
-                if not self.data['Close'].iloc[-1] < new_set['Vals'].iloc[0]:
-                    try:
-                        val1, val2, val3 = self.upwards_fib(new_set)
+
+            if data['High'].iloc[-1] >= new_set['High'].max():
+                try:
+                    val1, val2, val3 = self.upwards_fib(new_set)
+                    # calculate values  -- 14 vals
+                    self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
+                                                             '0.236': [self.fib_help(val1, val2, val3, 0.236)],
+                                                             '0.241': [self.fib_help(val1, val2, val3, 0.241)],
+                                                             '0.273': [self.fib_help(val1, val2, val3, 0.273)],
+                                                             '0.283': [self.fib_help(val1, val2, val3, 0.283)],
+                                                             '0.316': [self.fib_help(val1, val2, val3, 0.316)],
+                                                             '0.382': [self.fib_help(val1, val2, val3, 0.382)],
+                                                             '0.5': [self.fib_help(val1, val2, val3, 0.5)],
+                                                             '0.618': [self.fib_help(val1, val2, val3, 0.618)],
+                                                             '0.796': [self.fib_help(val1, val2, val3, 0.796)],
+                                                             '1.556': [self.fib_help(val1, val2, val3, 1.556)],
+                                                             '2.493': [self.fib_help(val1, val2, val3, 2.493)],
+                                                             '3.43': [self.fib_help(val1, val2, val3, 3.43)],
+                                                             '3.83': [self.fib_help(val1, val2, val3, 3.83)],
+                                                             '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
+                    self.insert_fib_vals(skip_db=skip_db,interval=interval)  # insert to db
+                except Exception as e:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(fname,exc_type,exc_obj,exc_tb.tb_lineno)
+            else:
+                try:
+                    val1, val2, val3 = self.downwards_fib(new_set)
+                    if self.fibonacci_extension.empty:  # If upwards fails, initialize here
                         # calculate values  -- 14 vals
                         self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
                                                                  '0.236': [self.fib_help(val1, val2, val3, 0.236)],
@@ -1114,71 +1162,29 @@ val1    val3_________________________          vall2
                                                                  '3.83': [self.fib_help(val1, val2, val3, 3.83)],
                                                                  '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
                         self.insert_fib_vals(skip_db=skip_db,interval=interval)  # insert to db
-                    except Exception as e:
-                        exc_type, exc_obj, exc_tb = sys.exc_info()
-                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                        print(fname,exc_type,exc_obj,exc_tb.tb_lineno)
-                else:
-                    try:
-                        val1, val2, val3 = self.downwards_fib(new_set)
-                        if self.fibonacci_extension.empty:  # If upwards fails, initialize here
-                            # calculate values  -- 14 vals
-                            self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
-                                                                     '0.236': [self.fib_help(val1, val2, val3, 0.236)],
-                                                                     '0.241': [self.fib_help(val1, val2, val3, 0.241)],
-                                                                     '0.273': [self.fib_help(val1, val2, val3, 0.273)],
-                                                                     '0.283': [self.fib_help(val1, val2, val3, 0.283)],
-                                                                     '0.316': [self.fib_help(val1, val2, val3, 0.316)],
-                                                                     '0.382': [self.fib_help(val1, val2, val3, 0.382)],
-                                                                     '0.5': [self.fib_help(val1, val2, val3, 0.5)],
-                                                                     '0.618': [self.fib_help(val1, val2, val3, 0.618)],
-                                                                     '0.796': [self.fib_help(val1, val2, val3, 0.796)],
-                                                                     '1.556': [self.fib_help(val1, val2, val3, 1.556)],
-                                                                     '2.493': [self.fib_help(val1, val2, val3, 2.493)],
-                                                                     '3.43': [self.fib_help(val1, val2, val3, 3.43)],
-                                                                     '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                                                                     '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
-                        else:  # else, append
-                            self.fibonacci_extension = self.fibonacci_extension.append(
-                                {'0.202': [self.fib_help(val1, val2, val3, 0.202)],
-                                 '0.236': [self.fib_help(val1, val2, val3, 0.236)],
-                                 '0.241': [self.fib_help(val1, val2, val3, 0.241)],
-                                 '0.273': [self.fib_help(val1, val2, val3, 0.273)],
-                                 '0.283': [self.fib_help(val1, val2, val3, 0.283)],
-                                 '0.316': [self.fib_help(val1, val2, val3, 0.316)],
-                                 '0.382': [self.fib_help(val1, val2, val3, 0.382)],
-                                 '0.5': [self.fib_help(val1, val2, val3, 0.5)],
-                                 '0.618': [self.fib_help(val1, val2, val3, 0.618)],
-                                 '0.796': [self.fib_help(val1, val2, val3, 0.796)],
-                                 '1.556': [self.fib_help(val1, val2, val3, 1.556)],
-                                 '2.493': [self.fib_help(val1, val2, val3, 2.493)],
-                                 '3.43': [self.fib_help(val1, val2, val3, 3.43)],
-                                 '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                                 '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
+                    else:  # else, append
+                        self.fibonacci_extension = self.fibonacci_extension.append(
+                            {'0.202': [self.fib_help(val1, val2, val3, 0.202)],
+                             '0.236': [self.fib_help(val1, val2, val3, 0.236)],
+                             '0.241': [self.fib_help(val1, val2, val3, 0.241)],
+                             '0.273': [self.fib_help(val1, val2, val3, 0.273)],
+                             '0.283': [self.fib_help(val1, val2, val3, 0.283)],
+                             '0.316': [self.fib_help(val1, val2, val3, 0.316)],
+                             '0.382': [self.fib_help(val1, val2, val3, 0.382)],
+                             '0.5': [self.fib_help(val1, val2, val3, 0.5)],
+                             '0.618': [self.fib_help(val1, val2, val3, 0.618)],
+                             '0.796': [self.fib_help(val1, val2, val3, 0.796)],
+                             '1.556': [self.fib_help(val1, val2, val3, 1.556)],
+                             '2.493': [self.fib_help(val1, val2, val3, 2.493)],
+                             '3.43': [self.fib_help(val1, val2, val3, 3.43)],
+                             '3.83': [self.fib_help(val1, val2, val3, 3.83)],
+                             '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
 
-                    except Exception as e:
-                        exc_type, exc_obj, exc_tb = sys.exc_info()
-                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                        print(exc_type, fname, exc_tb.tb_lineno)
-                        val1, val2, val3 = self.upwards_fib(new_set)
-                        # calculate values  -- 14 vals
-                        self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
-                                                                 '0.236': [self.fib_help(val1, val2, val3, 0.236)],
-                                                                 '0.241': [self.fib_help(val1, val2, val3, 0.241)],
-                                                                 '0.273': [self.fib_help(val1, val2, val3, 0.273)],
-                                                                 '0.283': [self.fib_help(val1, val2, val3, 0.283)],
-                                                                 '0.316': [self.fib_help(val1, val2, val3, 0.316)],
-                                                                 '0.382': [self.fib_help(val1, val2, val3, 0.382)],
-                                                                 '0.5': [self.fib_help(val1, val2, val3, 0.5)],
-                                                                 '0.618': [self.fib_help(val1, val2, val3, 0.618)],
-                                                                 '0.796': [self.fib_help(val1, val2, val3, 0.796)],
-                                                                 '1.556': [self.fib_help(val1, val2, val3, 1.556)],
-                                                                 '2.493': [self.fib_help(val1, val2, val3, 2.493)],
-                                                                 '3.43': [self.fib_help(val1, val2, val3, 3.43)],
-                                                                 '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                                                                 '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
-                        self.insert_fib_vals(skip_db=skip_db,interval=interval)  # insert to db
-
+                except Exception as e:
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(exc_type, fname, exc_tb.tb_lineno)
+                    val1, val2, val3 = self.upwards_fib(new_set)
         try:
             self.fibonacci_extension = self.fibonacci_extension.drop(['index'],axis=1)
         except:
