@@ -398,7 +398,7 @@ class GUI(Thread_Pool):
         _executor = ThreadPoolExecutor(8)
         loop.set_default_executor(_executor)
         while True:
-            time.sleep(2)
+            time.sleep(0.2)
             if self.exited:
                 raise ChildProcessError('[INFO] Application Signal End.')
             self.obj = None
@@ -406,6 +406,8 @@ class GUI(Thread_Pool):
 
             jobs_list=[]
             # Queue for when the generate button is submitted and any other button actions go here
+            if self.job_queue.qsize() > 0:
+                self.start_loading()
             while self.job_queue.qsize() > 0:
                 self.is_retrieving = True
                 self.generate_button.grid_forget()
@@ -414,19 +416,15 @@ class GUI(Thread_Pool):
             try:
                 [await job for job in jobs_list]
             except Exception as e:  # Already started the thread, ignore, add back to queue
-                print(f"[INFO] Failed to gather async job tasking from tasking loop!\nException:\n\t{e}")
+                print(f"[INFO] Couldn't gather async job tasking from tasking loop!\nException:\n\t{e}")
 
             # Reset Screen to original state
             try:
                 try:
-                    sys.stdout = open(os.devnull, 'w')
-                    self.join_workers()
                     gc.collect()
-                    sys.stdout = sys.__stdout__
                 except:
-                    sys.stdout = sys.__stdout__
                     pass
-                if self.is_empty() and len(self.threads) == 0:
+                if self.job_queue.empty():
                     self.is_retrieving = False
                     self.background_tasks_label.grid_forget()
                     self.generate_button.grid(column=3, row=2)
@@ -444,13 +442,15 @@ class GUI(Thread_Pool):
         _executor = ThreadPoolExecutor(8)
         loop.set_default_executor(_executor)
         while True:
-            time.sleep(2)
+            time.sleep(0.2)
             if self.exited:
                 raise ChildProcessError('[INFO] Application Signal End.')
             self.obj = None
             load_task: Task = None
 
             cached_list = []
+            if self.job_queue.qsize() > 0:
+                self.start_loading()
             # Queue for begin caching on stocks
             while self.cache_queue.qsize() > 0:
                 self.is_retrieving = True
@@ -459,6 +459,7 @@ class GUI(Thread_Pool):
                 tmp_thread = await self.cache_queue.get()
                 cached_list.append(tmp_thread)
             try:
+                self.start_loading()
                 [await item for item in cached_list]
             except Exception as e:  # Already started the thread, just add back, ignoring error
                 print(f"[INFO] Failed to gather async cached tasking from tasking loop!\nException:\n\t{e}")
@@ -474,7 +475,7 @@ class GUI(Thread_Pool):
                 except:
                     sys.stdout = sys.__stdout__
                     pass
-                if self.is_empty() and len(self.threads) == 0:
+                if self.cache_queue.empty():
                     self.is_retrieving = False
                     self.background_tasks_label.grid_forget()
                     self.generate_button.grid(column=3, row=2)

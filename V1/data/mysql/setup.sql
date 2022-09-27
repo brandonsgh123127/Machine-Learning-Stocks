@@ -14,7 +14,9 @@ FROM information_schema.tables
 WHERE table_schema = 'stocks' 
     AND table_name = 'dailydata'
 LIMIT 1;
-
+SELECT UPDATE_TIME, TABLE_NAME
+FROM   information_schema.tables
+WHERE  TABLE_SCHEMA = 'stocks';
 CREATE TABLE IF NOT EXISTS `Stocks`.`dailydata` (
   `data-id` VARBINARY(128) NOT NULL,
   `stock-id` VARBINARY(128) NOT NULL,
@@ -243,6 +245,10 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Daily-Study-Data` (
   `val14` DOUBLE(12, 3) NULL,
   `val15` DOUBLE(12, 3) NULL,
   `val16` DOUBLE(12, 3) NULL,
+  `val17` DOUBLE(12, 3) NULL,
+  `val18` DOUBLE(12, 3) NULL,
+  `val19` DOUBLE(12, 3) NULL,
+  `val20` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`Daily-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
@@ -268,6 +274,10 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Weekly-Study-Data` (
   `val14` DOUBLE(12, 3) NULL,
   `val15` DOUBLE(12, 3) NULL,
   `val16` DOUBLE(12, 3) NULL,
+    `val17` DOUBLE(12, 3) NULL,
+  `val18` DOUBLE(12, 3) NULL,
+  `val19` DOUBLE(12, 3) NULL,
+  `val20` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`Weekly-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
@@ -293,6 +303,10 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Monthly-Study-Data` (
   `val14` DOUBLE(12, 3) NULL,
   `val15` DOUBLE(12, 3) NULL,
   `val16` DOUBLE(12, 3) NULL,
+    `val17` DOUBLE(12, 3) NULL,
+  `val18` DOUBLE(12, 3) NULL,
+  `val19` DOUBLE(12, 3) NULL,
+  `val20` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`Monthly-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
@@ -318,6 +332,10 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`Yearly-Study-Data` (
   `val14` DOUBLE(12, 3) NULL,
   `val15` DOUBLE(12, 3) NULL,
   `val16` DOUBLE(12, 3) NULL,
+    `val17` DOUBLE(12, 3) NULL,
+  `val18` DOUBLE(12, 3) NULL,
+  `val19` DOUBLE(12, 3) NULL,
+  `val20` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`Yearly-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
@@ -343,6 +361,10 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`15m-Study-Data` (
   `val14` DOUBLE(12, 3) NULL,
   `val15` DOUBLE(12, 3) NULL,
   `val16` DOUBLE(12, 3) NULL,
+    `val17` DOUBLE(12, 3) NULL,
+  `val18` DOUBLE(12, 3) NULL,
+  `val19` DOUBLE(12, 3) NULL,
+  `val20` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`15m-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
@@ -368,6 +390,10 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`5m-Study-Data` (
   `val14` DOUBLE(12, 3) NULL,
   `val15` DOUBLE(12, 3) NULL,
   `val16` DOUBLE(12, 3) NULL,
+    `val17` DOUBLE(12, 3) NULL,
+  `val18` DOUBLE(12, 3) NULL,
+  `val19` DOUBLE(12, 3) NULL,
+  `val20` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`5m-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
@@ -393,6 +419,10 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`30m-Study-Data` (
   `val14` DOUBLE(12, 3) NULL,
   `val15` DOUBLE(12, 3) NULL,
   `val16` DOUBLE(12, 3) NULL,
+    `val17` DOUBLE(12, 3) NULL,
+  `val18` DOUBLE(12, 3) NULL,
+  `val19` DOUBLE(12, 3) NULL,
+  `val20` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`30m-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
@@ -443,9 +473,44 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`2h-Study-Data` (
   `val14` DOUBLE(12, 3) NULL,
   `val15` DOUBLE(12, 3) NULL,
   `val16` DOUBLE(12, 3) NULL,
+    `val17` DOUBLE(12, 3) NULL,
+  `val18` DOUBLE(12, 3) NULL,
+  `val19` DOUBLE(12, 3) NULL,
+  `val20` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`2h-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`4h-Study-Data` (
+  `id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `data-id` VARBINARY(128) NOT NULL,
+  `study-id` varbinary(128) NOT NULL,
+  `val1` DOUBLE(12, 3) NOT NULL,
+  `val2` DOUBLE(12, 3) NULL,
+  `val3` DOUBLE(12, 3) NULL,
+  `val4` DOUBLE(12, 3) NULL,
+  `val5` DOUBLE(12, 3) NULL,
+  `val6` DOUBLE(12, 3) NULL,
+  `val7` DOUBLE(12, 3) NULL,
+  `val8` DOUBLE(12, 3) NULL,
+  `val9` DOUBLE(12, 3) NULL,
+  `val10` DOUBLE(12, 3) NULL,
+  `val11` DOUBLE(12, 3) NULL,
+  `val12` DOUBLE(12, 3) NULL,
+  `val13` DOUBLE(12, 3) NULL,
+  `val14` DOUBLE(12, 3) NULL,
+  `val15` DOUBLE(12, 3) NULL,
+  `val16` DOUBLE(12, 3) NULL,
+    `val17` DOUBLE(12, 3) NULL,
+  `val18` DOUBLE(12, 3) NULL,
+  `val19` DOUBLE(12, 3) NULL,
+  `val20` DOUBLE(12, 3) NULL,
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `ids` ON stocks.`4h-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
+
+
 
 CREATE TABLE IF NOT EXISTS `Stocks`.`2d-Study-Data` (
   `id` VARBINARY(128) NOT NULL,
@@ -468,6 +533,10 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`2d-Study-Data` (
   `val14` DOUBLE(12, 3) NULL,
   `val15` DOUBLE(12, 3) NULL,
   `val16` DOUBLE(12, 3) NULL,
+    `val17` DOUBLE(12, 3) NULL,
+  `val18` DOUBLE(12, 3) NULL,
+  `val19` DOUBLE(12, 3) NULL,
+  `val20` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`2d-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
@@ -493,10 +562,13 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`4d-Study-Data` (
   `val14` DOUBLE(12, 3) NULL,
   `val15` DOUBLE(12, 3) NULL,
   `val16` DOUBLE(12, 3) NULL,
+    `val17` DOUBLE(12, 3) NULL,
+  `val18` DOUBLE(12, 3) NULL,
+  `val19` DOUBLE(12, 3) NULL,
+  `val20` DOUBLE(12, 3) NULL,
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`4d-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
-
 
 
 CREATE TABLE IF NOT EXISTS `Stocks`.`Daily-NN-Data` (

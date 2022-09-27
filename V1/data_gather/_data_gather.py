@@ -269,7 +269,7 @@ class Gather:
                         if update_self:
                             self.data = ticker_obj.history(interval=interval,
                                                            start=((start_date - datetime.timedelta(hours=3)).strftime(
-                                                               '%Y-%m-%d') if '5m' in interval else
+                                                               '%Y-%m-%d') if interval == '5m' else
                                                                    (start_date - datetime.timedelta(hours=18)).strftime(
                                                                       '%Y-%m-%d') if '15m' in interval else
                                                                     (start_date - datetime.timedelta(days=2)).strftime(
@@ -281,7 +281,7 @@ class Gather:
                         else:
                             data = ticker_obj.history(interval=interval,
                                                       start=((start_date - datetime.timedelta(hours=3)).strftime(
-                                                          '%Y-%m-%d') if '5m' in interval else
+                                                          '%Y-%m-%d') if interval == '5m' else
                                                              (start_date - datetime.timedelta(hours=18)).strftime(
                                                                  '%Y-%m-%d') if '15m' in interval else
                                                              (start_date - datetime.timedelta(days=2)).strftime(
@@ -319,7 +319,7 @@ class Gather:
                                     self.data = ticker_obj.history(interval=interval,
                                                                    start=((start_date - datetime.timedelta(
                                                                        hours=3)).strftime(
-                                                                       '%Y-%m-%d') if '5m' in interval else
+                                                                       '%Y-%m-%d') if interval == '5m' else
                                                                           (start_date - datetime.timedelta(
                                                                               hours=18)).strftime(
                                                                               '%Y-%m-%d') if '15m' in interval else
@@ -335,7 +335,7 @@ class Gather:
                                     data = ticker_obj.history(interval=interval,
                                                               start=(
                                                                   (start_date - datetime.timedelta(hours=3)).strftime(
-                                                                      '%Y-%m-%d') if '5m' in interval else
+                                                                      '%Y-%m-%d') if interval == '5m' else
                                                                   (start_date - datetime.timedelta(hours=18)).strftime(
                                                                       '%Y-%m-%d') if '15m' in interval else
                                                                   (start_date - datetime.timedelta(days=2)).strftime(

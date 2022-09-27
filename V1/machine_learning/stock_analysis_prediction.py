@@ -146,7 +146,21 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
     elif '1mo' in n_interval:
         dates = ((e_date - datetime.timedelta(days=600)).replace(day=1), e_date.replace(day=1))  # ~20 months
     elif '1y' not in n_interval:
-        dates = (e_date - datetime.timedelta(days=2), e_date)  # month worth of data
+        if n_interval == '5m':
+            s_date = e_date - datetime.timedelta(days=2)
+            if e_date.weekday() == 0:
+                s_date = s_date - datetime.timedelta(days=2)
+            dates = (s_date, e_date)  # month worth of data
+        if n_interval == '15m':
+            s_date = e_date - datetime.timedelta(days=3)
+            if e_date.weekday() == 0:
+                s_date = s_date - datetime.timedelta(days=2)
+            dates = (s_date, e_date)  # month worth of data
+        elif '30m' in n_interval:
+            dates = (e_date - datetime.timedelta(days=4), e_date)  # month worth of data
+        elif '1h' in n_interval:
+            dates = (e_date - datetime.timedelta(days=4), e_date)  # month worth of data
+
 
     _has_actuals = has_actuals
 
@@ -249,7 +263,12 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
     elif '1mo' in n_interval:
         dates = ((e_date - datetime.timedelta(months=15)).replace(day=1), e_date)  # ~20 months
     elif '1y' not in n_interval:
-        dates = (e_date - datetime.timedelta(days=2), e_date)  # months worth of data
+        if n_interval == '5m':
+            dates = (e_date - datetime.timedelta(days=2), e_date)  # months worth of data
+        if n_interval == '15m':
+            dates = (e_date - datetime.timedelta(days=4), e_date)  # months worth of data
+        if n_interval == '30m':
+            dates = (e_date - datetime.timedelta(days=5), e_date)  # months worth of data
     path = Path(os.getcwd()).absolute()
 
     task_list = []
@@ -287,4 +306,4 @@ if __name__ == "__main__":
                           'relu_2layer_l1l2': nn_list[2],
                           'relu_2layer_l1l2': nn_list[3]}
 
-    loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='1d'))
+    loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='15m'))

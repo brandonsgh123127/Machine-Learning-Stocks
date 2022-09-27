@@ -473,22 +473,50 @@ class Studies(Gather):
         else:  # val 3 is a lower high -- downwards
             return val3 - ((val2 - val1) * -fib_val)
 
-    def upwards_fib(self, new_set):
+    def upwards_fib(self, new_set, interval):
         try:
             # After this, iterate new list and find which direction stock may go
             val1 = None
             val2 = None
             val3 = None
+            new_set = new_set.iloc[0 if '1d' in interval else\
+                                    8 if '1wk' in interval else\
+                                    0 if '1mo' in interval else\
+                                    15 if interval =='5m' else\
+                                    0 if '15m' in interval else\
+                                    0 if '30m' in interval else\
+                                    0 if '1h' in interval else 0:]
+            try:
+                new_set = new_set.drop(columns=['index'])
+            except:
+                pass
+            new_set = new_set.reset_index()
+            if '1d' in interval:
+                max_cutoff = -4
+            elif '1wk' in interval:
+                max_cutoff = -5
+            elif '1mo' in interval:
+                max_cutoff = -5
+            elif interval == '5m':
+                max_cutoff = -20
+            elif '15m' in interval:
+                max_cutoff = -20
+            elif '30m' in interval:
+                max_cutoff = -10
+            elif '1h' in interval:
+                max_cutoff = -6
+            else:
+                max_cutoff = -5
             if len(new_set) == 0:
                 return val1, val2, val3
             for i, row in new_set.iterrows():  # reverse order iteration
                 if i == len(new_set) -1:
                     break
                 # if the next value is greater than prior , do upwards fib, else downwards
-                if new_set['Low'].idxmin() != len(new_set) - 2 or new_set['Low'].iloc[i+1] > row['Low']:
+                if new_set['Low'].idxmin() != len(new_set) - max_cutoff or new_set['Low'].iloc[i+1] > row['Low']:
                     val3 = row['Low']
 
-                    if new_set['Low'].idxmin() != len(new_set) - 2:
+                    if new_set['Low'].idxmin() != len(new_set) - max_cutoff:
                         i = new_set['Low'].idxmin()
 
                     # find val2 by finding next local high
@@ -496,10 +524,10 @@ class Studies(Gather):
                         if j <= i:
                             continue
                         # find val2 by making sure next local high is valid
-                        if float(new_set['High'].iloc[j + 1]) <= sub['High'] or (new_set['High'].idxmax() != len(new_set) - 2 and new_set['High'].idxmax() > new_set['Low'].idxmin()):
-                            val2 = sub['High']
+                        if float(new_set['High'].iloc[j + 1]) <= sub['High'] or (new_set['High'].idxmax() != len(new_set) - max_cutoff and new_set['High'].idxmax() > new_set['Low'].idxmin()):
+                            val2 = sub['High'] if float(new_set['High'].iloc[j + 1]) <= sub['High'] else new_set['High'].max()
 
-                            if (new_set['High'].idxmax() != len(new_set) - 2 and new_set['High'].idxmax() > new_set['Low'].idxmin()):
+                            if (new_set['High'].idxmax() != len(new_set) - max_cutoff and new_set['High'].idxmax() > new_set['Low'].idxmin()):
                                 j = new_set['High'].idxmax()
                             # find val3 by getting next low
                             if new_set['Low'].min() != val3:
@@ -520,39 +548,65 @@ class Studies(Gather):
                             continue
                     break
                 else:
-                    return self.upwards_fib(new_set[1:])
+                    return self.upwards_fib(new_set[1:], interval)
             return val1, val2, val3
-        except IndexError:
-            return None,None,None
         except:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
             print(exc_type, fname, exc_tb.tb_lineno)
 
-    def downwards_fib(self, new_set):
+    def downwards_fib(self, new_set, interval):
         try:
             # After this, iterate new list and find which direction stock may go
             val1 = None
             val2 = None
             val3 = None
+            new_set = new_set.iloc[0 if '1d' in interval else\
+                                    8 if '1wk' in interval else\
+                                    0 if '1mo' in interval else\
+                                    15 if interval =='5m' else\
+                                    0 if '15m' in interval else\
+                                    0 if '30m' in interval else\
+                                    0 if '1h' in interval else 0:]
+            try:
+                new_set = new_set.drop(columns=['index'])
+            except:
+                pass
+            new_set = new_set.reset_index()
+            if '1d' in interval:
+                max_cutoff = -4
+            elif '1wk' in interval:
+                max_cutoff = -5
+            elif '1mo' in interval:
+                max_cutoff = -5
+            elif interval == '5m':
+                max_cutoff = -20
+            elif '15m' in interval:
+                max_cutoff = -20
+            elif '30m' in interval:
+                max_cutoff = -10
+            elif '1h' in interval:
+                max_cutoff = -6
+            else:
+                max_cutoff = -5
             if len(new_set) == 0:
                 return val1, val2, val3
             for i, row in new_set.iterrows():  # reverse order iteration
                 if i == len(new_set) -1:
                     break
                 # if the next value is less than prior , do downwards fib, else
-                if new_set['High'].idxmax() != len(new_set) - 2 or new_set['High'].iloc[i+1] <= row['High']:
-                    val3 = new_set['High'].max() if new_set['High'].idxmax() != len(new_set) - 2 else row['High']
-                    if new_set['High'].idxmax() != len(new_set) - 2:
+                if new_set['High'].idxmax() != len(new_set) - max_cutoff or new_set['High'].iloc[i+1] <= row['High']:
+                    val3 = new_set['High'].max() if new_set['High'].idxmax() != len(new_set) - max_cutoff else row['High']
+                    if new_set['High'].idxmax() != len(new_set) - max_cutoff:
                         i = new_set['High'].idxmax()
                     # find val2 by finding next local high
                     for j, sub in new_set.iterrows():
                         if j <= i:
                             continue
                         # find val2 by making sure next local low is valid
-                        if float(new_set['Low'].iloc[j + 1]) >= sub['Low'] or (new_set['Low'].idxmin() != len(new_set) - 2 and new_set['Low'].idxmin() < new_set['High'].idxmax()):
-                            val2 = new_set['Low'].min() if (new_set['Low'].idxmin() != len(new_set) - 2 and new_set['Low'].idxmin() < new_set['High'].idxmax()) else sub['Low']
-                            if (new_set['Low'].idxmin() != len(new_set) - 2 and new_set['Low'].idxmin() < new_set['High'].idxmax()):
+                        if float(new_set['Low'].iloc[j + 1]) >= sub['Low'] or (new_set['Low'].idxmin() != len(new_set) - max_cutoff and new_set['Low'].idxmin() < new_set['High'].idxmax()):
+                            val2 = new_set['Low'].min() if (new_set['Low'].idxmin() != len(new_set) - max_cutoff and new_set['Low'].idxmin() < new_set['High'].idxmax()) else sub['Low']
+                            if (new_set['Low'].idxmin() != len(new_set) - max_cutoff and new_set['Low'].idxmin() < new_set['High'].idxmax()):
                                 j = new_set['Low'].idxmin()
                             # find val3 by getting next low
                             if new_set['High'].max() != val3:
@@ -572,7 +626,7 @@ class Studies(Gather):
                             continue
                     break
                 else:
-                    return self.downwards_fib(new_set[1:])
+                    return self.downwards_fib(new_set[1:], interval)
             return val1, val2, val3
         except:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -584,29 +638,29 @@ class Studies(Gather):
             is_utilizing_yfinance = False
             if '1d' in interval:
                 insert_studies_db_stmt = """REPLACE INTO `stocks`.`daily-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`) 
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`, `val16`,`val17`,`val18`,`val19`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """
             elif '1wk' in interval:
                 insert_studies_db_stmt = """REPLACE INTO `stocks`.`weekly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                                `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`) 
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                                `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`, `val16`,`val17`,`val18`,`val19`) 
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         """
             elif '1wk' in interval:
                 insert_studies_db_stmt = """REPLACE INTO `stocks`.`monthly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`) 
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`, `val16`,`val17`,`val18`,`val19`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """
             elif '1y' in interval:
                 insert_studies_db_stmt = """REPLACE INTO `stocks`.`yearly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`) 
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`,`val16`,`val17`,`val18`,`val19`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """
             else:
                 is_utilizing_yfinance = True
                 insert_studies_db_stmt = f"""REPLACE INTO `stocks`.`{interval}-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
-                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`) 
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                            `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,`val11`,`val12`,`val13`,`val14`,`val15`, `val16`,`val17`,`val18`,`val19`) 
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """
 
             insert_list = []
@@ -630,9 +684,14 @@ class Studies(Gather):
                         self.fibonacci_extension.at[0, "0.796"],
                         self.fibonacci_extension.at[0, "1.556"],
                         self.fibonacci_extension.at[0, "2.493"],
+                        self.fibonacci_extension.at[0, "2.86"],
                         self.fibonacci_extension.at[0, "3.43"],
                         self.fibonacci_extension.at[0, "3.83"],
-                        self.fibonacci_extension.at[0, "5.44"])
+                        self.fibonacci_extension.at[0, "5.44"],
+                        self.fibonacci_extension.at[0, "8.23"],
+                        self.fibonacci_extension.at[0, "9.55"],
+                        self.fibonacci_extension.at[0, "11.13"],
+                    )
 
                 else:
                     insert_tuple = (
@@ -652,9 +711,14 @@ class Studies(Gather):
                         self.fibonacci_extension.at[0, "0.796"],
                         self.fibonacci_extension.at[0, "1.556"],
                         self.fibonacci_extension.at[0, "2.493"],
+                        self.fibonacci_extension.at[0, "2.86"],
                         self.fibonacci_extension.at[0, "3.43"],
                         self.fibonacci_extension.at[0, "3.83"],
-                        self.fibonacci_extension.at[0, "5.44"])
+                        self.fibonacci_extension.at[0, "5.44"],
+                        self.fibonacci_extension.at[0, "8.23"],
+                        self.fibonacci_extension.at[0, "9.55"],
+                        self.fibonacci_extension.at[0, "11.13"],
+                    )
                 insert_list.append(insert_tuple)  # add tuple to list
                 # duplicate row by 1
                 self.fibonacci_extension = self.fibonacci_extension.append([self.fibonacci_extension.iloc[0]] * 1,
@@ -769,7 +833,7 @@ val1    val3_________________________          vall2
             new_data = pd.DataFrame(columns=['Date', 'Open', 'High', 'Low', 'Close', 'Adj. Close'])
             fib_data = pd.DataFrame(
                 columns=['0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
-                         '1.556', '2.493', '3.43', '3.83', '5.44'])
+                         '1.556', '2.493', '2.86', '3.43', '3.83', '5.44', '8.23','9.55','11.13'])
             try:
                 self.fib_cnx.close()
             except:
@@ -898,7 +962,10 @@ val1    val3_________________________          vall2
                 `stocks`.`daily-study-data`.`val7`,`stocks`.`daily-study-data`.`val8`,
                 `stocks`.`daily-study-data`.`val9`,`stocks`.`daily-study-data`.`val10`,
                 `stocks`.`daily-study-data`.`val11`,`stocks`.`daily-study-data`.`val12`,
-                `stocks`.`daily-study-data`.`val13`,`stocks`.`daily-study-data`.`val14`,`stocks`.`daily-study-data`.`val15` 
+                `stocks`.`daily-study-data`.`val13`,`stocks`.`daily-study-data`.`val14`,
+                `stocks`.`daily-study-data`.`val15`,
+                `stocks`.`daily-study-data`.`val16`,`stocks`.`daily-study-data`.`val17`,
+                `stocks`.`daily-study-data`.`val18`,`stocks`.`daily-study-data`.`val19` 
                  FROM stocks.`dailydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
                 ON `stocks`.`dailydata`.`stock-id` = stocks.stock.`id` 
                   AND stocks.stock.`stock` = %(stock)s
@@ -917,7 +984,10 @@ val1    val3_________________________          vall2
                 `stocks`.`weekly-study-data`.`val7`,`stocks`.`weekly-study-data`.`val8`,
                 `stocks`.`weekly-study-data`.`val9`,`stocks`.`weekly-study-data`.`val10`,
                 `stocks`.`weekly-study-data`.`val11`,`stocks`.`weekly-study-data`.`val12`,
-                `stocks`.`weekly-study-data`.`val13`,`stocks`.`weekly-study-data`.`val14`,`stocks`.`weekly-study-data`.`val15`
+                `stocks`.`weekly-study-data`.`val13`,`stocks`.`weekly-study-data`.`val14`,
+                `stocks`.`weekly-study-data`.`val15`,`stocks`.`weekly-study-data`.`val16`,
+                `stocks`.`weekly-study-data`.`val17`,
+                `stocks`.`weekly-study-data`.`val18`,`stocks`.`weekly-study-data`.`val19`
                  FROM stocks.`weeklydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
                 ON `stocks`.`weeklydata`.`stock-id` = stocks.stock.`id` 
                   AND stocks.stock.`stock` = %(stock)s
@@ -936,7 +1006,12 @@ val1    val3_________________________          vall2
                 `stocks`.`monthly-study-data`.`val7`,`stocks`.`monthly-study-data`.`val8`,
                 `stocks`.`monthly-study-data`.`val9`,`stocks`.`monthly-study-data`.`val10`,
                 `stocks`.`monthly-study-data`.`val11`,`stocks`.`monthly-study-data`.`val12`,
-                `stocks`.`monthly-study-data`.`val13`,`stocks`.`monthly-study-data`.`val14`,`stocks`.`monthly-study-data`.`val15` 
+                `stocks`.`monthly-study-data`.`val13`,`stocks`.`monthly-study-data`.`val14`,
+                `stocks`.`monthly-study-data`.`val15`,`stocks`.`monthly-study-data`.`val16`,
+                `stocks`.`monthly-study-data`.`val15`,`stocks`.`monthly-study-data`.`val16`,
+                `stocks`.`monthly-study-data`.`val17`,
+                `stocks`.`monthly-study-data`.`val18`,`stocks`.`monthly-study-data`.`val19`
+
                  FROM stocks.`monthlydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
                 ON `stocks`.`monthlydata`.`stock-id` = stocks.stock.`id` 
                   AND stocks.stock.`stock` = %(stock)s
@@ -955,7 +1030,10 @@ val1    val3_________________________          vall2
                 `stocks`.`yearly-study-data`.`val7`,`stocks`.`yearly-study-data`.`val8`,
                 `stocks`.`yearly-study-data`.`val9`,`stocks`.`yearly-study-data`.`val10`,
                 `stocks`.`yearly-study-data`.`val11`,`stocks`.`yearly-study-data`.`val12`,
-                `stocks`.`yearly-study-data`.`val13`,`stocks`.`yearly-study-data`.`val14`,`stocks`.`yearly-study-data`.`val15` 
+                `stocks`.`yearly-study-data`.`val13`,`stocks`.`yearly-study-data`.`val14`,
+                `stocks`.`yearly-study-data`.`val15`,`stocks`.`yearly-study-data`.`val16`,
+                `stocks`.`yearly-study-data`.`val17`,
+                `stocks`.`yearly-study-data`.`val18`,`stocks`.`yearly-study-data`.`val19`
                  FROM stocks.`yearlydata` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
                 ON `stocks`.`yearlydata`.`stock-id` = stocks.stock.`id` 
                   AND stocks.stock.`stock` = %(stock)s
@@ -974,7 +1052,10 @@ val1    val3_________________________          vall2
                 `stocks`.`{interval}-study-data`.`val7`,`stocks`.`{interval}-study-data`.`val8`,
                 `stocks`.`{interval}-study-data`.`val9`,`stocks`.`{interval}-study-data`.`val10`,
                 `stocks`.`{interval}-study-data`.`val11`,`stocks`.`{interval}-study-data`.`val12`,
-                `stocks`.`{interval}-study-data`.`val13`,`stocks`.`{interval}-study-data`.`val14`,`stocks`.`{interval}-study-data`.`val15`
+                `stocks`.`{interval}-study-data`.`val13`,`stocks`.`{interval}-study-data`.`val14`,
+                `stocks`.`{interval}-study-data`.`val15`,`stocks`.`{interval}-study-data`.`val16`,
+                `stocks`.`{interval}-study-data`.`val17`,
+                `stocks`.`{interval}-study-data`.`val18`,`stocks`.`{interval}-study-data`.`val19`
                  FROM stocks.`{interval}data` USE INDEX (`id-and-date`) INNER JOIN stocks.stock 
                 ON `stocks`.`{interval}data`.`stock-id` = stocks.stock.`id` 
                   AND stocks.stock.`stock` = %(stock)s
@@ -1039,8 +1120,14 @@ val1    val3_________________________          vall2
                                                         '0.382': r[7], '0.5': r[8],
                                                         '0.618': r[9], '0.796': r[10],
                                                         '1.556': r[11], '2.493': r[12],
-                                                        '3.43': r[13],
-                                                        '3.83': r[14], '5.44': r[15]},
+                                                        '2.86': r[13],
+                                                        '3.43': r[14],
+                                                        '3.83': r[15],
+                                                        '5.44': r[16],
+                                                        '8.23': r[17],
+                                                        '9.55': r[18],
+                                                        '11.13': r[19],
+                                                        },
                                                        ignore_index=True)
                             # check if date is there, if not fail this
                             if date in date_range:
@@ -1078,8 +1165,12 @@ val1    val3_________________________          vall2
             1.556
             2.73
             5.44
+            8.23
+            9.55
+            2.86
             3.83
             3.43
+            11.13
             '''
             # Find greatest/least 3 points for pattern
 
@@ -1116,9 +1207,9 @@ val1    val3_________________________          vall2
                 pd.set_option('display.max_columns', None)
                 # attempt upwards fib
 
-            if data['High'].iloc[-1] >= new_set['High'].max():
+            if data['High'].iloc[-1] >= new_set['High'].iloc[0]:
                 try:
-                    val1, val2, val3 = self.upwards_fib(new_set)
+                    val1, val2, val3 = self.upwards_fib(new_set, interval)
                     # calculate values  -- 14 vals
                     self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
                                                              '0.236': [self.fib_help(val1, val2, val3, 0.236)],
@@ -1132,9 +1223,14 @@ val1    val3_________________________          vall2
                                                              '0.796': [self.fib_help(val1, val2, val3, 0.796)],
                                                              '1.556': [self.fib_help(val1, val2, val3, 1.556)],
                                                              '2.493': [self.fib_help(val1, val2, val3, 2.493)],
+                                                             '2.86': [self.fib_help(val1, val2, val3, 2.86)],
                                                              '3.43': [self.fib_help(val1, val2, val3, 3.43)],
                                                              '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                                                             '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
+                                                             '5.44': [self.fib_help(val1, val2, val3, 5.44)],
+                                                             '8.23': [self.fib_help(val1, val2, val3, 8.23)],
+                                                             '9.55': [self.fib_help(val1, val2, val3, 9.55)],
+                                                             '11.13': [self.fib_help(val1, val2, val3, 11.13)]
+                                                             })
                     self.insert_fib_vals(skip_db=skip_db,interval=interval)  # insert to db
                 except Exception as e:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -1142,7 +1238,7 @@ val1    val3_________________________          vall2
                     print(fname,exc_type,exc_obj,exc_tb.tb_lineno)
             else:
                 try:
-                    val1, val2, val3 = self.downwards_fib(new_set)
+                    val1, val2, val3 = self.downwards_fib(new_set, interval)
                     if self.fibonacci_extension.empty:  # If upwards fails, initialize here
                         # calculate values  -- 14 vals
                         self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
@@ -1157,9 +1253,15 @@ val1    val3_________________________          vall2
                                                                  '0.796': [self.fib_help(val1, val2, val3, 0.796)],
                                                                  '1.556': [self.fib_help(val1, val2, val3, 1.556)],
                                                                  '2.493': [self.fib_help(val1, val2, val3, 2.493)],
+                                                                 '2.86': [self.fib_help(val1, val2, val3, 2.86)],
                                                                  '3.43': [self.fib_help(val1, val2, val3, 3.43)],
                                                                  '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                                                                 '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
+                                                                 '5.44': [self.fib_help(val1, val2, val3, 5.44)],
+                                                                 '8.23': [self.fib_help(val1, val2, val3, 8.23)],
+                                                                 '9.55': [self.fib_help(val1, val2, val3, 9.55)],
+                                                                 '11.13': [self.fib_help(val1, val2, val3, 11.13)]
+                                                                 })
+
                         self.insert_fib_vals(skip_db=skip_db,interval=interval)  # insert to db
                     else:  # else, append
                         self.fibonacci_extension = self.fibonacci_extension.append(
@@ -1175,15 +1277,20 @@ val1    val3_________________________          vall2
                              '0.796': [self.fib_help(val1, val2, val3, 0.796)],
                              '1.556': [self.fib_help(val1, val2, val3, 1.556)],
                              '2.493': [self.fib_help(val1, val2, val3, 2.493)],
+                             '2.86': [self.fib_help(val1, val2, val3, 2.86)],
                              '3.43': [self.fib_help(val1, val2, val3, 3.43)],
                              '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                             '5.44': [self.fib_help(val1, val2, val3, 5.44)]})
+                             '5.44': [self.fib_help(val1, val2, val3, 5.44)],
+                             '8.23': [self.fib_help(val1, val2, val3, 8.23)],
+                             '9.55': [self.fib_help(val1, val2, val3, 9.55)],
+                             '11.13': [self.fib_help(val1, val2, val3, 11.13)]
+                             })
 
                 except Exception as e:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                     print(exc_type, fname, exc_tb.tb_lineno)
-                    val1, val2, val3 = self.upwards_fib(new_set)
+                    val1, val2, val3 = self.upwards_fib(new_set, interval)
         try:
             self.fibonacci_extension = self.fibonacci_extension.drop(['index'],axis=1)
         except:

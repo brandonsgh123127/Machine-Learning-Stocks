@@ -92,11 +92,12 @@ class Display:
                 try:
                     fib_display = fib_display.set_axis(
                         ['index', '0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
-                         '1.556', '2.493', '3.43', '3.83', '5.44'], 1)
+                         '1.556', '2.493', '2.86', '3.43', '3.83', '5.44','8.23','9.55','11.13'], 1)
                 except:
                     fib_display = fib_display.set_axis(
                         ['0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
-                         '1.556', '2.493', '3.43', '3.83', '5.44'], 1)
+                         '1.556', '2.493', '2.86', '3.43', '3.83', '5.44','8.23', '9.55','11.13'], 1)
+                perc_target = 0.15
                 # fib_display = fib_display.loc[fib_display.index.repeat(len(self.keltner_display.index) + 2)]
                 fib_display['0.202'].transpose().plot.line(ax=self.axes[row, col], color='blue', x='0.202', y='0.202')
                 fib_display['0.236'].transpose().plot.line(ax=self.axes[row, col], color='blue')
@@ -110,43 +111,56 @@ class Display:
                 fib_display['0.796'].transpose().plot.line(ax=self.axes[row, col], color='brown')
                 fib_display['1.556'].transpose().plot.line(ax=self.axes[row, col], color='blue')
                 fib_display['2.493'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                fib_display['3.43'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                fib_display['3.83'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                fib_display['5.44'].transpose().plot.line(ax=self.axes[row, col], color='pink')
+                fib_display['2.86'].transpose().plot.line(ax=self.axes[row, col], color='blue')
+                if 1 - (fib_display['3.43'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
+                    fib_display['3.43'].transpose().plot.line(ax=self.axes[row, col], color='brown')
+                if 1 - (fib_display['3.83'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
+                    fib_display['3.83'].transpose().plot.line(ax=self.axes[row, col], color='brown')
+                if 1 - (fib_display['5.44'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
+                    fib_display['5.44'].transpose().plot.line(ax=self.axes[row, col], color='pink')
+                if 1 - (fib_display['5.44'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
+                    fib_display['8.23'].transpose().plot.line(ax=self.axes[row, col], color='orange')
+                if 1 - (fib_display['9.55'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
+                    fib_display['9.55'].transpose().plot.line(ax=self.axes[row, col], color='pink')
+                if 1 - (fib_display['11.13'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
+                    fib_display['11.13'].transpose().plot.line(ax=self.axes[row, col], color='black')
                 fib_display = fib_display.reset_index(drop=True)
-            except:
+            except Exception as e:
+                print(f'failed to do fib_display: {e}')
                 pass
         if has_actuals:
             bplot = data.transpose().boxplot(ax=self.axes[row, col], patch_artist=True,
                                      boxprops=dict(facecolor='red' if float(data.iloc[-1]['Close']) < float(
-                                         data.iloc[-2]['Close']) else 'green'),
+                                         data.iloc[-1]['Open']) else 'green'),
                                      capprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(
-                                         data.iloc[-2]['Close']) else 'green'),
+                                         data.iloc[-1]['Open']) else 'green'),
                                      showfliers=False,
                                      showcaps=False,
                                      flierprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(
-                                         data.iloc[-2]['Close']) else 'green',
+                                         data.iloc[-1]['Open']) else 'green',
                                                      markeredgecolor='red' if float(data.iloc[-1]['Close']) < float(
                                                          data.iloc[-2]['Close']) else 'green'),
                                      medianprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(
-                                         data.iloc[-2]['Close']) else 'green'),
+                                         data.iloc[-1]['Open']) else 'green'),
                                      autorange=True)
         else:
             data = data.astype('float')
             data.transpose().boxplot(ax=self.axes[row, col], patch_artist=True,
                                      boxprops=dict(facecolor='red' if float(data.iloc[-1]['Close']) < float(
-                                         data.iloc[-2]['Close']) else 'green'),
+                                         data.iloc[-1]['Open']) else 'green'),
                                      capprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(
-                                         data.iloc[-2]['Close']) else 'green'),
+                                         data.iloc[-1]['Open']) else 'green'),
                                      showfliers=False,
                                      showcaps=False,
                                      flierprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(
-                                         data.iloc[-2]['Close']) else 'green',
+                                         data.iloc[-1]['Open']) else 'green',
                                                      markeredgecolor='red' if float(data.iloc[-1]['Close']) < float(
-                                                         data.iloc[-2]['Close']) else 'green'),
+                                                         data.iloc[-1]['Open']) else 'green'),
                                      medianprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(
-                                         data.iloc[-2]['Close']) else 'green'),
+                                         data.iloc[-1]['Open']) else 'green'),
                                      autorange=True)
+            if (row == 0 and col == 0) or (row == 1 and col == 1):
+                self.axes[row, col].margins(x=0, y=0)
             color_identifiers = queue.Queue()
             for i,d in data.iterrows():
                 color_identifiers.put('red' if float(data.iloc[i]['Close']) < float(
