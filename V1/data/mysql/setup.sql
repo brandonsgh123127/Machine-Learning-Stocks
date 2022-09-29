@@ -155,6 +155,22 @@ CREATE INDEX `id-and-date` ON stocks.`1hdata` (`data-id`,`stock-id`,`date`);
 CREATE INDEX `stockid-and-date` ON stocks.`1hdata` (`stock-id`,`date`);
 CREATE INDEX `date` ON stocks.`1hdata` (`date`);
 
+CREATE TABLE IF NOT EXISTS `Stocks`.`60mdata` (
+  `data-id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `date` DATETIME NOT NULL,
+  `open` DOUBLE(12, 3) NOT NULL,
+  `high` DOUBLE(12, 3) NOT NULL,
+  `low` DOUBLE(12, 3) NOT NULL,
+  `close` DOUBLE(12, 3) NOT NULL,
+  `adj-close` DOUBLE(12, 3) NOT NULL,
+  PRIMARY KEY (`data-id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `id-and-date` ON stocks.`60mdata` (`data-id`,`stock-id`,`date`);
+CREATE INDEX `stockid-and-date` ON stocks.`60mdata` (`stock-id`,`date`);
+CREATE INDEX `date` ON stocks.`60mdata` (`date`);
+
+
 CREATE TABLE IF NOT EXISTS `Stocks`.`2hdata` (
   `data-id` VARBINARY(128) NOT NULL,
   `stock-id` VARBINARY(128) NOT NULL,
@@ -426,6 +442,35 @@ CREATE TABLE IF NOT EXISTS `Stocks`.`30m-Study-Data` (
   PRIMARY KEY (`id`))
 ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
 CREATE INDEX `ids` ON stocks.`30m-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
+
+CREATE TABLE IF NOT EXISTS `Stocks`.`60m-Study-Data` (
+  `id` VARBINARY(128) NOT NULL,
+  `stock-id` VARBINARY(128) NOT NULL,
+  `data-id` VARBINARY(128) NOT NULL,
+  `study-id` varbinary(128) NOT NULL,
+  `val1` DOUBLE(12, 3) NOT NULL,
+  `val2` DOUBLE(12, 3) NULL,
+  `val3` DOUBLE(12, 3) NULL,
+  `val4` DOUBLE(12, 3) NULL,
+  `val5` DOUBLE(12, 3) NULL,
+  `val6` DOUBLE(12, 3) NULL,
+  `val7` DOUBLE(12, 3) NULL,
+  `val8` DOUBLE(12, 3) NULL,
+  `val9` DOUBLE(12, 3) NULL,
+  `val10` DOUBLE(12, 3) NULL,
+  `val11` DOUBLE(12, 3) NULL,
+  `val12` DOUBLE(12, 3) NULL,
+  `val13` DOUBLE(12, 3) NULL,
+  `val14` DOUBLE(12, 3) NULL,
+  `val15` DOUBLE(12, 3) NULL,
+  `val16` DOUBLE(12, 3) NULL,
+    `val17` DOUBLE(12, 3) NULL,
+  `val18` DOUBLE(12, 3) NULL,
+  `val19` DOUBLE(12, 3) NULL,
+  `val20` DOUBLE(12, 3) NULL,
+  PRIMARY KEY (`id`))
+ENGINE = InnoDB CHARACTER SET latin1 default CHARACTER SET latin1;
+CREATE INDEX `ids` ON stocks.`60m-Study-Data` (`id`,`stock-id`,`data-id`,`study-id`);
 
 CREATE TABLE IF NOT EXISTS `Stocks`.`1h-Study-Data` (
   `id` VARBINARY(128) NOT NULL,

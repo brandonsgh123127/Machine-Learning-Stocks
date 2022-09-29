@@ -485,7 +485,7 @@ class Studies(Gather):
                                     15 if interval =='5m' else\
                                     0 if '15m' in interval else\
                                     0 if '30m' in interval else\
-                                    0 if '1h' in interval else 0:]
+                                    0 if '60m' in interval else 0:]
             try:
                 new_set = new_set.drop(columns=['index'])
             except:
@@ -503,7 +503,7 @@ class Studies(Gather):
                 max_cutoff = 20
             elif '30m' in interval:
                 max_cutoff = 10
-            elif '1h' in interval:
+            elif '60m' in interval:
                 max_cutoff = 6
             else:
                 max_cutoff = 5
@@ -573,7 +573,7 @@ class Studies(Gather):
                                     15 if interval =='5m' else\
                                     0 if '15m' in interval else\
                                     0 if '30m' in interval else\
-                                    0 if '1h' in interval else 0:]
+                                    0 if '60m' in interval else 0:]
             try:
                 new_set = new_set.drop(columns=['index'])
             except:
@@ -591,7 +591,7 @@ class Studies(Gather):
                 max_cutoff = 20
             elif '30m' in interval:
                 max_cutoff = 10
-            elif '1h' in interval:
+            elif '60m' in interval:
                 max_cutoff = 6
             else:
                 max_cutoff = -5
@@ -1325,29 +1325,39 @@ val1    val3_________________________          vall2
                     if index == 0:  # previous close is not valid, so just do same day
                         prev_row = row
                         true_range = true_range.append(
-                            {'trueRange': max(row['High'] - row['Low'], row['High'] - row['Low'], row['Low'] - row['Low'])},
+                            {'trueRange': max(abs(row['High'] - row['Low']),
+                                              abs(row['High'] - row['Low']),
+                                              abs(row['Low'] - row['Low']))},
                             ignore_index=True)
                     else:  # get previous close vals
-                        true_range = true_range.append({'trueRange': max(row['High'] - row['Low'],
-                                                                         row['High'] - prev_row['Close'],
-                                                                         row['Low'] - prev_row['Close'])},
+                        try:
+                            contains_16 = row['Date'].hour == 16
+                            if contains_16:
+                                continue
+                        except Exception as e:
+                            print(e)
+                        true_range = true_range.append({'trueRange': max(abs(row['High'] - row['Low']),
+                                                                         abs(row['High'] - prev_row['Close']),
+                                                                         abs(row['Low'] - prev_row['Close']))},
                                                        ignore_index=True)
                         prev_row = row
-
-                        # iterate through keltner and calculate ATR
+                # iterate through keltner and calculate ATR
                 for index, row in self.data_cp.iterrows():
                     try:
-                        if index == 0 or index <= length or index == len(self.data_cp.index) - 1:
-                            avg_true_range = avg_true_range.append({'AvgTrueRange': 1.33},
+                        if index == len(self.data_cp.index) - 1:
+                            avg_true_range = avg_true_range.append({'AvgTrueRange': avg_true_range['AvgTrueRange'].iloc[index-1]},
+                                                                   ignore_index=True)  # add blank values
+                        elif index == 0 or index <= length:
+                            avg_true_range = avg_true_range.append({'AvgTrueRange': true_range.iloc[index]},
                                                                    ignore_index=True)  # add blank values
                         else:
                             end_atr = None
-                            for i in range(index - length - 1, index):  # go to range from index - length to index
+                            for i in range(index - length, index):  # go to range from index - length to index
                                 if end_atr is None:
-                                    end_atr = int(true_range['trueRange'][i:i + 1].to_numpy())
+                                    end_atr = float(true_range['trueRange'].iloc[i])
                                 else:
                                     # summation of all values
-                                    end_atr = int(end_atr + true_range['trueRange'][i:i + 1].to_numpy())
+                                    end_atr = float(end_atr + true_range['trueRange'].iloc[i])
                             end_atr = end_atr / length
                             avg_true_range = avg_true_range.append({'AvgTrueRange': end_atr}, ignore_index=True)
                     except Exception as e:
@@ -1372,13 +1382,16 @@ val1    val3_________________________          vall2
                 else:  # else
                     self.keltner = self.keltner.append({'middle': self.applied_studies[f'ema14'][index],
                                                         'upper': self.applied_studies[f'ema14'][index]
-                                                                 + float(factor * avg_true_range['AvgTrueRange'][
+                                                                 + (factor * avg_true_range['AvgTrueRange'][
                                                                                   index]),
                                                         'lower': self.applied_studies[f'ema14'][index]
                                                                  - (factor * avg_true_range['AvgTrueRange'][
                                                                              index])}
                                                        , ignore_index=True)
             except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
                 raise Exception("[Error] Failed to calculate Keltner Bands...\n", str(e))
         try:
             self.kelt_cnx = self.db_con.cursor()

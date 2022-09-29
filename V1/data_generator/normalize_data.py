@@ -105,7 +105,7 @@ class Normalizer():
                                     30 if interval =='5m' else\
                                     40 if '15m' in interval else\
                                     59 if '30m' in interval else\
-                                    120 if '1h' in interval else 40), initial_date,
+                                    120 if '60m' in interval else 40), initial_date,
                                                      force_generate=force_generate, skip_db=skip_db, interval=interval,ticker=ticker)
             self.studies = vals[1]
             self.data = vals[0]

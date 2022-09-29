@@ -326,6 +326,9 @@ class Gather:
                                                                           (start_date - datetime.timedelta(
                                                                               days=2)).strftime(
                                                                               '%Y-%m-%d') if '30m' in interval else (
+                                                                              start_date - datetime.timedelta(
+                                                                              days=4)).strftime(
+                                                                          '%Y-%m-%d') if '60m' in interval else(
                                                                                       start_date - datetime.timedelta(
                                                                                   days=5)).strftime(
                                                                               '%Y-%m-%d')),
@@ -341,7 +344,9 @@ class Gather:
                                                                   (start_date - datetime.timedelta(days=2)).strftime(
                                                                       '%Y-%m-%d') if '30m' in interval else (
                                                                               start_date - datetime.timedelta(
-                                                                          days=5)).strftime(
+                                                                          days=4)).strftime(
+                                                                      '%Y-%m-%d') if '60m' in interval else
+                                                                  (start_date - datetime.timedelta(days=2)).strftime(
                                                                       '%Y-%m-%d')),
                                                               end=(end_date + datetime.timedelta(days=6)).strftime(
                                                                   '%Y-%m-%d'))
@@ -483,7 +488,6 @@ class Gather:
                             data = data.drop(['Stock Splits'],axis=1)
                         except:
                             pass
-
                 if not skip_db:
                     # Append dates to database
                     for index, row in self.data.iterrows() if update_self else data.iterrows():

@@ -381,7 +381,7 @@ class GUI(Thread_Pool):
         # self.next_page_button.pack(side='bottom')
         self.cache_queue.put(self.load_dropdown())
         self.interval_dropdown = tk.OptionMenu(self.content, self.interval_text,
-                                               *['Daily', 'Weekly', 'Monthly', 'Yearly', '5m', '15m', '30m', '1h'])
+                                               *['Daily', 'Weekly', 'Monthly', 'Yearly', '5m', '15m', '30m', '60m'])
         self.interval_dropdown.grid(column=4, row=0)
         self.window.protocol("WM_DELETE_WINDOW", lambda: self.on_closing())
 
