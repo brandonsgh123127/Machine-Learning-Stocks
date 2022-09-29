@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 import os
 import pandas as pd
@@ -97,10 +98,15 @@ class Normalizer():
                 initial_date = valid_datetime
             else:
                 initial_date = date
-            self.gen.set_ticker(ticker)
-            vals = self.gen.generate_data_with_dates(initial_date - datetime.timedelta(days=40), initial_date,
-                                                     force_generate=force_generate, skip_db=skip_db, interval=interval)
-            await vals
+            await self.gen.set_ticker(ticker)
+            vals = await self.gen.generate_data_with_dates(initial_date - datetime.timedelta(days=60 if '1d' in interval else\
+                                    125 if '1wk' in interval else\
+                                    600 if '1mo' in interval else\
+                                    30 if interval =='5m' else\
+                                    40 if '15m' in interval else\
+                                    59 if '30m' in interval else\
+                                    120 if '1h' in interval else 40), initial_date,
+                                                     force_generate=force_generate, skip_db=skip_db, interval=interval,ticker=ticker)
             self.studies = vals[1]
             self.data = vals[0]
             self.fib = vals[2]
@@ -143,7 +149,8 @@ class Normalizer():
         else:
             date = None
         try:
-            self.mysql_read_data(ticker, date=date, skip_db=skip_db,interval=interval)
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(self.mysql_read_data(ticker, date=date, skip_db=skip_db,interval=interval))
         except Exception as e:
             print('[ERROR] Failed to read data!\n', str(e))
             raise RuntimeError(f'[ERROR] Failed to read data!',e)
@@ -178,25 +185,63 @@ class Normalizer():
             self.keltner = self.keltner.astype('float')
         except:
             print('[INFO] Couldn\'t convert keltner to type <float>')
-        self.normalized_data = pd.DataFrame((), columns=['Close EMA14 Euclidean', 'Close EMA30 Euclidean',
-                                                         'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
+        try:
+            self.fib = self.fib.astype('float')
+        except:
+            print('[INFO] Couldn\'t convert fibonacci sequence to type <float>')
+        self.normalized_data = pd.DataFrame((), columns=['Close EMA14 Distance', 'Close EMA30 Distance',
+                                                         'Close Fib1 Distance','Close Fib2 Distance', 'Num Consec Candle Dir',
                                                          'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
                                                          'Open',
                                                          'Close'])
-
+        target_fib1 = None
+        target_fib2 = None
+        last_3 = data['Close']
+        last_3_avg_close = last_3.mean()
+        i = 0
+        j = 0
+        direction = ''
+        if self.fib['0.273'].iloc[-1] < self.fib['0.283'].iloc[-1]: # get fib direction
+            direction = "+"
+        else:
+            direction = "-"
+        for index,item in self.fib.items():
+            if direction == "+": # Check if avg is greater than fib val, record
+                if last_3_avg_close > item.iloc[-1]:
+                    i = item.iloc[-1]
+                else:
+                    j = item.iloc[-1]
+                    break
+            else:
+                if last_3_avg_close < item.iloc[-1]:
+                    i = item.iloc[-1]
+                else:
+                    j = item.iloc[-1]
+                    break
+        target_fib2 = j
+        target_fib1 = i
         for index, row in data.iterrows():
             try:
                 if index == 0:
                     self.normalized_data.loc[index, "Open"] = 0
                     self.normalized_data.loc[index, "Close"] = 0
-                    self.normalized_data.loc[index, "Prior Close Euclidean"] = np.power(
-                        np.power((data.at[index, "Close"] - data.at[index, 'Open']), 2), 0.5)
-                    self.normalized_data.loc[index, "Close EMA14 Euclidean"] = np.power(
-                        np.power((data.at[index, "Close"] - self.studies.at[index, 'ema14']), 2), 0.5)
-                    self.normalized_data.loc[index, "Close EMA30 Euclidean"] = np.power(
-                        np.power((data.at[index, "Close"] - self.studies.at[index, 'ema30']), 2), 0.5)
-                    self.normalized_data.loc[index, "EMA14 EMA30 Euclidean"] = np.power(
-                        np.power((self.studies.at[index, "ema14"] - self.studies.at[index, 'ema30']), 2), 1 / 2)
+                    self.normalized_data.loc[index, "Close EMA14 Distance"] = data.at[index, "Close"] - self.studies.at[index, 'ema14']
+                    self.normalized_data.loc[index, "Close EMA30 Distance"] = data.at[index, "Close"] - self.studies.at[index, 'ema30']
+                    # get upwards/downwards dir for for-loop
+                    dir = '-'
+                    if row['Open'] < row['Close']:  # If green day
+                        dir = '+'
+                    count_consec_candles = 0
+                    if dir == '-':
+                        if row['Open'] > row['Close']:  # Green day
+                            count_consec_candles = count_consec_candles + 1
+                    else:
+                        if row['Open'] < row['Close']:  # Red day
+                            count_consec_candles = count_consec_candles + 1
+                    self.normalized_data.loc[
+                        0, "Num Consec Candle Dir"] = count_consec_candles  # Idea is that the more consecutive, more confident
+                    self.normalized_data.loc[index, "Close Fib1 Distance"] = data.at[index, "Close"] - target_fib1
+                    self.normalized_data.loc[index, "Close Fib2 Distance"] = data.at[index, "Close"] - target_fib2
                     self.normalized_data.loc[index, "Upper Keltner Close Diff"] = (
                             data.at[index, 'Close'] - self.keltner.at[index, "upper"])
                     self.normalized_data.loc[index, "Lower Keltner Close Diff"] = (
@@ -206,19 +251,30 @@ class Normalizer():
                                                                         index - 1, "Close"]))
                     self.normalized_data.loc[index, "Open"] = ((data.at[index, "Open"] - data.at[
                                                                       index - 1, "Open"]))
-                    self.normalized_data.loc[index, "Prior Close Euclidean"] = np.power(
-                        np.power((data.at[index, "Close"] - data.at[index, 'Open']), 2) +
-                        np.power((data.at[index - 1, "Close"] - data.at[index - 1, 'Open']), 2), 0.5)
+                    if dir == '-':
+                        if row['Open'] > row['Close']:  # Green day
+                            count_consec_candles = count_consec_candles + 1
+                        else:
+                            count_consec_candles = 0
+                    else:
+                        if row['Open'] < row['Close']:  # Red day
+                            count_consec_candles = count_consec_candles + 1
+                        else:
+                            count_consec_candles = 0
+                    # get upwards/downwards dir for for-loop
+                    dir = '-'
+                    if row['Open'] < row['Close']:  # If green day
+                        dir = '+'
+                    self.normalized_data.loc[
+                        index, "Num Consec Candle Dir"] = count_consec_candles  # Idea is that the more consecutive, more confident
+                    self.normalized_data.loc[index, "Close Fib1 Distance"] = data.at[index, "Close"] - target_fib1
+                    self.normalized_data.loc[index, "Close Fib2 Distance"] = data.at[index, "Close"] - target_fib2
                     self.normalized_data.loc[index, "Upper Keltner Close Diff"] = (
                             self.keltner.at[index, "upper"] - data.at[index, 'Close'])
                     self.normalized_data.loc[index, "Lower Keltner Close Diff"] = (
                             self.keltner.at[index, "lower"] - data.at[index, 'Close'])
-                    self.normalized_data.loc[index, "Close EMA14 Euclidean"] = np.power(
-                        np.power((data.at[index, "Close"] - self.studies.at[index, 'ema14']), 2), 1 / 2)
-                    self.normalized_data.loc[index, "Close EMA30 Euclidean"] = np.power(
-                        np.power((data.at[index, "Close"] - self.studies.at[index, 'ema30']), 2), 1 / 2)
-                    self.normalized_data.loc[index, "EMA14 EMA30 Euclidean"] = np.power(
-                        np.power((self.studies.at[index, "ema14"] - self.studies.at[index, 'ema30']), 2), 1 / 2)
+                    self.normalized_data.loc[index, "Close EMA14 Distance"] = data.at[index, "Close"] - self.studies.at[index, 'ema14']
+                    self.normalized_data.loc[index, "Close EMA30 Distance"] = data.at[index, "Close"] - self.studies.at[index, 'ema30']
             except Exception as e:
                 raise AssertionError(f'[ERROR] Failed normalization!  Current normalized data:\n{self.normalized_data}')
         return 0
@@ -328,17 +384,18 @@ class Normalizer():
         try:
 
             scaler = self.min_max.fit(self.unnormalized_data)
-            self.normalized_data = pd.DataFrame(scaler.fit_transform(self.unnormalized_data), columns=['Close EMA14 Euclidean',
-                                                                                                     'Close EMA30 Euclidean',
-                                                                                                     'EMA14 EMA30 Euclidean',
-                                                                                                     'Prior Close Euclidean',
+            self.normalized_data = pd.DataFrame(scaler.fit_transform(self.unnormalized_data), columns=['Close EMA14 Distance',
+                                                                                                     'Close EMA30 Distance',
+                                                                                                     'Close Fib1 Distance',
+                                                                                                     'Close Fib2 Distance',
+                                                                                                     'Num Consec Candle Dir',
                                                                                                      'Upper Keltner Close Diff',
                                                                                                      'Lower Keltner Close Diff',
                                                                                                      'Open',
                                                                                                      'Close'])
             if out == 2:
                 self.normalized_data = self.normalized_data.drop(
-                    columns=['EMA14 EMA30 Euclidean', 'Prior Close Euclidean'])
+                    columns=['Close Fib1 Distance', 'Num Consec Candle Dir'])
         except Exception as e:
             print('[ERROR] Failed to normalize!\n', str(e))
             return 1
@@ -374,8 +431,8 @@ class Normalizer():
 
     def unnormalize(self, data):
         scaler = self.min_max.fit(self.unnormalized_data)
-        tmp_data = pd.DataFrame(columns=['Close EMA14 Euclidean', 'Close EMA30 Euclidean',
-                                         'EMA14 EMA30 Euclidean', 'Prior Close Euclidean',
+        tmp_data = pd.DataFrame(columns=['Close EMA14 Distance', 'Close EMA30 Distance',
+                                         'Close Fib1 Distance', 'Close Fib2 Distance', 'Num Consec Candle Dir',
                                          'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
                                          'Open',
                                          'Close'])
@@ -385,10 +442,11 @@ class Normalizer():
         except:
             pass
         tmp_data['Close'] = data['Close']
-        return pd.DataFrame(scaler.inverse_transform((tmp_data.to_numpy())), columns=['Close EMA14 Euclidean',
-                                                                                      'Close EMA30 Euclidean',
-                                                                                      'EMA14 EMA30 Euclidean',
-                                                                                      'Prior Close Euclidean',
+        return pd.DataFrame(scaler.inverse_transform((tmp_data.to_numpy())), columns=['Close EMA14 Distance',
+                                                                                      'Close EMA30 Distance',
+                                                                                      'Close Fib1 Distance',
+                                                                                      'Close Fib2 Distance',
+                                                                                      'Num Consec Candle Dir',
                                                                                       'Upper Keltner Close Diff',
                                                                                       'Lower Keltner Close Diff',
                                                                                       'Open',
@@ -402,9 +460,11 @@ class Normalizer():
         scaler = self.min_max.fit(self.unnormalized_data)
         if len(data.columns) == 10:
             return pd.DataFrame(scaler.inverse_transform((data.to_numpy())),
-                                columns=['Open', 'Close', 'Range', 'Euclidean Open', 'Euclidean Close',
-                                         'Open EMA14 Diff', 'Open EMA30 Diff', 'Close EMA14 Diff',
-                                         'Close EMA30 Diff', 'EMA14 EMA30 Diff'])  # NORMALIZED DATA STORED IN NP ARRAY
+                                columns=['Close EMA14 Distance', 'Close EMA30 Distance',
+                                         'Close Fib1 Distance', 'Close Fib2 Distance', 'Num Consec Candle Dir',
+                                         'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
+                                         'Open',
+                                         'Close'])  # NORMALIZED DATA STORED IN NP ARRAY
         elif len(data.columns) == 3:
             tmp_data = pd.DataFrame(
                 columns=['Euclidean Open', 'Euclidean Close', 'Open EMA14 Diff', 'Open EMA30 Diff', 'Close EMA14 Diff',
@@ -412,9 +472,11 @@ class Normalizer():
             new_data = pd.concat([data, tmp_data], axis=1)
             # print(new_data)
             return pd.DataFrame(scaler.inverse_transform((new_data.to_numpy())),
-                                columns=['Open', 'Close', 'Range', 'Euclidean Open', 'Euclidean Close',
-                                         'Open EMA14 Diff', 'Open EMA30 Diff', 'Close EMA14 Diff',
-                                         'Close EMA30 Diff', 'EMA14 EMA30 Diff'])  # NORMALIZED DATA STORED IN NP ARRAY
+                                columns=['Close EMA14 Distance', 'Close EMA30 Distance',
+                                         'Close Fib1 Distance', 'Close Fib2 Distance', 'Num Consec Candle Dir',
+                                         'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
+                                         'Open',
+                                         'Close'])  # NORMALIZED DATA STORED IN NP ARRAY
 
 # norm = Normalizer()
 # norm.read_data("2016-03-18","CCL")

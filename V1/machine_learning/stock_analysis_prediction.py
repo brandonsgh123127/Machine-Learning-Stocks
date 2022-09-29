@@ -152,14 +152,14 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
                 s_date = s_date - datetime.timedelta(days=2)
             dates = (s_date, e_date)  # month worth of data
         if n_interval == '15m':
-            s_date = e_date - datetime.timedelta(days=3)
+            s_date = e_date - datetime.timedelta(days=6)
             if e_date.weekday() == 0:
                 s_date = s_date - datetime.timedelta(days=2)
             dates = (s_date, e_date)  # month worth of data
         elif '30m' in n_interval:
-            dates = (e_date - datetime.timedelta(days=4), e_date)  # month worth of data
+            dates = (e_date - datetime.timedelta(days=8), e_date)  # month worth of data
         elif '1h' in n_interval:
-            dates = (e_date - datetime.timedelta(days=4), e_date)  # month worth of data
+            dates = (e_date - datetime.timedelta(days=10), e_date)  # month worth of data
 
 
     _has_actuals = has_actuals
@@ -264,11 +264,11 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
         dates = ((e_date - datetime.timedelta(months=15)).replace(day=1), e_date)  # ~20 months
     elif '1y' not in n_interval:
         if n_interval == '5m':
-            dates = (e_date - datetime.timedelta(days=2), e_date)  # months worth of data
+            dates = (e_date - datetime.timedelta(days=4), e_date)  # months worth of data
         if n_interval == '15m':
             dates = (e_date - datetime.timedelta(days=4), e_date)  # months worth of data
         if n_interval == '30m':
-            dates = (e_date - datetime.timedelta(days=5), e_date)  # months worth of data
+            dates = (e_date - datetime.timedelta(days=7), e_date)  # months worth of data
     path = Path(os.getcwd()).absolute()
 
     task_list = []

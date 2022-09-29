@@ -24,6 +24,7 @@ class Generator():
         self.studies = Studies(ticker, force_generate=force_generate)
         self.news = News_Scraper(ticker)
         self.thread_pool = Thread_Pool(amount_of_threads=2)
+        self.ticker = None
         if ticker is not None:
             self.ticker = ticker
         if path is not None:
@@ -122,7 +123,7 @@ class Generator():
         studies.date_set = (date1, date2)
         # Loop until valid data populates
         try:
-            ema_task = studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval)
+            ema_task = studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval,ticker=ticker)
             await ema_task
             # studies.data = studies.data.reset_index()
         except Exception as e:
@@ -164,7 +165,6 @@ class Generator():
             await studies.apply_fibonacci(skip_db=skip_db, interval=interval)
             await studies.keltner_channels(20, 1.3, None, skip_db=skip_db, interval=interval)
             # Final join
-
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]

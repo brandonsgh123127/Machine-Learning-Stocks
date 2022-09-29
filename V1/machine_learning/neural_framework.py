@@ -28,7 +28,7 @@ class Neural_Framework(ABC):
         pass
 
     def save_model(self, nn: keras.models.Model):
-        self.nn.save(f'{self.path}/data/{self.model_name}')
+        nn.save(f'{self.path}/data/{self.model_name}')
 
     @staticmethod
     def choose_random_ticker(self, csv_file:str):

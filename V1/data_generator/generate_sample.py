@@ -35,10 +35,17 @@ class Sample(Normalizer):
                 print(f'[ERROR] Failed to read sample data for ticker {self.ticker}')
                 raise Exception(str(e))
         # Iterate through dataframe and retrieve random sample
-        if not is_divergence:
-            self.convert_derivatives(out=out)
-        else:
-            self.convert_divergence()
+        try:
+            if not is_divergence:
+                self.convert_derivatives(out=out)
+            else:
+                self.convert_divergence()
+        except:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.cnx.close()
+            raise Exception(f"[ERROR] Failed to Normalize data for {self.ticker}")
         self.normalized_data = self.normalized_data.iloc[-self.DAYS_SAMPLED:]
         try:
             if not is_divergence:

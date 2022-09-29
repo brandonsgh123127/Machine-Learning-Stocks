@@ -65,6 +65,9 @@ class GUI(Thread_Pool):
         self.content = ttk.Frame(self.window, width=300, height=200)
         self.boolean1 = tk.BooleanVar()
         self.force_bool = tk.BooleanVar()
+        self.auto_refresh = tk.BooleanVar()
+        self.auto_refresh.set(False)
+
 
         self.watchlist = []
         self.quick_select = StringVar(self.content)
@@ -350,6 +353,10 @@ class GUI(Thread_Pool):
         t = threading.Thread(target=self.cache_loop_in_thread, args=(self.loop,))
         t.daemon = True
         t.start()
+        t = threading.Thread(target=self.auto_refresh_in_thread, args=(self.loop,))
+        t.daemon = True
+        t.start()
+
 
         self.content.pack(side='top')
         self.load_layout.grid(column=3, row=9)
@@ -364,6 +371,9 @@ class GUI(Thread_Pool):
         self.force_bool.set(False)
         self.force_refresh = ttk.Checkbutton(self.content, text="Force Regeneration", variable=self.force_bool)
         self.force_refresh.grid(column=2, row=2)
+        self.auto_refresh_checkbutton = ttk.Checkbutton(self.content, text="AutoRefresh", variable=self.auto_refresh)
+        self.auto_refresh_checkbutton.grid(column=4, row=2)
+
         self.has_actuals = ttk.Checkbutton(self.content, text="Compare Predicted", variable=self.boolean1)
         self.has_actuals.grid(column=4, row=1)
         self.generate_button = ttk.Button(self.content, text="Generate", command= lambda event=1: self.job_queue.put(self.generate_callback()))
@@ -392,6 +402,11 @@ class GUI(Thread_Pool):
     def cache_loop_in_thread(self, loop):
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self.cachetask_loop())
+
+    def auto_refresh_in_thread(self, loop):
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.auto_refresh_loop())
+
     async def jobtask_loop(self):
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
@@ -406,8 +421,8 @@ class GUI(Thread_Pool):
 
             jobs_list=[]
             # Queue for when the generate button is submitted and any other button actions go here
-            if self.job_queue.qsize() > 0:
-                self.start_loading()
+            # if self.job_queue.qsize() > 0:
+            #     self.start_loading()
             while self.job_queue.qsize() > 0:
                 self.is_retrieving = True
                 self.generate_button.grid_forget()
@@ -449,8 +464,8 @@ class GUI(Thread_Pool):
             load_task: Task = None
 
             cached_list = []
-            if self.job_queue.qsize() > 0:
-                self.start_loading()
+            # if self.job_queue.qsize() > 0:
+            #     self.start_loading()
             # Queue for begin caching on stocks
             while self.cache_queue.qsize() > 0:
                 self.is_retrieving = True
@@ -459,7 +474,7 @@ class GUI(Thread_Pool):
                 tmp_thread = await self.cache_queue.get()
                 cached_list.append(tmp_thread)
             try:
-                self.start_loading()
+                # self.start_loading()
                 [await item for item in cached_list]
             except Exception as e:  # Already started the thread, just add back, ignoring error
                 print(f"[INFO] Failed to gather async cached tasking from tasking loop!\nException:\n\t{e}")
@@ -486,7 +501,17 @@ class GUI(Thread_Pool):
                         self.is_retrieving = True
             except:
                 pass
-
+    async def auto_refresh_loop(self):
+        loop = asyncio.get_event_loop()
+        asyncio.set_event_loop(loop)
+        while True:
+            if self.exited:
+                raise ChildProcessError('[INFO] Application Signal End.')
+            while self.auto_refresh.get() is True:
+                await self.load_model(self.stock_input.get(), self.boolean1.get(),
+                                    force_generation=self.force_bool.get())
+                time.sleep(30)
+            time.sleep(1)
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     ui = GUI(loop)

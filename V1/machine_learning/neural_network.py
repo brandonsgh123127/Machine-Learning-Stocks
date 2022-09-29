@@ -1,5 +1,6 @@
 import os
 import shutil
+import random
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -36,13 +37,13 @@ class Network(Neural_Framework):
         self.model_name = model_choice
         self.model_choice = self.model_map_names.get(model_choice)
         if 0 < self.model_choice <= 6:
-            nn_input = keras.Input(shape=(1, 112))  # 14 * 8 cols
+            nn_input = keras.Input(shape=(1, 126))  # 14 * 8 cols
         elif 6 < self.model_choice <= 12:
-            nn_input = keras.Input(shape=(1, 112))  # 14 * 8 cols
+            nn_input = keras.Input(shape=(1, 126))  # 14 * 8 cols
 
         if 0 < self.model_choice <= 6:
             if self.model_choice == 1:
-                nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3),
+                nn = keras.layers.Dense(126, activation=keras.layers.LeakyReLU(alpha=0.3),
                                         activity_regularizer=keras.regularizers.l2(0.01))(
                     nn_input)
                 nn = keras.layers.Dropout(0.25)(nn)
@@ -52,7 +53,7 @@ class Network(Neural_Framework):
                     nn)
 
             elif self.model_choice == 2:
-                nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3))(
+                nn = keras.layers.Dense(126, activation=keras.layers.LeakyReLU(alpha=0.3))(
                     nn_input)
                 nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(nn)
                 nn = keras.layers.Dropout(0.25)(nn)
@@ -60,7 +61,7 @@ class Network(Neural_Framework):
                 nn2 = keras.layers.Dense(1, activation='linear')(nn)
 
             elif self.model_choice == 3:
-                nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3),
+                nn = keras.layers.Dense(126, activation=keras.layers.LeakyReLU(alpha=0.3),
                                         activity_regularizer=keras.regularizers.l2(0.01))(
                     nn_input)
                 nn = keras.layers.Dropout(0.25)(nn)
@@ -73,7 +74,7 @@ class Network(Neural_Framework):
                     nn)
 
             elif self.model_choice == 4:
-                nn = keras.layers.Dense(112,
+                nn = keras.layers.Dense(126,
                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
                     nn_input)
                 nn = keras.layers.Dense(44, activation=keras.layers.LeakyReLU(alpha=0.5))(nn)
@@ -83,13 +84,13 @@ class Network(Neural_Framework):
                 nn2 = keras.layers.Dense(1, activation='sigmoid')(nn)
 
             elif self.model_choice == 5:
-                nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3))(
+                nn = keras.layers.Dense(126, activation=keras.layers.LeakyReLU(alpha=0.3))(
                     nn_input)
                 nn = keras.layers.Dense(36, activation=keras.layers.LeakyReLU(alpha=0.3))(nn)
                 nn2 = keras.layers.Dense(1, activation='sigmoid')(nn)
 
             elif self.model_choice == 6:
-                nn = keras.layers.Dense(112, activation=keras.layers.LeakyReLU(alpha=0.3))(
+                nn = keras.layers.Dense(126, activation=keras.layers.LeakyReLU(alpha=0.3))(
                     nn_input)
                 nn = keras.layers.Dropout(0.33)(nn)
                 nn = keras.layers.Dense(84, activation=keras.layers.LeakyReLU(alpha=0.3))(nn)
@@ -104,7 +105,7 @@ class Network(Neural_Framework):
 
         elif 6 < self.model_choice <= 12:
             if self.model_choice == 1:
-                nn = keras.layers.Dense(112,
+                nn = keras.layers.Dense(126,
                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None),
                                         activity_regularizer=keras.regularizers.l1(0.03))(
                     nn_input)
@@ -120,26 +121,32 @@ class Network(Neural_Framework):
         return nn
 
     # Used for generation of data via the start
-    def generate_sample(self, _has_actuals=False, rand_date=None):
+    def generate_sample(self, _has_actuals=False, rand_date=None, interval = '1d'):
         path = Path(os.getcwd()).absolute()
         self.sampler.reset_data()
         self.sampler.set_ticker(
             self.choose_random_ticker(Neural_Framework, csv_file=f'{path}/data/watchlist/default.csv'))
         try:
-            if self.model_choice < 4:
-                self.sampler.generate_sample(_has_actuals=_has_actuals, out=1, rand_date=rand_date, skip_db=True)
+            if self.model_choice <= 6:
+                self.sampler.generate_sample(_has_actuals=_has_actuals, out=8, rand_date=rand_date, skip_db=True,interval=interval)
             else:
-                self.sampler.generate_sample(_has_actuals=_has_actuals, out=1, rand_date=rand_date, skip_db=True)
-            self.sampler.data = self.sampler.data.drop(['High', 'Low'], axis=1)
+                self.sampler.generate_sample(_has_actuals=_has_actuals, out=8, rand_date=rand_date, skip_db=True,interval=interval)
         except Exception as e:
-            print('[Error] Failed batch!\n', str(e))
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            print('[Error] Failed batch!\n Exception: ', str(e))
             return 1
         except Exception as e:
             print(str(e))
             return 1
+        try:
+            self.sampler.data = self.sampler.data.drop(['High', 'Low'], axis=1)
+        except:
+            pass
         return 0
 
-    def run_model(self, nn: keras.models.Model = None, rand_date=False):
+    def run_model(self, nn: keras.models.Model = None, rand_date=False,interval='1d'):
         self.sampler = Sample()
         models = {}
         try:
@@ -157,28 +164,27 @@ class Network(Neural_Framework):
             train_targets = []
             BATCHES = self.BATCHES
             j = 1
-            while j < BATCHES:
+            while j <= BATCHES:
                 try:
-                    self.generate_sample(True, rand_date)
+                    self.generate_sample(True, rand_date, interval)
                 except Exception as e:
                     print('[ERROR] Failed to generate sample\n', str(e))
                     continue
                 try:
                     if self.model_choice < 4:
-                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 112)))
+                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 126)))
                     else:
-                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 112)))
+                        train.append(np.reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 126)))
                     # print(len(self.sampler.normalized_data),self.sampler.normalized_data.iloc[-15:])
                     tmp = self.sampler.normalized_data.iloc[-1:]
                     tmp = pd.concat([pd.DataFrame([tmp['Close'].to_numpy()])])
-
                     train_targets.append(np.reshape(tmp.to_numpy(), (1, 1)))
                 except Exception as e:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                     print(exc_type, fname, exc_tb.tb_lineno)
 
-                    print('[ERROR] Failed to specify train_target value!\n', str(e))
+                    print('[ERROR] Failed to specify train_target value!\n Exception: ', str(e))
                     continue
                 except:
                     print('[ERROR] Unknown error has occurred while training!')
@@ -186,7 +192,6 @@ class Network(Neural_Framework):
                 j = j + 1
             train = np.asarray(train).astype('float32')
             train_targets = np.asarray(train_targets).astype('float32')
-
             # Profile a range of batches, e.g. from 2 to 5.
             tensorboard_callback = tf.keras.callbacks.TensorBoard(
                 log_dir=f'./logs/{self.model_name}', profile_batch=(2, 5))
@@ -195,12 +200,12 @@ class Network(Neural_Framework):
                           validation_split=0.177,
                           callbacks=[tensorboard_callback])
             models[i] = disp.history
-            self.save_model()
+            self.save_model(nn)
 
         return models
 
-    def save_model(self):
-        super().save_model()
+    def save_model(self, nn):
+        super().save_model(nn)
 
     def load_model(self, name="relu_1layer"):
         self.model_choice = self.model_map_names.get(name)
@@ -532,15 +537,15 @@ def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = 
         with listLock:
             # Verify that the data has at least the correct shape needed...
             try:
-                np.reshape(sampler.normalized_data.iloc[-14:].to_numpy(), (1, 1, 112))
+                np.reshape(sampler.normalized_data.iloc[-14:].to_numpy(), (1, 1, 126))
             except Exception as e:
                 print(f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
                 return None, None, None, None, None, None
             with tf.device(device_opt):
                 if has_actuals:
-                    train = (np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(), (1, 1, 112)))
+                    train = (np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(), (1, 1, 126)))
                 else:
-                    train = (np.reshape(sampler.normalized_data[-14:].to_numpy(), (1, 1, 112)))
+                    train = (np.reshape(sampler.normalized_data[-14:].to_numpy(), (1, 1, 126)))
                 train = np.asarray(train).astype('float32')
                 prediction = nn.predict(np.stack(train))
         predicted = pd.DataFrame((np.reshape(prediction, (1, 1))), columns=['Close'])  # NORMALIZED
@@ -623,9 +628,12 @@ Run Specified Model by creating model and running batches/epochs.
 
 def run(epochs, batch_size, name="relu_1layer"):
     neural_net = Network(epochs, batch_size)
-    neural_net.load_model(name)
-    neural_net.create_model(model_choice=name)
-    model = neural_net.run_model(rand_date=True)
+    nn = neural_net.load_model(name)
+    if nn is None:
+        nn = neural_net.create_model(model_choice=name)
+    intervals=['1d','1wk','1mo']
+    random_interval = random.choice(intervals)
+    model = neural_net.run_model(nn,rand_date=True, interval=random_interval)
     for i in range(1, neural_net.EPOCHS):
         train_history = model[i]
         print(train_history)
@@ -639,24 +647,24 @@ def copy_logs(path: Path = None, dest_folder: str = ""):
 def main():
     thread_manager = Thread_Pool(amount_of_threads=3)
     path = Path(os.getcwd()).absolute()
-    thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_multilayer_l2")))
+    # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_multilayer_l2")))
     # run(50,75,'relu_1layer')
     # copy_logs(path,'relu_1layer')
-    # thread_manager.start_worker//(threading.Thread(target=run, args=(50, 75, "relu_2layer_0regularization")))
+    # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_0regularization")))
     # run(50,75,'relu_2layer')
     # copy_logs(path,'relu_2layer')
-    thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_dropout_l2_noout")))
+    # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_dropout_l2_noout")))
     # run(50,75,'relu_2layer_dropout')
     # copy_logs(path,'relu_2layer_dropout')
-    thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_l1l2")))
-    thread_manager.join_workers()
+    # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_l1l2")))
     # run(50,75,'relu_2layer_l1l2')
     # copy_logs(path,'relu_2layer_l1l2')
     # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_1layer_l2")))
+    # thread_manager.join_workers()
     # run(50,75,'relu_1layer_l2')
     # copy_logs(path,'relu_1layer_l2')
-    thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_dropout_l2_out")))
-    thread_manager.join_workers()
+    # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_dropout_l2_out")))
+    # thread_manager.join_workers()
     # run(50,75,'relu_2layer_dropout_l1_l2')
     # copy_logs(path,'relu_2layer_dropout_l1_l2')
     # net=Network(1,1)

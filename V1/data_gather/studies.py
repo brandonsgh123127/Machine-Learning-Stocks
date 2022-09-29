@@ -492,29 +492,30 @@ class Studies(Gather):
                 pass
             new_set = new_set.reset_index()
             if '1d' in interval:
-                max_cutoff = -4
+                max_cutoff = 6
             elif '1wk' in interval:
-                max_cutoff = -5
+                max_cutoff = 7
             elif '1mo' in interval:
-                max_cutoff = -5
+                max_cutoff = 8
             elif interval == '5m':
-                max_cutoff = -20
+                max_cutoff = 20
             elif '15m' in interval:
-                max_cutoff = -20
+                max_cutoff = 20
             elif '30m' in interval:
-                max_cutoff = -10
+                max_cutoff = 10
             elif '1h' in interval:
-                max_cutoff = -6
+                max_cutoff = 6
             else:
-                max_cutoff = -5
+                max_cutoff = 5
             if len(new_set) == 0:
+                print(f'[ERROR] new_set is empty for upwards_fib-{self.indicator}!')
                 return val1, val2, val3
             for i, row in new_set.iterrows():  # reverse order iteration
                 if i == len(new_set) -1:
                     break
                 # if the next value is greater than prior , do upwards fib, else downwards
-                if new_set['Low'].idxmin() != len(new_set) - max_cutoff or new_set['Low'].iloc[i+1] > row['Low']:
-                    val3 = row['Low']
+                if new_set['Low'].idxmin() < len(new_set) - max_cutoff or new_set['Low'].iloc[i+1] > row['Low']:
+                    val3 = new_set['Low'].min() if new_set['Low'].idxmin() < len(new_set) - max_cutoff else row['Low']
 
                     if new_set['Low'].idxmin() != len(new_set) - max_cutoff:
                         i = new_set['Low'].idxmin()
@@ -523,12 +524,17 @@ class Studies(Gather):
                     for j, sub in new_set.iterrows():
                         if j <= i:
                             continue
+                        if j == len(new_set) - 1:
+                            break
                         # find val2 by making sure next local high is valid
-                        if float(new_set['High'].iloc[j + 1]) <= sub['High'] or (new_set['High'].idxmax() != len(new_set) - max_cutoff and new_set['High'].idxmax() > new_set['Low'].idxmin()):
+                        if float(new_set['High'].iloc[j + 1]) <= sub['High'] or (new_set['High'].idxmax() < len(new_set) - max_cutoff and (new_set['High'].idxmax() > new_set['Low'].idxmin() and new_set['High'].idxmax() > i)):
                             val2 = sub['High'] if float(new_set['High'].iloc[j + 1]) <= sub['High'] else new_set['High'].max()
 
-                            if (new_set['High'].idxmax() != len(new_set) - max_cutoff and new_set['High'].idxmax() > new_set['Low'].idxmin()):
-                                j = new_set['High'].idxmax()
+                            if new_set['High'].idxmax() < len(new_set) - max_cutoff:
+                                if i == new_set['Low'].idxmin() and new_set['High'].idxmax() > new_set['Low'].idxmin():
+                                    j = new_set['High'].idxmax()
+                                elif new_set['High'].idxmax() > i:
+                                    j = new_set['High'].idxmax()
                             # find val3 by getting next low
                             if new_set['Low'].min() != val3:
                                 val1 = new_set['Low'].min()
@@ -574,19 +580,19 @@ class Studies(Gather):
                 pass
             new_set = new_set.reset_index()
             if '1d' in interval:
-                max_cutoff = -4
+                max_cutoff = 6
             elif '1wk' in interval:
-                max_cutoff = -5
+                max_cutoff = 7
             elif '1mo' in interval:
-                max_cutoff = -5
+                max_cutoff = 8
             elif interval == '5m':
-                max_cutoff = -20
+                max_cutoff = 20
             elif '15m' in interval:
-                max_cutoff = -20
+                max_cutoff = 20
             elif '30m' in interval:
-                max_cutoff = -10
+                max_cutoff = 10
             elif '1h' in interval:
-                max_cutoff = -6
+                max_cutoff = 6
             else:
                 max_cutoff = -5
             if len(new_set) == 0:
@@ -595,19 +601,22 @@ class Studies(Gather):
                 if i == len(new_set) -1:
                     break
                 # if the next value is less than prior , do downwards fib, else
-                if new_set['High'].idxmax() != len(new_set) - max_cutoff or new_set['High'].iloc[i+1] <= row['High']:
-                    val3 = new_set['High'].max() if new_set['High'].idxmax() != len(new_set) - max_cutoff else row['High']
-                    if new_set['High'].idxmax() != len(new_set) - max_cutoff:
+                if new_set['High'].idxmax() < len(new_set) - max_cutoff or new_set['High'].iloc[i+1] <= row['High']:
+                    val3 = new_set['High'].max() if new_set['High'].idxmax() < len(new_set) - max_cutoff else row['High']
+                    if new_set['High'].idxmax() < len(new_set) - max_cutoff:
                         i = new_set['High'].idxmax()
                     # find val2 by finding next local high
                     for j, sub in new_set.iterrows():
                         if j <= i:
                             continue
+                        if j == len(new_set) - 1:
+                            break
                         # find val2 by making sure next local low is valid
-                        if float(new_set['Low'].iloc[j + 1]) >= sub['Low'] or (new_set['Low'].idxmin() != len(new_set) - max_cutoff and new_set['Low'].idxmin() < new_set['High'].idxmax()):
-                            val2 = new_set['Low'].min() if (new_set['Low'].idxmin() != len(new_set) - max_cutoff and new_set['Low'].idxmin() < new_set['High'].idxmax()) else sub['Low']
-                            if (new_set['Low'].idxmin() != len(new_set) - max_cutoff and new_set['Low'].idxmin() < new_set['High'].idxmax()):
-                                j = new_set['Low'].idxmin()
+                        if float(new_set['Low'].iloc[j + 1]) >= sub['Low'] or (new_set['Low'].idxmin() <= len(new_set) - max_cutoff and (new_set['Low'].idxmin() > new_set['High'].idxmax() and new_set['Low'].idxmin() > i)):
+                            val2 = new_set['Low'].min() if (new_set['Low'].idxmin() <= len(new_set) - max_cutoff) else sub['Low']
+                            if new_set['Low'].idxmin() < len(new_set) - max_cutoff:
+                                if i == new_set['High'].idxmax() and new_set['Low'].idxmin() > new_set['High'].idxmax():
+                                    j = new_set['Low'].idxmin()
                             # find val3 by getting next low
                             if new_set['High'].max() != val3:
                                 val1 = new_set['High'].max()

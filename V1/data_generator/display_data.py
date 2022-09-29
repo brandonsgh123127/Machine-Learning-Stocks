@@ -189,9 +189,10 @@ class Display:
         if is_divergence:
             indices_dict = {0: 'Close'}
         else:
-            indices_dict = {0: 'Close EMA14 Euclidean', 1: 'Close EMA30 Euclidean',
-                            2: 'EMA14 EMA30 Euclidean', 3: 'Prior Close Euclidean', 4: 'Upper Keltner Close Diff',
-                            5: 'Lower Keltner Close Diff', 6: 'Open', 7: 'Close'}
+            indices_dict = {0: 'Close EMA14 Distance', 1: 'Close EMA30 Distance',
+                            2: 'Close Fib1 Distance',3: 'Close Fib2 Distance',
+                            4: 'Num Consec Candle Dir', 5: 'Upper Keltner Close Diff',
+                            6: 'Lower Keltner Close Diff', 7: 'Open', 8: 'Close'}
         self.data_display2 = pd.concat([self.data_display.reset_index(), self.data_predict_display.reset_index()],
                                        ignore_index=False).set_flags(allows_duplicate_labels=True)
         self.data_display2['index'] = [0, 0]
@@ -217,11 +218,11 @@ class Display:
             for j, col2 in enumerate(self.data_display2.columns):
                 if not is_divergence:
                     if i == 0:
-                        if j == 7:  # Bottom Left
+                        if j == 8:  # Bottom Left
                             y = round(self.data_display2.iloc[i][j], 2)
                             self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
                     else:
-                        if j == 7:  # Top right
+                        if j == 8:  # Top right
                             y = round(self.data_display2.iloc[i][j], 2)
                             self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
                 else:  # divergence
@@ -238,9 +239,10 @@ class Display:
         if is_divergence:
             indices_dict = {0: 'Close'}
         else:
-            indices_dict = {0: 'Close EMA14 Euclidean', 1: 'Close EMA30 Euclidean',
-                            2: 'EMA14 EMA30 Euclidean', 3: 'Prior Close Euclidean', 4: 'Upper Keltner Close Diff',
-                            5: 'Lower Keltner Close Diff', 6: 'Open', 7: 'Close'}
+            indices_dict = {0: 'Close EMA14 Distance', 1: 'Close EMA30 Distance',
+                            2: 'Close Fib1 Distance',3: 'Close Fib2 Distance',
+                            4: 'Num Consec Candle Dir', 5: 'Upper Keltner Close Diff',
+                            6: 'Lower Keltner Close Diff', 7: 'Open', 8: 'Close'}
 
         self.data_predict_display2 = self.data_predict_display
         self.data_predict_display2['index'] = [0]
@@ -270,7 +272,7 @@ class Display:
                         y = round(data.iloc[i][j], 2)
                         self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
                 else:
-                    if j == 6 or j == 7:
+                    if j == 7 or j == 8:
                         y = round(data.iloc[i][j], 2)
                         self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
 # dis = Display()
