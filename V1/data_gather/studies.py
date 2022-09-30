@@ -479,18 +479,6 @@ class Studies(Gather):
             val1 = None
             val2 = None
             val3 = None
-            new_set = new_set.iloc[0 if '1d' in interval else\
-                                    8 if '1wk' in interval else\
-                                    0 if '1mo' in interval else\
-                                    15 if interval =='5m' else\
-                                    0 if '15m' in interval else\
-                                    0 if '30m' in interval else\
-                                    0 if '60m' in interval else 0:]
-            try:
-                new_set = new_set.drop(columns=['index'])
-            except:
-                pass
-            new_set = new_set.reset_index()
             if '1d' in interval:
                 max_cutoff = 6
             elif '1wk' in interval:
@@ -510,42 +498,45 @@ class Studies(Gather):
             if len(new_set) == 0:
                 print(f'[ERROR] new_set is empty for upwards_fib-{self.indicator}!')
                 return val1, val2, val3
+            new_set_dropped_min = new_set.drop(new_set['Low'].idxmin())
+            while new_set_dropped_min['Low'].idxmin() >= new_set['Low'].idxmin() - 1:
+                new_set_dropped_min = new_set_dropped_min.drop(new_set_dropped_min['Low'].idxmin())
             for i, row in new_set.iterrows():  # reverse order iteration
-                if i == len(new_set) -1:
+                if i >= len(new_set) - 1:
                     break
                 # if the next value is greater than prior , do upwards fib, else downwards
-                if new_set['Low'].idxmin() < len(new_set) - max_cutoff or new_set['Low'].iloc[i+1] > row['Low']:
-                    val3 = new_set['Low'].min() if new_set['Low'].idxmin() < len(new_set) - max_cutoff else row['Low']
+                if new_set_dropped_min['Low'].idxmin() < len(new_set) - max_cutoff or new_set['Low'].iloc[i+1] > row['Low']:
+                    val1 = new_set_dropped_min['Low'].min() if new_set_dropped_min['Low'].idxmin() < len(new_set) - max_cutoff else row['Low']
 
-                    if new_set['Low'].idxmin() != len(new_set) - max_cutoff:
-                        i = new_set['Low'].idxmin()
+                    if new_set_dropped_min['Low'].idxmin() <= len(new_set) - max_cutoff:
+                        i = new_set_dropped_min['Low'].idxmin()
 
                     # find val2 by finding next local high
                     for j, sub in new_set.iterrows():
                         if j <= i:
                             continue
-                        if j == len(new_set) - 1:
+                        if j >= len(new_set) - 1:
                             break
                         # find val2 by making sure next local high is valid
-                        if float(new_set['High'].iloc[j + 1]) <= sub['High'] or (new_set['High'].idxmax() < len(new_set) - max_cutoff and (new_set['High'].idxmax() > new_set['Low'].idxmin() and new_set['High'].idxmax() > i)):
+                        if float(new_set['High'].iloc[j + 1]) <= sub['High'] or (new_set['High'].idxmax() < len(new_set) - max_cutoff and (new_set['High'].idxmax() > new_set_dropped_min['Low'].idxmin() and new_set['High'].idxmax() > i)):
                             val2 = sub['High'] if float(new_set['High'].iloc[j + 1]) <= sub['High'] else new_set['High'].max()
 
                             if new_set['High'].idxmax() < len(new_set) - max_cutoff:
-                                if i == new_set['Low'].idxmin() and new_set['High'].idxmax() > new_set['Low'].idxmin():
+                                if i == new_set['Low'].idxmin() and new_set['High'].idxmax() > new_set_dropped_min['Low'].idxmin():
                                     j = new_set['High'].idxmax()
                                 elif new_set['High'].idxmax() > i:
                                     j = new_set['High'].idxmax()
                             # find val3 by getting next low
-                            if new_set['Low'].min() != val3:
-                                val1 = new_set['Low'].min()
+                            if new_set['Low'].min() != val1 and new_set['Low'].idxmin() > new_set_dropped_min['Low'].idxmin():
+                                val3 = new_set['Low'].min()
+                                return val1, val2, val3
                             else:
                                 for k, low in new_set.iterrows():
                                     if k <= j:
                                         continue
                                     else:
-                                        if float(new_set['Low'].iloc[k + 1]) >= low['Low'] <= float(
-                                                new_set['Low'].iloc[k - 1]):
-                                            val1 = low['Low']
+                                        if float(new_set['Low'].iloc[k + 1]) >= low['Low']:
+                                            val3 = low['Low']
                                             return val1, val2, val3
                                         else:
                                             continue
@@ -554,7 +545,7 @@ class Studies(Gather):
                             continue
                     break
                 else:
-                    return self.upwards_fib(new_set[1:], interval)
+                    continue
             return val1, val2, val3
         except:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -567,18 +558,6 @@ class Studies(Gather):
             val1 = None
             val2 = None
             val3 = None
-            new_set = new_set.iloc[0 if '1d' in interval else\
-                                    8 if '1wk' in interval else\
-                                    0 if '1mo' in interval else\
-                                    15 if interval =='5m' else\
-                                    0 if '15m' in interval else\
-                                    0 if '30m' in interval else\
-                                    0 if '60m' in interval else 0:]
-            try:
-                new_set = new_set.drop(columns=['index'])
-            except:
-                pass
-            new_set = new_set.reset_index()
             if '1d' in interval:
                 max_cutoff = 6
             elif '1wk' in interval:
@@ -597,36 +576,43 @@ class Studies(Gather):
                 max_cutoff = -5
             if len(new_set) == 0:
                 return val1, val2, val3
+            new_set_dropped_max = new_set.drop(new_set['High'].idxmax())
+            while new_set_dropped_max['High'].idxmax() >= new_set['High'].idxmax() - 1:
+                new_set_dropped_max = new_set_dropped_max.drop(new_set_dropped_max['High'].idxmax())
+
+            while new_set_dropped_max['High'].idxmax() == 1:
+                new_set_dropped_max = new_set_dropped_max.iloc[1:]
             for i, row in new_set.iterrows():  # reverse order iteration
-                if i == len(new_set) -1:
+                if i >= len(new_set) - 1:
                     break
                 # if the next value is less than prior , do downwards fib, else
-                if new_set['High'].idxmax() < len(new_set) - max_cutoff or new_set['High'].iloc[i+1] <= row['High']:
-                    val3 = new_set['High'].max() if new_set['High'].idxmax() < len(new_set) - max_cutoff else row['High']
-                    if new_set['High'].idxmax() < len(new_set) - max_cutoff:
-                        i = new_set['High'].idxmax()
+                if new_set_dropped_max['High'].idxmax() < len(new_set) - max_cutoff or new_set['High'].iloc[i+1] <= row['High']:
+                    val1 = new_set_dropped_max['High'].max() if new_set_dropped_max['High'].idxmax() < len(new_set) - max_cutoff else row['High']
+                    if new_set_dropped_max['High'].idxmax() <= len(new_set) - max_cutoff:
+                        i = new_set_dropped_max['High'].idxmax()
                     # find val2 by finding next local high
                     for j, sub in new_set.iterrows():
                         if j <= i:
                             continue
-                        if j == len(new_set) - 1:
+                        if j >= len(new_set) - 1:
                             break
                         # find val2 by making sure next local low is valid
-                        if float(new_set['Low'].iloc[j + 1]) >= sub['Low'] or (new_set['Low'].idxmin() <= len(new_set) - max_cutoff and (new_set['Low'].idxmin() > new_set['High'].idxmax() and new_set['Low'].idxmin() > i)):
+                        if float(new_set['Low'].iloc[j + 1]) >= sub['Low'] or (new_set['Low'].idxmin() <= len(new_set) - max_cutoff and (new_set['Low'].idxmin() > new_set_dropped_max['High'].idxmax() and new_set['Low'].idxmin() > i)):
                             val2 = new_set['Low'].min() if (new_set['Low'].idxmin() <= len(new_set) - max_cutoff) else sub['Low']
                             if new_set['Low'].idxmin() < len(new_set) - max_cutoff:
-                                if i == new_set['High'].idxmax() and new_set['Low'].idxmin() > new_set['High'].idxmax():
+                                if i == new_set['High'].idxmax() and new_set['Low'].idxmin() > new_set_dropped_max['High'].idxmax():
                                     j = new_set['Low'].idxmin()
                             # find val3 by getting next low
-                            if new_set['High'].max() != val3:
-                                val1 = new_set['High'].max()
+                            if new_set['High'].max() != val1 and new_set['High'].idxmax() > new_set_dropped_max['High'].idxmax():
+                                val3 = new_set['High'].max()
+                                return val1, val2, val3
                             else:
                                 for k, high in new_set.iterrows():
                                     if k <= j:
                                         continue
                                     else:
                                         if float(new_set['High'].iloc[k + 1]) <= high['High']:
-                                            val1 = high['High']
+                                            val3 = high['High']
                                             return val1, val2, val3
                                         else:
                                             continue
@@ -635,7 +621,7 @@ class Studies(Gather):
                             continue
                     break
                 else:
-                    return self.downwards_fib(new_set[1:], interval)
+                    continue
             return val1, val2, val3
         except:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -1195,10 +1181,10 @@ val1    val3_________________________          vall2
                 except Exception as e:
                     pass
                 local_max_high = data.iloc[argrelextrema(data.High.values, np.greater_equal,
-                                                              order=2)[0]]
+                                                              order=1)[0]]
                 # local_max_high = local_max_high.reset_index()
                 local_max_low = data.iloc[argrelextrema(data.Low.values, np.less_equal,
-                                                             order=2)[0]]
+                                                             order=1)[0]]
 
                 # local_max_low = local_max_low.rename({"Low": 'max_low'}, axis='columns')
                 # local_max_high = local_max_high.rename({"High": 'max_high'}, axis='columns')
@@ -1215,8 +1201,24 @@ val1    val3_________________________          vall2
                 # new_set.columns = ['Index', 'Vals']
                 pd.set_option('display.max_columns', None)
                 # attempt upwards fib
+            new_set = new_set.iloc[0 if '1d' in interval else\
+                                    8 if '1wk' in interval else\
+                                    0 if '1mo' in interval else\
+                                    15 if interval =='5m' else\
+                                    0 if '15m' in interval else\
+                                    0 if '30m' in interval else\
+                                    0 if '60m' in interval else 0:]
+            try:
+                new_set = new_set.drop(columns=['index'])
+            except:
+                pass
+            new_set = new_set.reset_index()
 
-            if data['High'].iloc[-1] >= new_set['High'].iloc[0]:
+            # Test to make sure that upwards fib is the move
+            new_set_dropped_min = new_set.drop(new_set['Low'].idxmin())
+            while new_set_dropped_min['Low'].idxmin() >= new_set['Low'].idxmin()  - 1:
+                new_set_dropped_min = new_set_dropped_min.drop(new_set_dropped_min['Low'].idxmin())
+            if new_set_dropped_min['Low'].idxmin() <= len(new_set) - 4 and new_set['Low'].idxmin() != len(new_set) - 1 and new_set['Low'].min() < data['Low'].iloc[-1]:
                 try:
                     val1, val2, val3 = self.upwards_fib(new_set, interval)
                     # calculate values  -- 14 vals
@@ -1336,9 +1338,9 @@ val1    val3_________________________          vall2
                                 continue
                         except Exception as e:
                             print(e)
-                        true_range = true_range.append({'trueRange': max(abs(row['High'] - row['Low']),
+                        true_range = true_range.append({'trueRange': float(max(abs(row['High'] - row['Low']),
                                                                          abs(row['High'] - prev_row['Close']),
-                                                                         abs(row['Low'] - prev_row['Close']))},
+                                                                         abs(row['Low'] - prev_row['Close'])))},
                                                        ignore_index=True)
                         prev_row = row
                 # iterate through keltner and calculate ATR
@@ -1348,7 +1350,7 @@ val1    val3_________________________          vall2
                             avg_true_range = avg_true_range.append({'AvgTrueRange': avg_true_range['AvgTrueRange'].iloc[index-1]},
                                                                    ignore_index=True)  # add blank values
                         elif index == 0 or index <= length:
-                            avg_true_range = avg_true_range.append({'AvgTrueRange': true_range.iloc[index]},
+                            avg_true_range = avg_true_range.append({'AvgTrueRange': true_range['trueRange'].iloc[index]},
                                                                    ignore_index=True)  # add blank values
                         else:
                             end_atr = None
@@ -1370,22 +1372,22 @@ val1    val3_________________________          vall2
         for index, row in avg_true_range.iterrows():
             try:
                 if index == len(self.data_cp.index) - 1:  # if last element
-                    self.keltner = self.keltner.append({'middle': (self.applied_studies[f'ema14'][index - 1]),
-                                                        'upper': self.applied_studies[f'ema14'][index - 1]
-                                                                 + (factor * avg_true_range['AvgTrueRange'][
+                    self.keltner = self.keltner.append({'middle': (self.applied_studies[f'ema14'].iloc[index - 1]),
+                                                        'upper': self.applied_studies[f'ema14'].iloc[index - 1]
+                                                                 + (factor * avg_true_range['AvgTrueRange'].iloc[
                                                                              index - 1]),
-                                                        'lower': self.applied_studies[f'ema14'][index - 1]
-                                                                 - (factor * avg_true_range['AvgTrueRange'][
+                                                        'lower': self.applied_studies[f'ema14'].iloc[index - 1]
+                                                                 - (factor * avg_true_range['AvgTrueRange'].iloc[
                                                                              index - 1])}
                                                        , ignore_index=True)
 
                 else:  # else
-                    self.keltner = self.keltner.append({'middle': self.applied_studies[f'ema14'][index],
-                                                        'upper': self.applied_studies[f'ema14'][index]
-                                                                 + (factor * avg_true_range['AvgTrueRange'][
+                    self.keltner = self.keltner.append({'middle': self.applied_studies[f'ema14'].iloc[index],
+                                                        'upper': self.applied_studies[f'ema14'].iloc[index]
+                                                                 + (factor * avg_true_range['AvgTrueRange'].iloc[
                                                                                   index]),
-                                                        'lower': self.applied_studies[f'ema14'][index]
-                                                                 - (factor * avg_true_range['AvgTrueRange'][
+                                                        'lower': self.applied_studies[f'ema14'].iloc[index]
+                                                                 - (factor * avg_true_range['AvgTrueRange'].iloc[
                                                                              index])}
                                                        , ignore_index=True)
             except Exception as e:
@@ -1582,7 +1584,7 @@ val1    val3_________________________          vall2
                 try:
                     if is_utilizing_yfinance:
                         insert_tuple = (
-                            f'AES_ENCRYPT("{self.data_cp.loc[index, :]["Date"].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator}keltner{length}{factor}", UNHEX(SHA2("{self.data_cp.loc[index, :]["Date"].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator}keltner{length}{factor}",512)))',
+                            f'AES_ENCRYPT("{self.data_cp["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator}keltner{length}{factor}", UNHEX(SHA2("{self.data_cp["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator}keltner{length}{factor}",512)))',
                             f'{self.stock_ids[index]}',
                             f'{self.data_ids[index]}',
                             f'{self.study_id}',

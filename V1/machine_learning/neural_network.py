@@ -316,7 +316,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
     for retrieve_result in retrieve_tdata_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
-            print(f'[INFO] Retrieving just stock-id for {ticker}...')
+            print(f'[INFO] Couldn\'t retrieve data_id for {ticker} for date {valid_datetime.strftime("%Y-%m-%d")}. Retrieving only stock_id.')
             check_stockid_db_stmt = """SELECT `stocks`.`stock`.`id` 
              FROM stocks.`stock` USE INDEX (`stockid`) WHERE
                `stocks`.`stock`.`stock` = %(stock)s
@@ -654,6 +654,7 @@ def main():
     # run(50,75,'relu_2layer')
     # copy_logs(path,'relu_2layer')
     # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_dropout_l2_noout")))
+    # thread_manager.join_workers()
     # run(50,75,'relu_2layer_dropout')
     # copy_logs(path,'relu_2layer_dropout')
     # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_l1l2")))

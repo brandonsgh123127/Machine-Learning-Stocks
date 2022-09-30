@@ -131,7 +131,7 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
     n_interval = '1d' if interval == 'Daily' else '1wk' if interval == 'Weekly' else '1mo' if interval == 'Monthly' else '1y' if interval == 'Yearly' else interval
 
     if '1d' in n_interval:
-        dates = (e_date - datetime.timedelta(days=75), e_date)  # month worth of data
+        dates = (e_date - datetime.timedelta(days=75), e_date)  # 2 months worth of data
     elif '1wk' in n_interval:
         # change end date to a monday before
         cur_day = abs(e_date.weekday())
@@ -152,14 +152,14 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
                 s_date = s_date - datetime.timedelta(days=2)
             dates = (s_date, e_date)  # month worth of data
         if n_interval == '15m':
-            s_date = e_date - datetime.timedelta(days=6)
+            s_date = e_date - datetime.timedelta(days=4)
             if e_date.weekday() == 0:
                 s_date = s_date - datetime.timedelta(days=2)
             dates = (s_date, e_date)  # month worth of data
         elif '30m' in n_interval:
-            dates = (e_date - datetime.timedelta(days=8), e_date)  # month worth of data
+            dates = (e_date - datetime.timedelta(days=6), e_date)  # month worth of data
         elif '60m' in n_interval:
-            dates = (e_date - datetime.timedelta(days=10), e_date)  # month worth of data
+            dates = (e_date - datetime.timedelta(days=8), e_date)  # month worth of data
 
 
     _has_actuals = has_actuals
