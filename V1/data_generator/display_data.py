@@ -1,6 +1,7 @@
 import queue
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from pathlib import Path
 import os
@@ -50,15 +51,15 @@ class Display:
             data_len = len(data.index)
             if has_actuals:
                 if not only_fib:
-                    data = data.iloc[int(data_len / 1.33 + 1):-1].reset_index().astype('float')
+                    data = data.iloc[int(data_len / 1.33 + 1):-1].reset_index().astype(np.float_)
                 else:
-                    data = data.iloc[:-1].reset_index().astype('float')
+                    data = data.iloc[:-1].reset_index().astype(np.float_)
                 if not without_fib and not only_fib:
                     fib_display = self.fib_display.reset_index()
                     if len(fib_display.index) < data_len:
                         fib_display = fib_display.loc[fib_display.index.repeat(data_len - len(fib_display.index) + 4)]
-                    fib_display = fib_display.iloc[int(data_len / 1.33 + 1):].reset_index().astype('float')
-                    self.studies = self.studies.iloc[int(data_len / 1.33 + 1):].reset_index().astype('float')
+                    fib_display = fib_display.iloc[int(data_len / 1.33 + 1):].reset_index().astype(np.float_)
+                    self.studies = self.studies.iloc[int(data_len / 1.33 + 1):].reset_index().astype(np.float_)
             else:
                 if not only_fib:
                     data = data.iloc[int(data_len / 1.33 + 1):]
@@ -66,17 +67,17 @@ class Display:
                     fib_display = self.fib_display.reset_index()
                     if len(fib_display.index) > data_len:
                         fib_display = fib_display.iloc[-data_len:]
-                    self.studies = self.studies.iloc[int(data_len / 1.33 + 1):].reset_index().astype('float')
+                    self.studies = self.studies.iloc[int(data_len / 1.33 + 1):].reset_index().astype(np.float_)
             # if only_fib, expand the data so it covers the length of the elongated data
             if only_fib:
                 fib_display = self.fib_display.loc[
                     self.fib_display.index.repeat(int(data_len/len(self.fib_display))+1)]
-                fib_display = self.fib_display.reset_index().astype('float')
-            data = data.reset_index().drop(columns=['index']).astype('float')
+                fib_display = self.fib_display.reset_index().astype(np.float_)
+            data = data.reset_index().drop(columns=['index']).astype(np.float_)
         except:
             pass
         try:
-            data = data.drop(columns=['level_0']).astype('float')
+            data = data.drop(columns=['level_0']).astype(np.float_)
         except:
             pass
         try:
@@ -92,11 +93,11 @@ class Display:
                 try:
                     fib_display = fib_display.set_axis(
                         labels=['index', '0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
-                         '1.556', '2.493', '2.86', '3.43', '3.83', '5.44','8.23','9.55','11.13'], axis=1)
+                         '1.556', '2.493', '2.86', '3.43', '3.83', '5.63','8.23','9.55','11.13'], axis=1)
                 except:
                     fib_display = fib_display.set_axis(
                         labels=['0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
-                         '1.556', '2.493', '2.86', '3.43', '3.83', '5.44','8.23', '9.55','11.13'], axis=1)
+                         '1.556', '2.493', '2.86', '3.43', '3.83', '5.63','8.23', '9.55','11.13'], axis=1)
                 perc_target = 0.15
                 # fib_display = fib_display.loc[fib_display.index.repeat(len(self.keltner_display.index) + 2)]
                 fib_display['0.202'].transpose().plot.line(ax=self.axes[row, col], color='blue', x='0.202', y='0.202')
@@ -116,9 +117,9 @@ class Display:
                     fib_display['3.43'].transpose().plot.line(ax=self.axes[row, col], color='brown')
                 if 1 - (fib_display['3.83'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
                     fib_display['3.83'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                if 1 - (fib_display['5.44'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
-                    fib_display['5.44'].transpose().plot.line(ax=self.axes[row, col], color='pink')
-                if 1 - (fib_display['5.44'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
+                if 1 - (fib_display['5.63'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
+                    fib_display['5.63'].transpose().plot.line(ax=self.axes[row, col], color='pink')
+                if 1 - (fib_display['5.63'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
                     fib_display['8.23'].transpose().plot.line(ax=self.axes[row, col], color='orange')
                 if 1 - (fib_display['9.55'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
                     fib_display['9.55'].transpose().plot.line(ax=self.axes[row, col], color='pink')
@@ -144,7 +145,7 @@ class Display:
                                          data.iloc[-1]['Open']) else 'green'),
                                      autorange=True)
         else:
-            data = data.astype('float')
+            data = data.astype(np.float_)
             data.transpose().boxplot(ax=self.axes[row, col], patch_artist=True,
                                      boxprops=dict(facecolor='red' if float(data.iloc[-1]['Close']) < float(
                                          data.iloc[-1]['Open']) else 'green'),
@@ -168,7 +169,7 @@ class Display:
 
         if not without_fib and not only_fib:
             self.keltner_display = self.keltner_display.iloc[
-                                   int(len(self.keltner_display.index) / 1.33 + 1):].reset_index().astype('float')
+                                   int(len(self.keltner_display.index) / 1.33 + 1):].reset_index().astype(np.float_)
         if not only_fib:
             self.keltner_display['middle'].transpose().plot.line(ax=self.axes[row, col])
             self.keltner_display['upper'].transpose().plot.line(ax=self.axes[row, col])

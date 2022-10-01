@@ -499,8 +499,9 @@ class Studies(Gather):
                 print(f'[ERROR] new_set is empty for upwards_fib-{self.indicator}!')
                 return val1, val2, val3
             new_set_dropped_min = new_set.drop(new_set['Low'].idxmin())
-            while new_set_dropped_min['Low'].idxmin() >= new_set['Low'].idxmin() - 1:
-                new_set_dropped_min = new_set_dropped_min.drop(new_set_dropped_min['Low'].idxmin())
+            if new_set['Low'].idxmin() >= 5: # Only do this if not the first 5 values
+                while new_set_dropped_min['Low'].idxmin() >= new_set['Low'].idxmin() - 1:
+                    new_set_dropped_min = new_set_dropped_min.drop(new_set_dropped_min['Low'].idxmin())
             for i, row in new_set.iterrows():  # reverse order iteration
                 if i >= len(new_set) - 1:
                     break
@@ -577,8 +578,10 @@ class Studies(Gather):
             if len(new_set) == 0:
                 return val1, val2, val3
             new_set_dropped_max = new_set.drop(new_set['High'].idxmax())
-            while new_set_dropped_max['High'].idxmax() >= new_set['High'].idxmax() - 1:
-                new_set_dropped_max = new_set_dropped_max.drop(new_set_dropped_max['High'].idxmax())
+            i = 0
+            if new_set['High'].idxmax() >= 5: # Only do this if not the first 5 values
+                while new_set_dropped_max['High'].idxmax() >= new_set['High'].idxmax() - 1:
+                    new_set_dropped_max = new_set_dropped_max.drop(new_set_dropped_max['High'].idxmax())
 
             while new_set_dropped_max['High'].idxmax() == 1:
                 new_set_dropped_max = new_set_dropped_max.iloc[1:]
@@ -682,7 +685,7 @@ class Studies(Gather):
                         self.fibonacci_extension.at[0, "2.86"],
                         self.fibonacci_extension.at[0, "3.43"],
                         self.fibonacci_extension.at[0, "3.83"],
-                        self.fibonacci_extension.at[0, "5.44"],
+                        self.fibonacci_extension.at[0, "5.63"],
                         self.fibonacci_extension.at[0, "8.23"],
                         self.fibonacci_extension.at[0, "9.55"],
                         self.fibonacci_extension.at[0, "11.13"],
@@ -709,7 +712,7 @@ class Studies(Gather):
                         self.fibonacci_extension.at[0, "2.86"],
                         self.fibonacci_extension.at[0, "3.43"],
                         self.fibonacci_extension.at[0, "3.83"],
-                        self.fibonacci_extension.at[0, "5.44"],
+                        self.fibonacci_extension.at[0, "5.63"],
                         self.fibonacci_extension.at[0, "8.23"],
                         self.fibonacci_extension.at[0, "9.55"],
                         self.fibonacci_extension.at[0, "11.13"],
@@ -828,7 +831,7 @@ val1    val3_________________________          vall2
             new_data = pd.DataFrame(columns=['Date', 'Open', 'High', 'Low', 'Close', 'Adj. Close'])
             fib_data = pd.DataFrame(
                 columns=['0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
-                         '1.556', '2.493', '2.86', '3.43', '3.83', '5.44', '8.23','9.55','11.13'])
+                         '1.556', '2.493', '2.86', '3.43', '3.83', '5.63', '8.23','9.55','11.13'])
             try:
                 self.fib_cnx.close()
             except:
@@ -1118,7 +1121,7 @@ val1    val3_________________________          vall2
                                                         '2.86': r[13],
                                                         '3.43': r[14],
                                                         '3.83': r[15],
-                                                        '5.44': r[16],
+                                                        '5.63': r[16],
                                                         '8.23': r[17],
                                                         '9.55': r[18],
                                                         '11.13': r[19],
@@ -1159,7 +1162,7 @@ val1    val3_________________________          vall2
             0.283
             1.556
             2.73
-            5.44
+            5.63
             8.23
             9.55
             2.86
@@ -1192,12 +1195,12 @@ val1    val3_________________________          vall2
                 # After finding min and max values, we can look for local mins and maxes by iterating
                 new_set = pd.concat([local_max_high,local_max_low]).sort_values(by=['Date']).drop_duplicates().reset_index()
 
-                new_set['High'] = new_set['High'].astype('float')
-                self.data['High'] = self.data['High'].astype('float')
-                data['High'] = data['High'].astype('float')
-                new_set['Low'] = new_set['Low'].astype('float')
-                self.data['Low'] = self.data['Low'].astype('float')
-                data['Low'] = data['Low'].astype('float')
+                new_set['High'] = new_set['High'].astype(np.float_)
+                self.data['High'] = self.data['High'].astype(np.float_)
+                data['High'] = data['High'].astype(np.float_)
+                new_set['Low'] = new_set['Low'].astype(np.float_)
+                self.data['Low'] = self.data['Low'].astype(np.float_)
+                data['Low'] = data['Low'].astype(np.float_)
                 # new_set.columns = ['Index', 'Vals']
                 pd.set_option('display.max_columns', None)
                 # attempt upwards fib
@@ -1218,7 +1221,7 @@ val1    val3_________________________          vall2
             new_set_dropped_min = new_set.drop(new_set['Low'].idxmin())
             while new_set_dropped_min['Low'].idxmin() >= new_set['Low'].idxmin()  - 1:
                 new_set_dropped_min = new_set_dropped_min.drop(new_set_dropped_min['Low'].idxmin())
-            if new_set_dropped_min['Low'].idxmin() <= len(new_set) - 4 and new_set['Low'].idxmin() != len(new_set) - 1 and new_set['Low'].min() < data['Low'].iloc[-1]:
+            if new_set_dropped_min['Low'].idxmin() <= len(new_set) - 4 and new_set['Low'].idxmin() <= len(new_set) - 4 and new_set['Low'].min() < data['Low'].iloc[-1]:
                 try:
                     val1, val2, val3 = self.upwards_fib(new_set, interval)
                     # calculate values  -- 14 vals
@@ -1237,7 +1240,7 @@ val1    val3_________________________          vall2
                                                              '2.86': [self.fib_help(val1, val2, val3, 2.86)],
                                                              '3.43': [self.fib_help(val1, val2, val3, 3.43)],
                                                              '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                                                             '5.44': [self.fib_help(val1, val2, val3, 5.44)],
+                                                             '5.63': [self.fib_help(val1, val2, val3, 5.63)],
                                                              '8.23': [self.fib_help(val1, val2, val3, 8.23)],
                                                              '9.55': [self.fib_help(val1, val2, val3, 9.55)],
                                                              '11.13': [self.fib_help(val1, val2, val3, 11.13)]
@@ -1267,7 +1270,7 @@ val1    val3_________________________          vall2
                                                                  '2.86': [self.fib_help(val1, val2, val3, 2.86)],
                                                                  '3.43': [self.fib_help(val1, val2, val3, 3.43)],
                                                                  '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                                                                 '5.44': [self.fib_help(val1, val2, val3, 5.44)],
+                                                                 '5.63': [self.fib_help(val1, val2, val3, 5.63)],
                                                                  '8.23': [self.fib_help(val1, val2, val3, 8.23)],
                                                                  '9.55': [self.fib_help(val1, val2, val3, 9.55)],
                                                                  '11.13': [self.fib_help(val1, val2, val3, 11.13)]
@@ -1291,7 +1294,7 @@ val1    val3_________________________          vall2
                              '2.86': [self.fib_help(val1, val2, val3, 2.86)],
                              '3.43': [self.fib_help(val1, val2, val3, 3.43)],
                              '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                             '5.44': [self.fib_help(val1, val2, val3, 5.44)],
+                             '5.63': [self.fib_help(val1, val2, val3, 5.63)],
                              '8.23': [self.fib_help(val1, val2, val3, 8.23)],
                              '9.55': [self.fib_help(val1, val2, val3, 9.55)],
                              '11.13': [self.fib_help(val1, val2, val3, 11.13)]

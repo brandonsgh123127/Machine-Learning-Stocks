@@ -99,7 +99,7 @@ class Normalizer():
             else:
                 initial_date = date
             await self.gen.set_ticker(ticker)
-            vals = await self.gen.generate_data_with_dates(initial_date - datetime.timedelta(days=60 if '1d' in interval else\
+            vals = await self.gen.generate_data_with_dates(initial_date - datetime.timedelta(days=150 if '1d' in interval else\
                                     125 if '1wk' in interval else\
                                     600 if '1mo' in interval else\
                                     30 if interval =='5m' else\
@@ -179,14 +179,14 @@ class Normalizer():
             data = data.drop(columns={'index'})
         except:
             pass
-        data = data.astype('float')
-        self.studies = self.studies.astype('float')
+        data = data.astype(np.float_)
+        self.studies = self.studies.astype(np.float_)
         try:
-            self.keltner = self.keltner.astype('float')
+            self.keltner = self.keltner.astype(np.float_)
         except:
             print('[INFO] Couldn\'t convert keltner to type <float>')
         try:
-            self.fib = self.fib.astype('float')
+            self.fib = self.fib.astype(np.float_)
         except:
             print('[INFO] Couldn\'t convert fibonacci sequence to type <float>')
         self.normalized_data = pd.DataFrame((), columns=['Close EMA14 Distance', 'Close EMA30 Distance',
@@ -289,8 +289,8 @@ class Normalizer():
             data = self.data.drop(columns={'Date'})
         except:
             pass
-        data = data.astype('float')
-        self.studies = self.studies.astype('float')
+        data = data.astype(np.float_)
+        self.studies = self.studies.astype(np.float_)
         self.normalized_data = pd.DataFrame((), columns=['Open', 'Close', 'Range', 'Euclidean Open', 'Euclidean Close',
                                                          'Open EMA14 Diff', 'Open EMA30 Diff', 'Close EMA14 Diff',
                                                          'Close EMA30 Diff', 'EMA14 EMA30 Diff'])

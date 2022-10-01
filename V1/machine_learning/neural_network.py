@@ -190,15 +190,18 @@ class Network(Neural_Framework):
                     print('[ERROR] Unknown error has occurred while training!')
                     continue
                 j = j + 1
-            train = np.asarray(train).astype('float32')
-            train_targets = np.asarray(train_targets).astype('float32')
+            train = np.asarray(train).astype(np.float_)
+            train_targets = np.asarray(train_targets).astype(np.float_)
             # Profile a range of batches, e.g. from 2 to 5.
             tensorboard_callback = tf.keras.callbacks.TensorBoard(
                 log_dir=f'./logs/{self.model_name}', profile_batch=(2, 5))
             # Use fit for generating with ease.  Validation data included for analysis of loss
-            disp = nn.fit(x=np.stack(train), y=np.stack(train_targets), batch_size=75, epochs=1,
+            stacked_train=np.stack(train)
+            stacked_train_targets=np.stack(train_targets)
+            disp = nn.fit(x=stacked_train, y=stacked_train_targets, batch_size=75, epochs=1,
                           validation_split=0.177,
                           callbacks=[tensorboard_callback])
+            del train,train_targets, stacked_train,stacked_train_targets
             models[i] = disp.history
             self.save_model(nn)
 
@@ -546,8 +549,10 @@ def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = 
                     train = (np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(), (1, 1, 126)))
                 else:
                     train = (np.reshape(sampler.normalized_data[-14:].to_numpy(), (1, 1, 126)))
-                train = np.asarray(train).astype('float32')
-                prediction = nn.predict(np.stack(train))
+                train = np.asarray(train).astype(np.float_)
+                stacked_train = np.stack(train)
+                prediction = nn.predict(stacked_train)
+                del train, stacked_train
         predicted = pd.DataFrame((np.reshape(prediction, (1, 1))), columns=['Close'])  # NORMALIZED
         is_utilizing_yfinance = False
         # Upload data to DB given prediction has finished
@@ -650,18 +655,18 @@ def main():
     # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_multilayer_l2")))
     # run(50,75,'relu_1layer')
     # copy_logs(path,'relu_1layer')
-    # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_0regularization")))
+    thread_manager.start_worker(threading.Thread(target=run, args=(49, 75, "relu_2layer_0regularization")))
     # run(50,75,'relu_2layer')
     # copy_logs(path,'relu_2layer')
     # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_dropout_l2_noout")))
     # thread_manager.join_workers()
     # run(50,75,'relu_2layer_dropout')
     # copy_logs(path,'relu_2layer_dropout')
-    # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_l1l2")))
+    thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_l1l2")))
     # run(50,75,'relu_2layer_l1l2')
     # copy_logs(path,'relu_2layer_l1l2')
-    # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_1layer_l2")))
-    # thread_manager.join_workers()
+    thread_manager.start_worker(threading.Thread(target=run, args=(49, 75, "relu_1layer_l2")))
+    thread_manager.join_workers()
     # run(50,75,'relu_1layer_l2')
     # copy_logs(path,'relu_1layer_l2')
     # thread_manager.start_worker(threading.Thread(target=run, args=(50, 75, "relu_2layer_dropout_l2_out")))

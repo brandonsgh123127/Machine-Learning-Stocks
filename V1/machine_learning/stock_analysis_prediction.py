@@ -113,7 +113,12 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
             datetime.datetime.utcnow().hour <= 14 and datetime.datetime.utcnow().minute < 30):  # if current time is before 9:30 AM EST, go back a day
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
-
+    if valid_date.weekday() == 5:  # if saturday
+        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
+        valid_date = (valid_date - datetime.timedelta(days=1))
+    if valid_date.weekday() == 6:  # if sunday
+        valid_datetime = (valid_datetime - datetime.timedelta(days=2))
+        valid_date = (valid_date - datetime.timedelta(days=2))
     if valid_date in holidays and 0 <= valid_date.weekday() <= 4:  # week day holiday
         valid_datetime = (valid_datetime - datetime.timedelta(days=1))
         valid_date = (valid_date - datetime.timedelta(days=1))
@@ -306,4 +311,4 @@ if __name__ == "__main__":
                           'relu_2layer_l1l2': nn_list[2],
                           'relu_2layer_l1l2': nn_list[3]}
 
-    loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='5m'))
+    loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='15m'))
