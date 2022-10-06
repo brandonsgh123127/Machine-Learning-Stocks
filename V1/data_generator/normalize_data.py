@@ -72,7 +72,7 @@ class Normalizer():
         Utilize mysql to gather data.  Gathers stock data from table.
     '''
 
-    async def mysql_read_data(self, ticker, date=None, force_generate=False, skip_db=False,interval='1d'):
+    async def mysql_read_data(self, ticker, date=None, force_generate=False, skip_db=False,interval='1d', opt_fib_vals=[]):
         try:
             self.cnx = self.db_con.cursor(buffered=True)
             self.cnx.autocommit = True
@@ -106,7 +106,7 @@ class Normalizer():
                                     40 if '15m' in interval else\
                                     59 if '30m' in interval else\
                                     120 if '60m' in interval else 40), initial_date,
-                                                     force_generate=force_generate, skip_db=skip_db, interval=interval,ticker=ticker)
+                                                     force_generate=force_generate, skip_db=skip_db, interval=interval,ticker=ticker, opt_fib_vals=opt_fib_vals)
             self.studies = vals[1]
             self.data = vals[0]
             self.fib = vals[2]
@@ -135,7 +135,7 @@ class Normalizer():
         utilize mysql to retrieve data and study data for later usage...
     '''
 
-    def read_data(self, ticker, rand_dates=False, skip_db=False, interval='1d'):
+    def read_data(self, ticker, rand_dates=False, skip_db=False, interval='1d', opt_fib_vals=[]):
         if rand_dates:
             # Get a random date for generation based on min/max date
             d2 = datetime.datetime.strptime(datetime.datetime.now().strftime('%m/%d/%Y %I:%M %p'), '%m/%d/%Y %I:%M %p')
@@ -150,7 +150,7 @@ class Normalizer():
             date = None
         try:
             loop = asyncio.new_event_loop()
-            loop.run_until_complete(self.mysql_read_data(ticker, date=date, skip_db=skip_db,interval=interval))
+            loop.run_until_complete(self.mysql_read_data(ticker, date=date, skip_db=skip_db,interval=interval,opt_fib_vals=opt_fib_vals))
         except Exception as e:
             print('[ERROR] Failed to read data!\n', str(e))
             raise RuntimeError(f'[ERROR] Failed to read data!',e)

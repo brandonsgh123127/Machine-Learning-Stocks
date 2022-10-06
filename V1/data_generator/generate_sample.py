@@ -17,7 +17,7 @@ class Sample(Normalizer):
         self.path = Path(os.getcwd()).absolute()
 
     def generate_sample(self, out=8, _has_actuals=False, rand_date=False, is_divergence=False, skip_db=False,
-                        interval='1d'):
+                        interval='1d',opt_fib_vals=[]):
         self.cnx = self.db_con.cursor(buffered=True)
         if not _has_actuals:
             # print("Predict Mode")
@@ -30,7 +30,7 @@ class Sample(Normalizer):
         else:
             # Read the current ticker data
             try:
-                self.read_data(self.ticker, rand_dates=rand_date, skip_db=skip_db, interval=interval)
+                self.read_data(self.ticker, rand_dates=rand_date, skip_db=skip_db, interval=interval,opt_fib_vals=opt_fib_vals)
             except Exception as e:
                 print(f'[ERROR] Failed to read sample data for ticker {self.ticker}')
                 raise Exception(str(e))
@@ -63,7 +63,7 @@ class Sample(Normalizer):
             raise Exception('[ERROR] Failed to Normalize data!\n', e)
         try:
             if len(self.normalized_data) < self.DAYS_SAMPLED:
-                self.read_data(self.ticker, rand_dates=rand_date)  # Get ticker and date from path
+                self.read_data(self.ticker, rand_dates=rand_date,opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
                 if not is_divergence:
                     self.convert_derivatives(out=out)
                 else:
@@ -78,7 +78,7 @@ class Sample(Normalizer):
         self.cnx.close()
         return 0
 
-    def generate_divergence_sample(self, _has_actuals=False, rand_date=False):
+    def generate_divergence_sample(self, _has_actuals=False, rand_date=False,opt_fib_vals=[]):
         self.cnx = self.db_con.cursor(buffered=True)
 
         if not _has_actuals:
@@ -90,7 +90,7 @@ class Sample(Normalizer):
         else:
             # Read the current ticker data
             try:
-                self.read_data(self.ticker, rand_dates=rand_date)  # Get ticker and date from path
+                self.read_data(self.ticker, rand_dates=rand_date,opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
             except Exception as e:
                 print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\n{str(e)}')
                 raise Exception(str(e))
@@ -102,7 +102,7 @@ class Sample(Normalizer):
         if rc == 1:
             raise Exception("Normalize did not return exit code 1")
         if len(self.normalized_data) < self.DAYS_SAMPLED:
-            self.read_data(self.to_date, self.ticker)  # Get ticker and date from path
+            self.read_data(self.to_date, self.ticker,opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
             self.convert_derivatives()
         self.cnx.close()
         return 0

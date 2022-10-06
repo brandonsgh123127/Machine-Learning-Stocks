@@ -118,7 +118,7 @@ class Generator():
             return 'n/a     n/a'
 
     async def generate_data_with_dates(self, date1=None, date2=None, is_not_closed=False, force_generate=False,
-                                 skip_db=False, interval='1d', ticker: Optional[str] = None):
+                                 skip_db=False, interval='1d', ticker: Optional[str] = None, opt_fib_vals: list = []):
         studies = Studies(self.ticker if not ticker else ticker, force_generate=force_generate)
         studies.date_set = (date1, date2)
         # Loop until valid data populates
@@ -162,7 +162,7 @@ class Generator():
             await studies.apply_ema("14", date_diff, skip_db=skip_db, interval=interval)
             # print(len(studies.data),len(studies.applied_studies['ema14']))
             await studies.apply_ema("30", date_diff, skip_db=skip_db, interval=interval)
-            await studies.apply_fibonacci(skip_db=skip_db, interval=interval)
+            await studies.apply_fibonacci(skip_db=skip_db, interval=interval,opt_fib_vals=opt_fib_vals)
             await studies.keltner_channels(20, 1.3, None, skip_db=skip_db, interval=interval)
             # Final join
         except Exception as e:

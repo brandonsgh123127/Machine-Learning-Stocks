@@ -121,16 +121,16 @@ class Network(Neural_Framework):
         return nn
 
     # Used for generation of data via the start
-    def generate_sample(self, _has_actuals=False, rand_date=None, interval = '1d'):
+    def generate_sample(self, _has_actuals=False, rand_date=None, interval = '1d',opt_fib_vals = []):
         path = Path(os.getcwd()).absolute()
         self.sampler.reset_data()
         self.sampler.set_ticker(
             self.choose_random_ticker(Neural_Framework, csv_file=f'{path}/data/watchlist/default.csv'))
         try:
             if self.model_choice <= 6:
-                self.sampler.generate_sample(_has_actuals=_has_actuals, out=8, rand_date=rand_date, skip_db=True,interval=interval)
+                self.sampler.generate_sample(_has_actuals=_has_actuals, out=8, rand_date=rand_date, skip_db=True,interval=interval,opt_fib_vals=opt_fib_vals)
             else:
-                self.sampler.generate_sample(_has_actuals=_has_actuals, out=8, rand_date=rand_date, skip_db=True,interval=interval)
+                self.sampler.generate_sample(_has_actuals=_has_actuals, out=8, rand_date=rand_date, skip_db=True,interval=interval,opt_fib_vals=opt_fib_vals)
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -473,7 +473,8 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 
 def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer",
          force_generation=False,
-         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = (), interval: str = '1d', sampler: Sample = None):
+         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = (), interval: str = '1d', sampler: Sample = None,
+         opt_fib_vals: list = []):
     # Check to see if empty data value was passed in.
     # If true, exit out of function
     if data is None:
@@ -524,7 +525,7 @@ def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = 
             sampler.set_sample_data(data[0], data[1], data[2], data[3])
         # if not type tuple, then this means that no data was passed in...
         train = None
-        sampler.generate_sample(_has_actuals=has_actuals, out=8, rand_date=rand_date, interval=interval)
+        sampler.generate_sample(_has_actuals=has_actuals, out=8, rand_date=rand_date, interval=interval,opt_fib_vals=opt_fib_vals)
         sampler.trim_data(has_actuals)
         try:  # verify there is no extra 'index' column
             sampler.data = sampler.data.drop(['index'], axis=1)
@@ -620,7 +621,6 @@ def load(nn: keras.models.Model = None, ticker: str = None, has_actuals: bool = 
     del unnormalized_prediction
     predicted_unnormalized = pd.concat([unnormalized_predict_values])
     del unnormalized_predict_values
-
     return sampler.unnormalize(predicted), sampler.unnormalized_data.tail(
         1), predicted_unnormalized, sampler.keltner, sampler.fib, sampler.studies
 

@@ -37,14 +37,14 @@ class launcher:
                       color: str = "blue", force_generation=False, unnormalized_data=False, row=0, col=1,
                       data=None, is_divergence=False,
                       skip_threshold: float = 0.05,
-                      interval: str = '1d'):
+                      interval: str = '1d',opt_fib_vals: list = []):
         # Call machine learning model
         self.sampler.set_ticker(ticker)
         self.sampler.reset_data()
         if not is_divergence:
             ldata = load(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
                          force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False, data=data,
-                         interval=interval, sampler=self.sampler)
+                         interval=interval, sampler=self.sampler,opt_fib_vals=opt_fib_vals)
         else:
             ldata = load_divergence(f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
                                     force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False,
@@ -71,11 +71,11 @@ class launcher:
                         self.dis.display_predict_only(color=f'{color}', row=row, col=col)
                     else:
                         self.dis.display_predict_only(color=f'{color}', row=row, col=col, is_divergence=is_divergence)
-            else:
+            else: # Boxplot
                 with self.listLock:
-                    self.dis.display_box(ldata[2], has_actuals=_has_actuals) # Display with fib
-                    self.dis.display_box(ldata[2], row=1, col=0, has_actuals=_has_actuals, without_fib=True)#Display without fib
-                    self.dis.display_box(ldata[2], row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True)#Display only fib
+                    self.dis.display_box(ldata[2], has_actuals=_has_actuals,opt_fib_vals=opt_fib_vals) # Display with fib
+                    self.dis.display_box(ldata[2], row=1, col=0, has_actuals=_has_actuals, without_fib=True,opt_fib_vals=opt_fib_vals)#Display without fib
+                    self.dis.display_box(ldata[2], row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True,opt_fib_vals=opt_fib_vals)#Display only fib
         else:
             if unnormalized_data:
                 with self.listLock:
@@ -92,7 +92,7 @@ class launcher:
 
 
 
-async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True, force_generate=False, interval='Daily'):
+async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True, force_generate=False, interval='Daily',opt_fib_vals:list=[]):
     listLock = threading.Lock()
     loop = asyncio.get_event_loop()
 
@@ -170,14 +170,14 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
     _has_actuals = has_actuals
 
     # Generate Data for usage in display_model
-    data_task = await loop.run_in_executor(launch._executor,launch.gen.generate_data_with_dates,dates[0], dates[1], False, force_generate, False, n_interval,ticker)
+    data_task = await loop.run_in_executor(launch._executor,launch.gen.generate_data_with_dates,dates[0], dates[1], False, force_generate, False, n_interval,ticker,opt_fib_vals)
     data = await asyncio.gather(data_task)
     del data_task
     data = data[0]
 
     # BOX PLOT CALL
     box_plot_task = await loop.run_in_executor(launch._executor,launch.display_model,nn_dict["relu_1layer_l2"],"relu_1layer_l2", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
-                         n_interval)
+                         n_interval,opt_fib_vals)
 
     #
     # Model_Out_2 LABEL
@@ -311,4 +311,4 @@ if __name__ == "__main__":
                           'relu_2layer_l1l2': nn_list[2],
                           'relu_2layer_l1l2': nn_list[3]}
 
-    loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='15m'))
+    loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='15m',opt_fib_vals=['7.44']))

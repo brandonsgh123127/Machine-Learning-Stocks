@@ -42,7 +42,7 @@ class Display:
         self.studies = studies
         pd.set_option("display.max.columns", None)
 
-    def display_box(self, data=None, row=0, col=0, has_actuals=False,without_fib=False, only_fib=False):
+    def display_box(self, data=None, row=0, col=0, has_actuals=False,without_fib=False, only_fib=False,opt_fib_vals=[]):
         c = 'blue'
         if data is None:
             raise Exception('[ERROR] data cannot be None!  Exiting display boxplot...')
@@ -90,41 +90,87 @@ class Display:
             pass
         if not without_fib:
             try:
+                orig_labels = ['index', '0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.523', '0.618', '0.796',
+                         '0.923', '1.556', '2.17', '2.493', '2.86', '3.43',
+                         '3.83', '4.32', '5.01', '5.63', '5.96',
+                        '7.17', '8.23','9.33','10.13','11.13', '12.54',
+                        '13.17', '14.17', '15.55', '16.32']
+                for val in opt_fib_vals:
+                    orig_labels.append(val)
                 try:
                     fib_display = fib_display.set_axis(
-                        labels=['index', '0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
-                         '1.556', '2.493', '2.86', '3.43', '3.83', '5.63','8.23','9.55','11.13'], axis=1)
+                        labels=orig_labels, axis=1)
                 except:
                     fib_display = fib_display.set_axis(
-                        labels=['0.202', '0.236', '0.241', '0.273', '0.283', '0.316', '0.382', '0.5', '0.618', '0.796',
-                         '1.556', '2.493', '2.86', '3.43', '3.83', '5.63','8.23', '9.55','11.13'], axis=1)
-                perc_target = 0.15
+                        labels=orig_labels, axis=1)
+                perc_target = 0.08
+                for fib_val in opt_fib_vals:
+                    fib_display[f'{fib_val}'].transpose().plot.line(ax=self.axes[row, col], color='purple',linestyle='dashed')
                 # fib_display = fib_display.loc[fib_display.index.repeat(len(self.keltner_display.index) + 2)]
-                fib_display['0.202'].transpose().plot.line(ax=self.axes[row, col], color='blue', x='0.202', y='0.202')
-                fib_display['0.236'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                fib_display['0.241'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                fib_display['0.273'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                fib_display['0.283'].transpose().plot.line(ax=self.axes[row, col], color='orange')
-                fib_display['0.316'].transpose().plot.line(ax=self.axes[row, col], color='orange')
-                fib_display['0.382'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                fib_display['0.5'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                fib_display['0.618'].transpose().plot.line(ax=self.axes[row, col], color='purple')
-                fib_display['0.796'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                fib_display['1.556'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                fib_display['2.493'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                fib_display['2.86'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                if 1 - (fib_display['3.43'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
-                    fib_display['3.43'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                if 1 - (fib_display['3.83'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
+                if abs(1 - (fib_display['0.202'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2.33:
+                    fib_display['0.202'].transpose().plot.line(ax=self.axes[row, col], color='green', x='0.202', y='0.202')
+                if abs(1 - (fib_display['0.236'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2.33:
+                    fib_display['0.236'].transpose().plot.line(ax=self.axes[row, col], color='blue')
+                if abs(1 - (fib_display['0.241'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2.33:
+                    fib_display['0.241'].transpose().plot.line(ax=self.axes[row, col], color='blue')
+                if abs(1 - (fib_display['0.273'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2.33:
+                    fib_display['0.273'].transpose().plot.line(ax=self.axes[row, col], color='brown')
+                if abs(1 - (fib_display['0.283'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2.33:
+                    fib_display['0.283'].transpose().plot.line(ax=self.axes[row, col], color='orange')
+                if abs(1 - (fib_display['0.316'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2.12:
+                    fib_display['0.316'].transpose().plot.line(ax=self.axes[row, col], color='orange')
+                if abs(1 - (fib_display['0.382'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2.12:
+                    fib_display['0.382'].transpose().plot.line(ax=self.axes[row, col], color='red')
+                if abs(1 - (fib_display['0.5'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2:
+                    fib_display['0.5'].transpose().plot.line(ax=self.axes[row, col], color='blue')
+                if abs(1 - (fib_display['0.523'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2:
+                    fib_display['0.523'].transpose().plot.line(ax=self.axes[row, col], color='blue',linestyle='dashed')
+                if abs(1 - (fib_display['0.618'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2:
+                    fib_display['0.618'].transpose().plot.line(ax=self.axes[row, col], color='purple')
+                if abs(1 - (fib_display['0.796'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2:
+                    fib_display['0.796'].transpose().plot.line(ax=self.axes[row, col], color='brown')
+                if abs(1 - (fib_display['0.923'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2:
+                    fib_display['0.923'].transpose().plot.line(ax=self.axes[row, col], color='brown',linestyle='dashdot')
+                if abs(1 - (fib_display['1.556'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target/2:
+                    fib_display['1.556'].transpose().plot.line(ax=self.axes[row, col], color='orange',linestyle='dotted')
+                if abs(1 - (fib_display['2.17'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                    fib_display['2.17'].transpose().plot.line(ax=self.axes[row, col], color='black',linestyle='dashdot')
+                if abs(1 - (fib_display['2.493'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                    fib_display['2.493'].transpose().plot.line(ax=self.axes[row, col], color='brown')
+                if abs(1 - (fib_display['2.86'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                    fib_display['2.86'].transpose().plot.line(ax=self.axes[row, col], color='blue')
+                if abs(1 - (fib_display['3.43'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                    fib_display['3.43'].transpose().plot.line(ax=self.axes[row, col], color='black',linestyle='dotted')
+                if abs(1 - (fib_display['3.83'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
                     fib_display['3.83'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                if 1 - (fib_display['5.63'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
-                    fib_display['5.63'].transpose().plot.line(ax=self.axes[row, col], color='pink')
-                if 1 - (fib_display['5.63'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
+                if abs(1 - (fib_display['4.32'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                    fib_display['4.32'].transpose().plot.line(ax=self.axes[row, col], color='pink')
+                if abs(1 - (fib_display['5.01'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                    fib_display['5.01'].transpose().plot.line(ax=self.axes[row, col], color='red',linestyle='dashed')
+                if abs(1 - (fib_display['5.63'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                    fib_display['5.63'].transpose().plot.line(ax=self.axes[row, col], color='blue')
+                if abs(1 - (fib_display['5.96'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                    fib_display['5.96'].transpose().plot.line(ax=self.axes[row, col], color='brown',linestyle='dotted')
+                if abs(1 - (fib_display['7.17'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.2):
+                    fib_display['7.17'].transpose().plot.line(ax=self.axes[row, col], color='pink')
+                if abs(1 - (fib_display['8.23'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.2):
                     fib_display['8.23'].transpose().plot.line(ax=self.axes[row, col], color='orange')
-                if 1 - (fib_display['9.55'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
-                    fib_display['9.55'].transpose().plot.line(ax=self.axes[row, col], color='pink')
-                if 1 - (fib_display['11.13'].iloc[-1] / data['Close'].iloc[-2]) < perc_target:
-                    fib_display['11.13'].transpose().plot.line(ax=self.axes[row, col], color='black')
+                if abs(1 - (fib_display['9.33'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.25):
+                    fib_display['9.33'].transpose().plot.line(ax=self.axes[row, col], color='black')
+                if abs(1 - (fib_display['10.13'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.33):
+                    fib_display['10.13'].transpose().plot.line(ax=self.axes[row, col], color='green',linestyle='dashdot')
+                if abs(1 - (fib_display['11.13'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.33):
+                    fib_display['11.13'].transpose().plot.line(ax=self.axes[row, col], color='black',linestyle='dashdot')
+                if abs(1 - (fib_display['12.54'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.4):
+                    fib_display['12.54'].transpose().plot.line(ax=self.axes[row, col], color='brown',linestyle='dashed')
+                if abs(1 - (fib_display['13.17'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.45):
+                    fib_display['13.17'].transpose().plot.line(ax=self.axes[row, col], color='brown',linestyle='dashed')
+                if abs(1 - (fib_display['14.17'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.45):
+                    fib_display['14.17'].transpose().plot.line(ax=self.axes[row, col], color='black')
+                if abs(1 - (fib_display['15.55'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.5):
+                    fib_display['15.55'].transpose().plot.line(ax=self.axes[row, col], color='green',linestyle='dashed')
+                if abs(1 - (fib_display['16.32'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.5):
+                    fib_display['16.32'].transpose().plot.line(ax=self.axes[row, col], color='red',linestyle='dotted')
                 fib_display = fib_display.reset_index(drop=True)
             except Exception as e:
                 print(f'failed to do fib_display: {e}')
