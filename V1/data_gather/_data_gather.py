@@ -454,10 +454,33 @@ class Gather:
                             self.data = self.data.rename(columns={'Datetime':'Date'})
                             self.data = self.data.drop(['Datetime'],axis=0).transpose()
                             self.data['Adj Close'] = self.data.loc[:, 'Close']
+                            if self.data.iloc[-1]['Date'] == self.data.iloc[-2]['Date']:
+                                print('[INFO] Duplicate date detected... Removing right after gather.')
+                                self.data = self.data.drop(self.data.index[-1])
+                            try:
+                                contains_16 = self.data.iloc[-1]['Date'].hour == 16
+                                if contains_16:
+                                    print('[INFO] Date with 16:00 in time... Removing right after gather.')
+                                    self.data = self.data.drop(self.data.index[-1])
+                            except Exception as e:
+                                print(e)
+
                         else:
                             data = data.rename(columns={'Datetime':'Date'})
                             data = data.drop(['Datetime'],axis=0).transpose()
                             data['Adj Close'] = data.loc[:, 'Close']
+                            if data.iloc[-1]['Date'] == data.iloc[-2]['Date']:
+                                print('[INFO] Duplicate date detected... Removing right after gather.')
+                                data = data.drop(data.index[-1])
+                            try:
+                                contains_16 = data.iloc[-1]['Date'].hour == 16
+                                if contains_16:
+                                    print('[INFO] Date with 16:00 in time... Removing right after gather.')
+                                    data = data.drop(data.index[-1])
+                            except Exception as e:
+                                print(e)
+
+
 
                 except Exception as e:
                     print('[INFO] Could not convert Date col to datetime', str(e))

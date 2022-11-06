@@ -46,7 +46,6 @@ class Display:
         c = 'blue'
         if data is None:
             raise Exception('[ERROR] data cannot be None!  Exiting display boxplot...')
-
         try:
             data_len = len(data.index)
             if has_actuals:
@@ -56,22 +55,24 @@ class Display:
                     data = data.iloc[:-1].reset_index().astype(np.float_)
                 if not without_fib and not only_fib:
                     fib_display = self.fib_display.reset_index()
-                    if len(fib_display.index) < data_len:
-                        fib_display = fib_display.loc[fib_display.index.repeat(data_len - len(fib_display.index) + 4)]
+                    if len(fib_display['0.202']) < data_len:
+                        fib_display = fib_display.loc[fib_display.index.repeat(int(data_len - len(fib_display.index)/len(fib_display.index)))]
                     fib_display = fib_display.iloc[int(data_len / 1.33 + 1):].reset_index().astype(np.float_)
                     self.studies = self.studies.iloc[int(data_len / 1.33 + 1):].reset_index().astype(np.float_)
             else:
                 if not only_fib:
-                    data = data.iloc[int(data_len / 1.33 + 1):]
+                    data = data.iloc[int(data_len / 1.33):]
+                    data_len = len(data.index)
+
                 if not without_fib and not only_fib:
                     fib_display = self.fib_display.reset_index()
-                    if len(fib_display.index) > data_len:
-                        fib_display = fib_display.iloc[-data_len:]
-                    self.studies = self.studies.iloc[int(data_len / 1.33 + 1):].reset_index().astype(np.float_)
+                    if len(fib_display['0.202']) > data_len:
+                        fib_display = fib_display.iloc[-data_len-1:].reset_index()
+                        self.studies = self.studies.iloc[-data_len:].reset_index().astype(np.float_)
             # if only_fib, expand the data so it covers the length of the elongated data
             if only_fib:
                 fib_display = self.fib_display.loc[
-                    self.fib_display.index.repeat(int(data_len/len(self.fib_display))+1)]
+                    self.fib_display.index.repeat(int(data_len/len(self.fib_display['0.202']))+1)]
                 fib_display = self.fib_display.reset_index().astype(np.float_)
             data = data.reset_index().drop(columns=['index']).astype(np.float_)
         except:
@@ -215,7 +216,7 @@ class Display:
 
         if not without_fib and not only_fib:
             self.keltner_display = self.keltner_display.iloc[
-                                   int(len(self.keltner_display.index) / 1.33 + 1):].reset_index().astype(np.float_)
+                                   int(len(self.keltner_display.index) / 1.33 ):].reset_index().astype(np.float_)
         if not only_fib:
             self.keltner_display['middle'].transpose().plot.line(ax=self.axes[row, col])
             self.keltner_display['upper'].transpose().plot.line(ax=self.axes[row, col])

@@ -271,6 +271,11 @@ class Studies(Gather):
 
                 # Calculate locally, then push to database
                 with threading.Lock():
+                    # Check if duplicate time at the end if yfinance
+                    if is_utilizing_yfinance:
+                        if self.data.iloc[-1]['Date'] == self.data.iloc[-2]['Date']:
+                            print('[INFO] Duplicate date detected... Removing for accurate ema.')
+                            data = self.data.drop([-1])
                     try:
                         data = self.data.copy().drop(['Date'], axis=1)
                     except:
@@ -281,7 +286,7 @@ class Studies(Gather):
                     except:
                         pass
                     data = data.rename(columns={'Close': f'ema{length}'}).ewm(alpha=2 / (int(length) + 1),
-                                                                              adjust=True).mean()
+                                                                              adjust=True).mean().reset_index()
                     self.applied_studies = pd.concat([self.applied_studies, data], axis=1)
                     del data
                     gc.collect()
@@ -1521,18 +1526,18 @@ val1    val3_________________________          vall2
         # now, calculate upper and lower bands given all data
         for index, row in avg_true_range.iterrows():
             try:
-                if index == len(self.data_cp.index) - 1:  # if last element
-                    self.keltner = self.keltner.append({'middle': (self.applied_studies[f'ema14'].iloc[index - 1]),
-                                                        'upper': self.applied_studies[f'ema14'].iloc[index - 1]
-                                                                 + (factor * avg_true_range['AvgTrueRange'].iloc[
-                                                                             index - 1]),
-                                                        'lower': self.applied_studies[f'ema14'].iloc[index - 1]
-                                                                 - (factor * avg_true_range['AvgTrueRange'].iloc[
-                                                                             index - 1])}
-                                                       , ignore_index=True)
-
-                else:  # else
-                    self.keltner = self.keltner.append({'middle': self.applied_studies[f'ema14'].iloc[index],
+                # if index == len(self.data_cp.index) - 1:  # if last element
+                #     self.keltner = self.keltner.append({'middle': (self.applied_studies[f'ema14'].iloc[index - 1]),
+                #                                         'upper': self.applied_studies[f'ema14'].iloc[index - 1]
+                #                                                  + (factor * avg_true_range['AvgTrueRange'].iloc[
+                #                                                              index - 1]),
+                #                                         'lower': self.applied_studies[f'ema14'].iloc[index - 1]
+                #                                                  - (factor * avg_true_range['AvgTrueRange'].iloc[
+                #                                                              index - 1])}
+                #                                        , ignore_index=True)
+                #
+                # else:  # else
+                self.keltner = self.keltner.append({'middle': self.applied_studies[f'ema14'].iloc[index],
                                                         'upper': self.applied_studies[f'ema14'].iloc[index]
                                                                  + (factor * avg_true_range['AvgTrueRange'].iloc[
                                                                                   index]),
