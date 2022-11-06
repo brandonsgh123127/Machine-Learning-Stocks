@@ -196,7 +196,7 @@ class Normalizer():
                                                          'Close'])
         target_fib1 = None
         target_fib2 = None
-        last_3 = data['Close']
+        last_3 = data['Close'].iloc[-3:]
         last_3_avg_close = last_3.mean()
         i = 0
         j = 0

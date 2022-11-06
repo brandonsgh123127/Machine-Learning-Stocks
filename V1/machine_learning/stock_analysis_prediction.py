@@ -1,5 +1,8 @@
+import cProfile
 import inspect
 import queue
+from asyncio import get_event_loop, gather, new_event_loop
+from datetime import datetime, timedelta
 
 import keras
 
@@ -7,17 +10,17 @@ from V1.data_generator import Sample
 from V1.data_generator._data_generator import Generator
 from pathlib import Path
 import os
+
+from V1.machine_learning.model import NN_Model
 # import matplotlib.pyplot as plt
 from V1.machine_learning.neural_network import load, Network
 from V1.machine_learning.neural_network_divergence import load as load_divergence
 from V1.data_generator.display_data import Display
-import datetime
 import threading
 import sys
 import gc
 from V1.threading_impl.Thread_Pool import Thread_Pool
 from pandas.tseries.holiday import USFederalHolidayCalendar
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 class launcher:
@@ -33,7 +36,7 @@ class launcher:
         self.gen = Generator(None, Path(os.getcwd()).absolute(), force_generation)
         self.sampler = Sample(ticker=None,force_generate=False)
 
-    async def display_model(self, nn: keras.models.Model = None, name: str = "relu_multilayer_l2", _has_actuals: bool = False, ticker: str = "spy",
+    async def display_model(self, nn: NN_Model = None, name: str = "relu_multilayer_l2", _has_actuals: bool = False, ticker: str = "spy",
                       color: str = "blue", force_generation=False, unnormalized_data=False, row=0, col=1,
                       data=None, is_divergence=False,
                       skip_threshold: float = 0.05,
@@ -46,7 +49,7 @@ class launcher:
                          force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False, data=data,
                          interval=interval, sampler=self.sampler,opt_fib_vals=opt_fib_vals)
         else:
-            ldata = load_divergence(f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
+            ldata = load_divergence(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
                                     force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False,
                                     data=data, interval=interval)
         if ldata[0] is None: # If None, that means no data was passed into load (ticker is bad now, or failed to generate data)
@@ -94,8 +97,7 @@ class launcher:
 
 async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True, force_generate=False, interval='Daily',opt_fib_vals:list=[]):
     listLock = threading.Lock()
-    loop = asyncio.get_event_loop()
-
+    loop = get_event_loop()
     launch = launcher()
     if ticker is not None:
         ticker = ticker
@@ -105,104 +107,104 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
     # if current trading day, set prediction for tomorrow in date name
     dates = []
     # Confirm end date is valid 
-    valid_datetime = datetime.datetime.utcnow()
+    valid_datetime = datetime.utcnow()
     holidays = USFederalHolidayCalendar().holidays(start=valid_datetime,
-                                                   end=(valid_datetime - datetime.timedelta(days=7))).to_pydatetime()
+                                                   end=(valid_datetime - timedelta(days=7))).to_pydatetime()
     valid_date = valid_datetime.date()
     if (
-            datetime.datetime.utcnow().hour <= 14 and datetime.datetime.utcnow().minute < 30):  # if current time is before 9:30 AM EST, go back a day
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
+            datetime.utcnow().hour <= 14 and datetime.utcnow().minute < 30):  # if current time is before 9:30 AM EST, go back a day
+        valid_datetime = (valid_datetime - timedelta(days=1))
+        valid_date = (valid_date - timedelta(days=1))
     if valid_date.weekday() == 5:  # if saturday
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
+        valid_datetime = (valid_datetime - timedelta(days=1))
+        valid_date = (valid_date - timedelta(days=1))
     if valid_date.weekday() == 6:  # if sunday
-        valid_datetime = (valid_datetime - datetime.timedelta(days=2))
-        valid_date = (valid_date - datetime.timedelta(days=2))
+        valid_datetime = (valid_datetime - timedelta(days=2))
+        valid_date = (valid_date - timedelta(days=2))
     if valid_date in holidays and 0 <= valid_date.weekday() <= 4:  # week day holiday
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
+        valid_datetime = (valid_datetime - timedelta(days=1))
+        valid_date = (valid_date - timedelta(days=1))
     if valid_date.weekday() == 5:  # if saturday
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
+        valid_datetime = (valid_datetime - timedelta(days=1))
+        valid_date = (valid_date - timedelta(days=1))
     if valid_date.weekday() == 6:  # if sunday
-        valid_datetime = (valid_datetime - datetime.timedelta(days=2))
-        valid_date = (valid_date - datetime.timedelta(days=2))
+        valid_datetime = (valid_datetime - timedelta(days=2))
+        valid_date = (valid_date - timedelta(days=2))
     if valid_date in holidays:
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
+        valid_datetime = (valid_datetime - timedelta(days=1))
+        valid_date = (valid_date - timedelta(days=1))
     e_date = valid_date
 
     n_interval = '1d' if interval == 'Daily' else '1wk' if interval == 'Weekly' else '1mo' if interval == 'Monthly' else '1y' if interval == 'Yearly' else interval
 
     if '1d' in n_interval:
-        dates = (e_date - datetime.timedelta(days=75), e_date)  # 2 months worth of data
+        dates = (e_date - timedelta(days=75), e_date)  # 2 months worth of data
     elif '1wk' in n_interval:
         # change end date to a monday before
         cur_day = abs(e_date.weekday())
         if cur_day != 0:
-            e_date = e_date - datetime.timedelta(days=cur_day + 2)
+            e_date = e_date - timedelta(days=cur_day + 2)
         # change begin date to a monday
-        begin_date = e_date - datetime.timedelta(days=250)
+        begin_date = e_date - timedelta(days=250)
         begin_day = abs(begin_date.weekday())
         if begin_day != 0:
-            begin_date = begin_date - datetime.timedelta(days=begin_day)
+            begin_date = begin_date - timedelta(days=begin_day)
         dates = (begin_date, e_date)  # ~5 months
     elif '1mo' in n_interval:
-        dates = ((e_date - datetime.timedelta(days=600)).replace(day=1), e_date.replace(day=1))  # ~20 months
+        dates = ((e_date - timedelta(days=600)).replace(day=1), e_date.replace(day=1))  # ~20 months
     elif '1y' not in n_interval:
         if n_interval == '5m':
-            s_date = e_date - datetime.timedelta(days=2)
+            s_date = e_date - timedelta(days=2)
             if e_date.weekday() == 0:
-                s_date = s_date - datetime.timedelta(days=2)
+                s_date = s_date - timedelta(days=2)
             dates = (s_date, e_date)  # month worth of data
         if n_interval == '15m':
-            s_date = e_date - datetime.timedelta(days=4)
+            s_date = e_date - timedelta(days=4)
             if e_date.weekday() == 0:
-                s_date = s_date - datetime.timedelta(days=2)
+                s_date = s_date - timedelta(days=2)
             dates = (s_date, e_date)  # month worth of data
         elif '30m' in n_interval:
-            dates = (e_date - datetime.timedelta(days=6), e_date)  # month worth of data
+            dates = (e_date - timedelta(days=6), e_date)  # month worth of data
         elif '60m' in n_interval:
-            dates = (e_date - datetime.timedelta(days=8), e_date)  # month worth of data
+            dates = (e_date - timedelta(days=8), e_date)  # month worth of data
 
 
     _has_actuals = has_actuals
 
     # Generate Data for usage in display_model
     data_task = await loop.run_in_executor(launch._executor,launch.gen.generate_data_with_dates,dates[0], dates[1], False, force_generate, False, n_interval,ticker,opt_fib_vals)
-    data = await asyncio.gather(data_task)
+    data = await gather(data_task)
     del data_task
     data = data[0]
 
     # BOX PLOT CALL
-    box_plot_task = await loop.run_in_executor(launch._executor,launch.display_model,nn_dict["relu_1layer_l2"],"relu_1layer_l2", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
+    box_plot_task = await loop.run_in_executor(launch._executor,launch.display_model,nn_dict["5"],"relu_1layer_l2", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
                          n_interval,opt_fib_vals)
 
     #
     # Model_Out_2 LABEL
     if _has_actuals:
         task1 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_2layer_0regularization"],"relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    nn_dict["2"],"2", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
                     0.05, n_interval)
         task2 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_1layer_l2"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
+                    nn_dict["5"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
                     0.05, n_interval)
         task3 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
+                    nn_dict["4"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
                     0.05, n_interval)
     else:
         task1 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_2layer_0regularization"],"relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    nn_dict["2"],"relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
                     0.05, n_interval)
         task2 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_1layer_l2"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
+                    nn_dict["5"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
                     0.05, n_interval)
         task3 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
+                    nn_dict["4"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
                     0.05, n_interval)
     gc.collect()
-    await asyncio.gather(box_plot_task, task1, task2, task3)
+    await gather(box_plot_task, task1, task2, task3)
     del box_plot_task, task1, task2, task3
     launch.dis.fig.canvas.draw()  # draw image before returning
     return launch.dis.fig, launch.dis.axes
@@ -225,27 +227,27 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
     launch = launcher(skip_display=True)
 
     # Confirm end date is valid
-    valid_datetime = datetime.datetime.utcnow()
+    valid_datetime = datetime.utcnow()
     holidays = USFederalHolidayCalendar().holidays(start=valid_datetime,
-                                                   end=(valid_datetime - datetime.timedelta(days=7))).to_pydatetime()
+                                                   end=(valid_datetime - timedelta(days=7))).to_pydatetime()
     valid_date = valid_datetime.date()
     if (
-            datetime.datetime.utcnow().hour <= 14 and datetime.datetime.utcnow().minute < 30):  # if current time is before 9:30 AM EST, go back a day
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
+            datetime.utcnow().hour <= 14 and datetime.utcnow().minute < 30):  # if current time is before 9:30 AM EST, go back a day
+        valid_datetime = (valid_datetime - timedelta(days=1))
+        valid_date = (valid_date - timedelta(days=1))
 
     if valid_date in holidays and 0 <= valid_date.weekday() <= 4:  # week day holiday
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
+        valid_datetime = (valid_datetime - timedelta(days=1))
+        valid_date = (valid_date - timedelta(days=1))
     if valid_date.weekday() == 5:  # if saturday
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
+        valid_datetime = (valid_datetime - timedelta(days=1))
+        valid_date = (valid_date - timedelta(days=1))
     if valid_date.weekday() == 6:  # if sunday
-        valid_datetime = (valid_datetime - datetime.timedelta(days=2))
-        valid_date = (valid_date - datetime.timedelta(days=2))
+        valid_datetime = (valid_datetime - timedelta(days=2))
+        valid_date = (valid_date - timedelta(days=2))
     if valid_date in holidays:
-        valid_datetime = (valid_datetime - datetime.timedelta(days=1))
-        valid_date = (valid_date - datetime.timedelta(days=1))
+        valid_datetime = (valid_datetime - timedelta(days=1))
+        valid_date = (valid_date - timedelta(days=1))
     e_date = valid_date
 
     n_interval = '1d' if interval == 'Daily' else '1wk' if interval == 'Weekly' else\
@@ -253,27 +255,29 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
             '1y' if interval == 'Yearly' else interval
 
     if '1d' in n_interval:
-        dates = (e_date - datetime.timedelta(days=75), e_date)  # month worth of data
+        dates = (e_date - timedelta(days=75), e_date)  # month worth of data
     elif '1wk' in n_interval:
         cur_day = abs(e_date.weekday())
         if cur_day != 0:
-            e_date = e_date - datetime.timedelta(days=cur_day + 2)
+            e_date = e_date - timedelta(days=cur_day + 2)
         # change begin date to a monday
-        begin_date = e_date - datetime.timedelta(days=250)
+        begin_date = e_date - timedelta(days=250)
         begin_day = abs(begin_date.weekday())
         if begin_day != 0:
-            begin_date = begin_date - datetime.timedelta(days=begin_day)
+            begin_date = begin_date - timedelta(days=begin_day)
 
         dates = (begin_date, e_date)  # ~5 months
     elif '1mo' in n_interval:
-        dates = ((e_date - datetime.timedelta(months=15)).replace(day=1), e_date)  # ~20 months
+        dates = ((e_date - timedelta(months=15)).replace(day=1), e_date)  # ~20 months
     elif '1y' not in n_interval:
         if n_interval == '5m':
-            dates = (e_date - datetime.timedelta(days=4), e_date)  # months worth of data
+            dates = (e_date - timedelta(days=4), e_date)  # months worth of data
         if n_interval == '15m':
-            dates = (e_date - datetime.timedelta(days=4), e_date)  # months worth of data
+            dates = (e_date - timedelta(days=4), e_date)  # months worth of data
         if n_interval == '30m':
-            dates = (e_date - datetime.timedelta(days=7), e_date)  # months worth of data
+            dates = (e_date - timedelta(days=7), e_date)  # months worth of data
+        if n_interval == '60m':
+           dates = (e_date - timedelta(days=14), e_date)  # months worth of data
     path = Path(os.getcwd()).absolute()
 
     task_list = []
@@ -283,9 +287,12 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
             data = await launch.gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
             # print(data,flush=True)
             task_list.append(launch.display_model(
-                    nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
+                    nn_dict["1"],"relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
                     percent, n_interval))
         except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
             print(f'[ERROR] Could not generate an NN dataset for {ticker}!  Continuing...\n\tException: {e}', flush=True)
     [await task for task in task_list]
     saved_predictions: list = []
@@ -302,13 +309,15 @@ if __name__ == "__main__":
     _type = sys.argv[1]
     _has_actuals = sys.argv[3] == 'True'
     _force_generate = sys.argv[4] == 'True'
-    loop = asyncio.new_event_loop()
+    loop = new_event_loop()
     neural_net = Network(0, 0)
-    names: list = ['relu_1layer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2', 'relu_2layer_l1l2']
-    nn_list: list = [neural_net.load_model(name=name) for name in names]
-    nn_dict: dict = {'relu_1layer_l2': nn_list[0],
-                          'relu_2layer_0regularization': nn_list[1],
-                          'relu_2layer_l1l2': nn_list[2],
-                          'relu_2layer_l1l2': nn_list[3]}
+    model_choices: list = [1, 2, 4, 5]
+    nn_models = [NN_Model(item) for item in model_choices]
+    for model in nn_models:
+        model.create_model()
+    nn_dict: dict = {'1': nn_models[0],
+                          '2': nn_models[1],
+                          '4': nn_models[2],
+                          '5': nn_models[3]}
 
     loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='15m',opt_fib_vals=['7.44']))

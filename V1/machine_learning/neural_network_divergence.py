@@ -1,5 +1,7 @@
 import os
 
+from V1.machine_learning.model import NN_Model
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import keras
@@ -27,79 +29,6 @@ class Network(Neural_Framework):
                                 "model_sigmoid2": 6}
         self.model_choice: int = None
 
-    def get_mapping(self, choice: int):
-        return self.model_map_names.keys()[self.model_map_names.values().index(choice)]
-
-    def create_model(self, model_choice="model_relu"):
-        self.model_name = model_choice
-        self.model_choice = self.model_map_names.get(model_choice)
-        self.nn_input = keras.Input(shape=(1, 1, 140))  # 14 * 10 cols
-        # Relu Model
-        if self.model_choice == 1:
-            self.nn = keras.layers.Dense(140, activation='relu',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                self.nn_input)
-            # self.nn = keras.layers.Dropout(0.1)(self.nn)
-            keras.regularizers.l1(0.09)
-            keras.regularizers.l2(0.1)
-            self.nn = keras.layers.Dense(48, activation='relu')(self.nn)
-            self.nn = keras.layers.Dense(56, activation='relu')(self.nn)
-            self.nn2 = keras.layers.Dense(2, activation='linear')(self.nn)
-        #  Leaky Relu no Dropout
-        elif self.model_choice == 2:
-            self.nn = keras.layers.Dense(140, activation=keras.layers.LeakyReLU(alpha=0.3),
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                self.nn_input)
-            self.nn = keras.layers.Dense(56, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn = keras.layers.Dense(24, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn2 = keras.layers.Dense(2, activation='linear')(self.nn)
-        # Sigmoid 
-        elif self.model_choice == 3:
-            self.nn = keras.layers.Dense(140, activation='sigmoid')(self.nn_input)
-            # self.nn = keras.layers.Dropout(0.1)(self.nn)
-            keras.regularizers.l1(0.01)
-            keras.regularizers.l2(0.04)
-            self.nn = keras.layers.Dense(56, activation='sigmoid')(self.nn)
-            self.nn = keras.layers.Dropout(0.5)(self.nn)  # Residual layer
-            self.nn = keras.layers.Dense(22, activation='sigmoid')(self.nn)
-            self.nn = keras.layers.Dense(20, activation='sigmoid')(self.nn)
-            self.nn2 = keras.layers.Dense(2, activation='linear')(self.nn)
-            # Relu - Out 3
-        elif self.model_choice == 4:
-            self.nn = keras.layers.Dense(140, activation='relu',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                self.nn_input)
-            keras.regularizers.l1(0.02)
-            keras.regularizers.l2(0.07)
-            self.nn = keras.layers.Dense(48, activation='relu')(self.nn)
-            self.nn2 = keras.layers.Dense(3, activation='linear')(self.nn)
-        # Leaky Relu - Out 3
-        elif self.model_choice == 5:
-            self.nn = keras.layers.Dense(140, activation=keras.layers.LeakyReLU(alpha=0.3),
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                self.nn_input)
-            keras.regularizers.l1(0.01)
-            keras.regularizers.l2(0.04)
-            self.nn = keras.layers.Dense(48, activation=keras.layers.LeakyReLU(alpha=0.5))(self.nn)
-            self.nn = keras.layers.Dense(48, activation=keras.layers.LeakyReLU(alpha=0.3))(self.nn)
-            self.nn2 = keras.layers.Dense(3, activation='linear')(self.nn)
-        # Sigmoid - Out 3
-        elif self.model_choice == 6:
-            self.nn = keras.layers.Dense(140, activation='sigmoid',
-                                         kernel_initializer=tf.keras.initializers.GlorotNormal(seed=None))(
-                self.nn_input)
-            self.nn = keras.layers.Dense(140, activation='sigmoid')(self.nn)
-            self.nn = keras.layers.Dropout(0.6)(self.nn)  # Residual
-            keras.regularizers.l1(0.01)
-            keras.regularizers.l2(0.04)
-            self.nn = keras.layers.Dense(8, activation='sigmoid')(self.nn)
-            self.nn = keras.layers.Dense(8, activation='sigmoid')(self.nn)
-            self.nn2 = keras.layers.Dense(3, activation='linear')(self.nn)
-        self.nn = keras.Model(inputs=self.nn_input, outputs=[self.nn2])
-        self.nn.compile(optimizer=keras.optimizers.Adam(lr=0.0005, beta_1=0.95, beta_2=0.999), loss='mse',
-                        metrics=['MeanAbsoluteError', 'MeanSquaredError'])
-        return self.nn
-
     # Used for generation of data via the start
     def generate_sample(self, _has_actuals=False, rand_date=None):
         path = Path(os.getcwd()).absolute()
@@ -121,7 +50,7 @@ class Network(Neural_Framework):
             return 1
         return 0
 
-    def run_model(self, rand_date=False):
+    def run_model(self, nn: NN_Model, rand_date=False):
         self.sampler = Sample()
         models = {}
         # Retrieve all necessary data into training data
@@ -154,17 +83,17 @@ class Network(Neural_Framework):
                     print('[ERROR] Failed to specify train_target value!\nException:\n', str(e))
                     continue
             for j in range(1, len(train)):
-                disp = self.nn.train_on_batch(np.stack(train[j]), np.stack(train_targets[j]))
+                disp = nn.model.train_on_batch(np.stack(train[j]), np.stack(train_targets[j]))
                 model_info = {'model': self.nn, 'history': disp[1], 'loss': disp[0]}
                 models[i] = (model_info['loss'] + models[i])
                 try:
-                    self.nn.evaluate(np.stack(train[j]), np.stack(train_targets[j]), verbose=1)
+                    nn.model.evaluate(np.stack(train[j]), np.stack(train_targets[j]), verbose=1)
                     # print(f'loss : {loss}\t accuracy : {acc}')
                 except:
                     print('[ERROR] Could not evaluate model')
                     continue
             models[i] = models[i] / self.BATCHES
-            self.save_model()
+            nn.save_model()
 
         return models
 
@@ -334,7 +263,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 """Load Specified Model"""
 
 
-def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu", force_generation=False,
+def load(nn: NN_Model, ticker: str = None, has_actuals: bool = False, name: str = "model_relu", force_generation=False,
          device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = None, interval: str = '1d'):
     # Connect to local DB
     path = Path(os.getcwd()).absolute()
@@ -376,7 +305,7 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
     # Start ML calculations
     if predicted is None or force_generation:
         neural_net = Network(0, 0)
-        neural_net.load_model(name=name)
+        nn.load_model(name=name)
 
         # Actually gather data and insert if query is not met
         sampler = Sample(ticker=ticker, force_generate=force_generation)
@@ -407,7 +336,7 @@ def load(ticker: str = None, has_actuals: bool = False, name: str = "model_relu"
                 train.append(np.reshape(sampler.normalized_data.iloc[-15:-1].to_numpy(), (1, 1, 140)))
             else:
                 train.append(np.reshape(sampler.normalized_data[-14:].to_numpy(), (1, 1, 140)))
-            prediction = neural_net.nn.predict(np.stack(train))
+            prediction = nn.model.predict(np.stack(train))
         if neural_net.model_choice <= 3:
             predicted = pd.DataFrame((np.reshape((prediction), (1, 2))),
                                      columns=['Open', 'Close'])  # NORMALIZED
@@ -471,11 +400,11 @@ Run Specified Model by creating model and running batches/epochs.
 """
 
 
-def run(epochs, batch_size, name="model_relu"):
+def run(epochs, batch_size, choice=5):
     neural_net = Network(epochs, batch_size)
-    neural_net.load_model(name)
-    neural_net.create_model(model_choice=name)
-    model = neural_net.run_model(rand_date=True)
+    nn = NN_Model(choice)
+    nn.create_model()
+    model = neural_net.run_model(nn,rand_date=True)
     for i in range(1, neural_net.EPOCHS):
         train_history = model[i]
         print(train_history)

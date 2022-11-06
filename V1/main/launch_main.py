@@ -4,6 +4,7 @@ import os
 from asyncio import AbstractEventLoop, Task
 from concurrent.futures import ThreadPoolExecutor
 
+from V1.machine_learning.model import NN_Model
 from V1.machine_learning.neural_network import Network
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -49,13 +50,14 @@ class GUI(Thread_Pool):
         self.img = None
         self.image = None
         neural_net = Network(0, 0)
-        names: list = ['relu_1layer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2', 'relu_2layer_l1l2']
-        nn_list: list = [neural_net.load_model(name=name) for name in names]
-        self.nn_dict: dict = {'relu_1layer_l2': nn_list[0],
-                         'relu_2layer_0regularization': nn_list[1],
-                         'relu_2layer_l1l2': nn_list[2],
-                         'relu_2layer_l1l2': nn_list[3]}
-
+        model_choices: list = [1, 2, 4, 5]
+        nn_models = [NN_Model(item) for item in model_choices]
+        for model in nn_models:
+            model.create_model()
+        self.nn_dict: dict = {'1': nn_models[0],
+                         '2': nn_models[1],
+                         '4': nn_models[2],
+                         '5': nn_models[3]}
 
         self.window = tk.Tk(screenName='Stock Analysis')
         self.window.attributes('-fullscreen', False)
