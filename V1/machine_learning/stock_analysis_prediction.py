@@ -3,6 +3,7 @@ import inspect
 import queue
 from asyncio import get_event_loop, gather, new_event_loop
 from datetime import datetime, timedelta
+from typing import Optional
 
 import keras
 
@@ -24,11 +25,8 @@ from pandas.tseries.holiday import USFederalHolidayCalendar
 from concurrent.futures import ThreadPoolExecutor
 
 class launcher:
-    def __init__(self, skip_display: bool = False, force_generation: bool = False):
+    def __init__(self, force_generation: bool = False):
         self._type = None
-        if not skip_display:
-            self.dis: Display = Display()
-        self.skip_display = skip_display
         self.listLock = threading.Lock()
         self.saved_predictions: queue.Queue = queue.SimpleQueue()
         self.listLock = threading.Lock()
@@ -40,7 +38,9 @@ class launcher:
                       color: str = "blue", force_generation=False, unnormalized_data=False, row=0, col=1,
                       data=None, is_divergence=False,
                       skip_threshold: float = 0.05,
-                      interval: str = '1d',opt_fib_vals: list = []):
+                      interval: str = '1d',
+                      opt_fib_vals: list = [],
+                      dis: Optional[Display] = None,skip_display: bool = False):
         # Call machine learning model
         self.sampler.set_ticker(ticker)
         self.sampler.reset_data()
@@ -55,7 +55,7 @@ class launcher:
         if ldata[0] is None: # If None, that means no data was passed into load (ticker is bad now, or failed to generate data)
             return ticker, None, None
         # if skipping display, return only predicted value and last val, as that is what we care about.
-        if self.skip_display:
+        if skip_display:
             predict_close = ldata[0]['Close'].iloc[0]
             if isinstance(data, tuple):  # if tuple, take 1st df and get close
                 self.saved_predictions.put((ticker, predict_close, data[0]['Close'].iloc[-1]))
@@ -65,37 +65,40 @@ class launcher:
                 return ticker, predict_close, data.iloc[-1]
         # read data for loading into display portion
         with self.listLock:
-            self.dis.read_studies_data(ldata[0], ldata[1], ldata[3], ldata[4], ldata[5])
+            dis.read_studies_data(ldata[0], ldata[1], ldata[3], ldata[4], ldata[5])
         # display data
         if not _has_actuals:  # if prediction, proceed
             if not unnormalized_data:
                 with self.listLock:
                     if not is_divergence:
-                        self.dis.display_predict_only(color=f'{color}', row=row, col=col)
+                        dis.display_predict_only(color=f'{color}', row=row, col=col)
                     else:
-                        self.dis.display_predict_only(color=f'{color}', row=row, col=col, is_divergence=is_divergence)
+                        dis.display_predict_only(color=f'{color}', row=row, col=col, is_divergence=is_divergence)
             else: # Boxplot
                 with self.listLock:
-                    self.dis.display_box(ldata[2], has_actuals=_has_actuals,opt_fib_vals=opt_fib_vals) # Display with fib
-                    self.dis.display_box(ldata[2], row=1, col=0, has_actuals=_has_actuals, without_fib=True,opt_fib_vals=opt_fib_vals)#Display without fib
-                    self.dis.display_box(ldata[2], row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True,opt_fib_vals=opt_fib_vals)#Display only fib
+                    dis.display_box(ldata[2], has_actuals=_has_actuals,opt_fib_vals=opt_fib_vals) # Display with fib
+                    dis.display_box(ldata[2], row=1, col=0, has_actuals=_has_actuals, without_fib=True,opt_fib_vals=opt_fib_vals)#Display without fib
+                    dis.display_box(ldata[2], row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True,opt_fib_vals=opt_fib_vals)#Display only fib
         else:
             if unnormalized_data:
                 with self.listLock:
-                    self.dis.display_box(ldata[2], has_actuals=_has_actuals) # display with fib
-                    self.dis.display_box(ldata[2], row=1, col=0, has_actuals=_has_actuals, without_fib=True)#Display without fib
-                    self.dis.display_box(ldata[2], row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True)#Display only fib
+                    dis.display_box(ldata[2], has_actuals=_has_actuals) # display with fib
+                    dis.display_box(ldata[2], row=1, col=0, has_actuals=_has_actuals, without_fib=True)#Display without fib
+                    dis.display_box(ldata[2], row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True)#Display only fib
             else:
                 with self.listLock:
                     if not is_divergence:
-                        self.dis.display_line(color=f'{color}', row=row, col=col)
+                        dis.display_line(color=f'{color}', row=row, col=col)
                     else:
-                        self.dis.display_line(color=f'{color}', row=row, col=col, is_divergence=is_divergence)
+                        dis.display_line(color=f'{color}', row=row, col=col, is_divergence=is_divergence)
         return ticker, ldata[0], ldata[1]
 
 
 
-async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True, force_generate=False, interval='Daily',opt_fib_vals:list=[]):
+async def main(nn_dict: dict = {}, ticker: str = "SPY",
+               has_actuals: bool = True, force_generate=False,
+               interval='Daily',opt_fib_vals:list=[],
+               dis: Optional[Display] = None,skip_display: bool = False):
     listLock = threading.Lock()
     loop = get_event_loop()
     launch = launcher()
@@ -178,36 +181,38 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY", has_actuals: bool = True
     data = data[0]
 
     # BOX PLOT CALL
-    box_plot_task = await loop.run_in_executor(launch._executor,launch.display_model,nn_dict["5"],"relu_1layer_l2", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
-                         n_interval,opt_fib_vals)
+    box_plot_task = await loop.run_in_executor(launch._executor,launch.display_model,nn_dict["relu_1layer_l2"],"relu_1layer_l2", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
+                         n_interval,opt_fib_vals,dis,skip_display)
 
     #
     # Model_Out_2 LABEL
     if _has_actuals:
         task1 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["2"],"2", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval)
+                    nn_dict["relu_2layer_0regularization"],"2", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval,[],dis,skip_display)
         task2 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["5"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval)
+                    nn_dict["relu_1layer_l2"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval,[],dis,skip_display)
         task3 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["4"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval)
+                    nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval,[],dis,skip_display)
     else:
         task1 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["2"],"relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval)
+                    nn_dict["relu_2layer_0regularization"],"relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval,[],dis,skip_display)
         task2 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["5"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval)
+                    nn_dict["relu_1layer_l2"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval,[],dis,skip_display)
         task3 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["4"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval)
+                    nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval,[],dis,skip_display)
     gc.collect()
     await gather(box_plot_task, task1, task2, task3)
     del box_plot_task, task1, task2, task3
-    launch.dis.fig.canvas.draw()  # draw image before returning
-    return launch.dis.fig, launch.dis.axes
+    dis.fig.canvas.draw()  # draw image before returning
+    fig = dis.fig
+    axes = dis.axes
+    return fig, axes
 
 async def get_preview_prices(ticker: str, force_generation=False) -> str:
     try:
@@ -224,7 +229,7 @@ async def get_preview_prices(ticker: str, force_generation=False) -> str:
 async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=False, _has_actuals: bool = False, percent: float = 0.02,
                        interval: str = 'Daily') -> list:
 
-    launch = launcher(skip_display=True)
+    launch = launcher()
 
     # Confirm end date is valid
     valid_datetime = datetime.utcnow()
@@ -287,7 +292,7 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
             data = await launch.gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
             # print(data,flush=True)
             task_list.append(launch.display_model(
-                    nn_dict["1"],"relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
+                    nn_dict["relu_multilayer_l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
                     percent, n_interval))
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -311,13 +316,15 @@ if __name__ == "__main__":
     _force_generate = sys.argv[4] == 'True'
     loop = new_event_loop()
     neural_net = Network(0, 0)
-    model_choices: list = [1, 2, 4, 5]
+    model_choices: list = ['relu_multilayer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2', 'relu_1layer_l2']
     nn_models = [NN_Model(item) for item in model_choices]
     for model in nn_models:
         model.create_model()
-    nn_dict: dict = {'1': nn_models[0],
-                          '2': nn_models[1],
-                          '4': nn_models[2],
-                          '5': nn_models[3]}
-
-    loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2], has_actuals=_has_actuals, force_generate=_force_generate,interval='15m',opt_fib_vals=['7.44']))
+    nn_dict: dict = {'relu_multilayer_l2': nn_models[0],
+                          'relu_2layer_0regularization': nn_models[1],
+                          'relu_2layer_l1l2': nn_models[2],
+                          'relu_1layer_l2': nn_models[3]}
+    dis = Display()
+    loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2],
+                                 has_actuals=_has_actuals, force_generate=_force_generate,
+                                 interval='1wk',opt_fib_vals=['7.44'],dis=dis,skip_display=False))

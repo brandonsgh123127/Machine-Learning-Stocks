@@ -54,7 +54,7 @@ class Studies(Gather):
         return self.timeframe
 
     # Save EMA to self defined applied_studies
-    async def apply_ema(self, length, span=None, half=None, skip_db=False, interval='1d'):
+    async def apply_ema(self, length, span=None, half=None, skip_db=False, interval='1d',simple=False):
         # Now, Start the process for inserting ema data...
         date_range = [d.strftime('%Y-%m-%d') for d in
                       pd.date_range(self.data.iloc[0]['Date'], self.data.iloc[-1]['Date'])]  # start/end date list
@@ -271,11 +271,9 @@ class Studies(Gather):
 
                 # Calculate locally, then push to database
                 with threading.Lock():
-                    # Check if duplicate time at the end if yfinance
-                    if is_utilizing_yfinance:
-                        if self.data.iloc[-1]['Date'] == self.data.iloc[-2]['Date']:
-                            print('[INFO] Duplicate date detected... Removing for accurate ema.')
-                            data = self.data.drop([-1])
+                    if self.data.iloc[-1]['Date'] == self.data.iloc[-2]['Date']:
+                        print('[INFO] Duplicate date detected... Removing for accurate ema.')
+                        data = self.data.drop([-1])
                     try:
                         data = self.data.copy().drop(['Date'], axis=1)
                     except:
@@ -285,8 +283,9 @@ class Studies(Gather):
                         data = data.drop(['Adj Close'], axis=1)
                     except:
                         pass
-                    data = data.rename(columns={'Close': f'ema{length}'}).ewm(alpha=2 / (int(length) + 1),
-                                                                              adjust=True).mean().reset_index()
+                    data = data.rename(columns={'Close': f'ema{length}'}).ewm(span=int(length),
+                                                                              adjust=True).mean().reset_index() if not simple else \
+                            data.rename(columns={'Close': f'ema{length}'}).rolling(int(length)).mean().fillna(0).reset_index()
                     self.applied_studies = pd.concat([self.applied_studies, data], axis=1)
                     del data
                     gc.collect()
@@ -657,9 +656,9 @@ class Studies(Gather):
                                                 `val15`, `val16`,`val17`,`val18`,`val19`,`val20`,`val21`,`val22`,
                                                 `val23`,`val24`,`val25`,
                                             `val26`,`val27`,`val28`,`val29`,`val30`,`val31`,`val32`) 
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                         """
-            elif '1wk' in interval:
+            elif '1m' in interval:
                 insert_studies_db_stmt = """REPLACE INTO `stocks`.`monthly-study-data` (`id`, `stock-id`, `data-id`,`study-id`,`val1`,
                                             `val2`,`val3`,`val4`,`val5`,`val6`,`val7`,`val8`,`val9`,`val10`,
                                             `val11`,`val12`,`val13`,`val14`,`val15`,
@@ -1471,7 +1470,7 @@ val1    val3_________________________          vall2
             with threading.Lock():
                 self.data_cp = self.data.copy()
                 # self.data_cp=self.data_cp.reset_index()
-                ema_task = self.apply_ema(length, length, skip_db=skip_db,interval=interval)  # apply length ema for middle band
+                ema_task = self.apply_ema(length, length, skip_db=skip_db,interval=interval,simple=True)  # apply length ema for middle band
                 self.keltner = pd.DataFrame({'middle': [], 'upper': [], 'lower': []}, dtype=float)
                 true_range = pd.DataFrame(columns=['trueRange'], dtype=float)
                 avg_true_range = pd.DataFrame(columns=['AvgTrueRange'], dtype=float)

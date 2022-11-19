@@ -457,6 +457,7 @@ class Gather:
                             if self.data.iloc[-1]['Date'] == self.data.iloc[-2]['Date']:
                                 print('[INFO] Duplicate date detected... Removing right after gather.')
                                 self.data = self.data.drop(self.data.index[-1])
+                            # Remove latest data point if hour is 4PM EST
                             try:
                                 contains_16 = self.data.iloc[-1]['Date'].hour == 16
                                 if contains_16:
@@ -464,7 +465,6 @@ class Gather:
                                     self.data = self.data.drop(self.data.index[-1])
                             except Exception as e:
                                 print(e)
-
                         else:
                             data = data.rename(columns={'Datetime':'Date'})
                             data = data.drop(['Datetime'],axis=0).transpose()
@@ -472,6 +472,7 @@ class Gather:
                             if data.iloc[-1]['Date'] == data.iloc[-2]['Date']:
                                 print('[INFO] Duplicate date detected... Removing right after gather.')
                                 data = data.drop(data.index[-1])
+                            # Remove latest data point if hour is 4PM EST
                             try:
                                 contains_16 = data.iloc[-1]['Date'].hour == 16
                                 if contains_16:
@@ -479,6 +480,26 @@ class Gather:
                                     data = data.drop(data.index[-1])
                             except Exception as e:
                                 print(e)
+                    if update_self:
+                        # Remove element if not 1d and value is NaN
+                        try:
+                            contains_nan = self.data['Open'].isnull().values.any()
+                            if contains_nan:
+                                nan_row = self.data[self.data['Open'].isnull()].index.values.astype(int)[0]
+                                print('[INFO] Date contains NaN value... Removing right after gather.')
+                                self.data = self.data.drop([nan_row])
+                        except Exception as e:
+                            print(e)
+                    else:
+                        # Remove element if not 1d and value is NaN
+                        try:
+                            contains_nan = data['Open'].isnull().values.any()
+                            if contains_nan:
+                                nan_row = data[data['Open'].isnull()].index.values.astype(int)[0]
+                                print('[INFO] Date contains NaN value... Removing right after gather.')
+                                data = data.drop([nan_row])
+                        except Exception as e:
+                            print(e)
 
 
 

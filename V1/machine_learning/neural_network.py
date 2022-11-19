@@ -37,7 +37,7 @@ class Network(Neural_Framework):
         self.sampler.set_ticker(
             self.choose_random_ticker(Neural_Framework, csv_file=f'{path}/data/watchlist/default.csv'))
         try:
-            if self.model_choice <= 6:
+            if self.model_choice <= 4:
                 self.sampler.generate_sample(_has_actuals=_has_actuals, out=8, rand_date=rand_date, skip_db=True,interval=interval,opt_fib_vals=opt_fib_vals)
             else:
                 self.sampler.generate_sample(_has_actuals=_has_actuals, out=8, rand_date=rand_date, skip_db=True,interval=interval,opt_fib_vals=opt_fib_vals)
@@ -427,8 +427,12 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
             sampler.set_sample_data(data[0], data[1], data[2], data[3])
         # if not type tuple, then this means that no data was passed in...
         train = None
-        sampler.generate_sample(_has_actuals=has_actuals, out=8, rand_date=rand_date, interval=interval,opt_fib_vals=opt_fib_vals)
-        sampler.trim_data(has_actuals)
+        try:
+            sampler.generate_sample(_has_actuals=has_actuals, out=8, rand_date=rand_date, interval=interval,opt_fib_vals=opt_fib_vals)
+            sampler.trim_data(has_actuals)
+        except Exception as e:
+            print('[ERROR] Failed to generate sample for neural_network!', str(e))
+            return 1
         try:  # verify there is no extra 'index' column
             sampler.data = sampler.data.drop(['index'], axis=1)
         except Exception as e:

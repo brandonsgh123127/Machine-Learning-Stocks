@@ -4,6 +4,7 @@ import os
 from asyncio import AbstractEventLoop, Task
 from concurrent.futures import ThreadPoolExecutor
 
+from V1.data_generator import Display
 from V1.machine_learning.model import NN_Model
 from V1.machine_learning.neural_network import Network
 
@@ -50,14 +51,16 @@ class GUI(Thread_Pool):
         self.img = None
         self.image = None
         neural_net = Network(0, 0)
-        model_choices: list = [1, 2, 4, 5]
+        self.dis = Display()
+        model_choices: list = ['relu_multilayer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2',
+                               'relu_1layer_l2']
         nn_models = [NN_Model(item) for item in model_choices]
         for model in nn_models:
             model.create_model()
-        self.nn_dict: dict = {'1': nn_models[0],
-                         '2': nn_models[1],
-                         '4': nn_models[2],
-                         '5': nn_models[3]}
+        self.nn_dict: dict = {'relu_multilayer_l2': nn_models[0],
+                         'relu_2layer_0regularization': nn_models[1],
+                         'relu_2layer_l1l2': nn_models[2],
+                         'relu_1layer_l2': nn_models[3]}
 
         self.window = tk.Tk(screenName='Stock Analysis')
         self.window.attributes('-fullscreen', False)
@@ -254,7 +257,10 @@ class GUI(Thread_Pool):
             self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
             if not is_caching:
                 self.generate_button.grid_forget()
-            analyze_task = analyze_stock(self.nn_dict, ticker, has_actuals, force_generate=force_generation,opt_fib_vals=opt_fib_vals)
+            analyze_task = analyze_stock(self.nn_dict, ticker, has_actuals,
+                                         force_generate=force_generation,
+                                         opt_fib_vals=opt_fib_vals,
+                                         dis=self.dis,skip_display=False)
             t = threading.Thread(target=self.image_retrieval_thread, args=(self.loop,analyze_task))
             t.daemon = True
             t.start()
@@ -267,12 +273,9 @@ class GUI(Thread_Pool):
             self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
             if not is_caching:
                 self.generate_button.grid_forget()
-            if not has_actuals:
-                analysis_task = await analyze_stock(self.nn_dict, ticker, has_actuals, force_generation,
-                                             self.interval_text.get(),list(self.opt_fib_vals_set))
-            else:
-                analysis_task = await analyze_stock(self.nn_dict, ticker, has_actuals, force_generation,
-                                             self.interval_text.get(),list(self.opt_fib_vals_set))
+            analysis_task = await analyze_stock(self.nn_dict, ticker, has_actuals, force_generation,
+                                         self.interval_text.get(),list(self.opt_fib_vals_set),
+                                                dis=self.dis, skip_display=False)
 
             # analysis_res = asyncio.gather(analysis_task)
             self.img = analysis_task[0]

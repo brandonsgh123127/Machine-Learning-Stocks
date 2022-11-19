@@ -74,7 +74,7 @@ class Generator():
             return
         try:
             studies.apply_fibonacci()
-            studies.keltner_channels(20, 1.3, None)
+            studies.keltner_channels(20, 2.0, None)
         except Exception as e:
             print(f'[ERROR] Failed to generate fib/keltner studies for {self.ticker}!\n{str(e)}')
             return
@@ -163,7 +163,7 @@ class Generator():
             # print(len(studies.data),len(studies.applied_studies['ema14']))
             await studies.apply_ema("30", date_diff, skip_db=skip_db, interval=interval)
             await studies.apply_fibonacci(skip_db=skip_db, interval=interval,opt_fib_vals=opt_fib_vals)
-            await studies.keltner_channels(20, 1.3, None, skip_db=skip_db, interval=interval)
+            await studies.keltner_channels(20, 2.0, None, skip_db=skip_db, interval=interval)
             # Final join
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
