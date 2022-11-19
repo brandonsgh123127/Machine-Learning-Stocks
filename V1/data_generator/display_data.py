@@ -221,11 +221,11 @@ class Display:
             self.keltner_display['lower'].transpose().plot.line(ax=self.axes[row, col],color='red')
             self.keltner_display = self.keltner_display.reset_index(drop=True)
             self.studies['ema14'].reset_index(drop=True).transpose().plot.line(
-                ax=self.axes[row, col],color='green')
+                ax=self.axes[row, col],color='blue',linestyle='dashed')
             self.studies['ema20'].reset_index(drop=True).transpose().iloc[-data_len:].plot.line(
-                ax=self.axes[row, col],color='blue')
+                ax=self.axes[row, col],color='green')
             self.studies['ema30'].reset_index(drop=True).transpose().plot.line(
-                ax=self.axes[row, col],color='yellow')
+                ax=self.axes[row, col],color='yellow',linestyle='dashed')
             self.studies['ema14'] = self.studies['ema14'].reset_index(drop=True)
             self.studies['ema30'] = self.studies['ema30'].reset_index(drop=True)
             self.studies['ema20'] = self.studies['ema20'].iloc[-data_len:].reset_index(drop=True)

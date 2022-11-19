@@ -52,7 +52,7 @@ class launcher:
             ldata = load_divergence(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
                                     force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False,
                                     data=data, interval=interval)
-        if ldata[0] is None: # If None, that means no data was passed into load (ticker is bad now, or failed to generate data)
+        if isinstance(ldata, int): # If None, that means no data was passed into load (ticker is bad now, or failed to generate data)
             return ticker, None, None
         # if skipping display, return only predicted value and last val, as that is what we care about.
         if skip_display:
