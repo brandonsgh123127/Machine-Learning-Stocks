@@ -102,73 +102,73 @@ class Display:
                 except:
                     fib_display = fib_display.set_axis(
                         labels=orig_labels, axis=1)
-                perc_target = 0.05
+                perc_target = 0.08
                 for fib_val in opt_fib_vals:
                     fib_display[f'{fib_val}'].transpose().plot.line(ax=self.axes[row, col], color='purple',linestyle='dashed')
                 # fib_display = fib_display.loc[fib_display.index.repeat(len(self.keltner_display.index) + 2)]
-                if abs(1 - (fib_display['0.202'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.2:
+                if abs(1 - (fib_display['0.202'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['0.202'].transpose().plot.line(ax=self.axes[row, col], color='green', x='0.202', y='0.202')
-                if abs(1 - (fib_display['0.236'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.2:
+                if abs(1 - (fib_display['0.236'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['0.236'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                if abs(1 - (fib_display['0.241'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.2:
+                if abs(1 - (fib_display['0.241'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['0.241'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                if abs(1 - (fib_display['0.273'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.2:
+                if abs(1 - (fib_display['0.273'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['0.273'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                if abs(1 - (fib_display['0.283'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.2:
+                if abs(1 - (fib_display['0.283'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['0.283'].transpose().plot.line(ax=self.axes[row, col], color='orange')
-                if abs(1 - (fib_display['0.316'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.3:
+                if abs(1 - (fib_display['0.316'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['0.316'].transpose().plot.line(ax=self.axes[row, col], color='orange')
-                if abs(1 - (fib_display['0.382'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.32:
+                if abs(1 - (fib_display['0.382'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['0.382'].transpose().plot.line(ax=self.axes[row, col], color='red')
-                if abs(1 - (fib_display['0.5'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.4:
+                if abs(1 - (fib_display['0.5'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['0.5'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                if abs(1 - (fib_display['0.523'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.42:
+                if abs(1 - (fib_display['0.523'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['0.523'].transpose().plot.line(ax=self.axes[row, col], color='blue',linestyle='dashed')
-                if abs(1 - (fib_display['0.618'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.6:
+                if abs(1 - (fib_display['0.618'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['0.618'].transpose().plot.line(ax=self.axes[row, col], color='purple')
-                if abs(1 - (fib_display['0.796'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.6:
+                if abs(1 - (fib_display['0.796'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['0.796'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                if abs(1 - (fib_display['0.923'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.7:
+                if abs(1 - (fib_display['0.923'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['0.923'].transpose().plot.line(ax=self.axes[row, col], color='brown',linestyle='dashdot')
-                if abs(1 - (fib_display['1.556'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.8:
+                if abs(1 - (fib_display['1.556'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['1.556'].transpose().plot.line(ax=self.axes[row, col], color='orange',linestyle='dotted')
-                if abs(1 - (fib_display['2.17'].iloc[-1] / data['Close'].iloc[-10:].mean())) <  perc_target*0.8:
+                if abs(1 - (fib_display['2.17'].iloc[-1] / data['Close'].iloc[-4:].mean())) <  perc_target or (row == 1 and col == 1):
                     fib_display['2.17'].transpose().plot.line(ax=self.axes[row, col], color='black',linestyle='dashdot')
-                if abs(1 - (fib_display['2.493'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.9:
+                if abs(1 - (fib_display['2.493'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['2.493'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                if abs(1 - (fib_display['2.86'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.9:
+                if abs(1 - (fib_display['2.86'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['2.86'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                if abs(1 - (fib_display['3.43'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target*0.9:
+                if abs(1 - (fib_display['3.43'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['3.43'].transpose().plot.line(ax=self.axes[row, col], color='black',linestyle='dotted')
-                if abs(1 - (fib_display['3.83'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                if abs(1 - (fib_display['3.83'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['3.83'].transpose().plot.line(ax=self.axes[row, col], color='brown')
-                if abs(1 - (fib_display['4.32'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                if abs(1 - (fib_display['4.32'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['4.32'].transpose().plot.line(ax=self.axes[row, col], color='pink')
-                if abs(1 - (fib_display['5.01'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                if abs(1 - (fib_display['5.01'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['5.01'].transpose().plot.line(ax=self.axes[row, col], color='red',linestyle='dashed')
-                if abs(1 - (fib_display['5.63'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                if abs(1 - (fib_display['5.63'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['5.63'].transpose().plot.line(ax=self.axes[row, col], color='blue')
-                if abs(1 - (fib_display['5.96'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target:
+                if abs(1 - (fib_display['5.96'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['5.96'].transpose().plot.line(ax=self.axes[row, col], color='brown',linestyle='dotted')
-                if abs(1 - (fib_display['7.17'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.2):
+                if abs(1 - (fib_display['7.17'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['7.17'].transpose().plot.line(ax=self.axes[row, col], color='pink')
-                if abs(1 - (fib_display['8.23'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.2):
+                if abs(1 - (fib_display['8.23'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['8.23'].transpose().plot.line(ax=self.axes[row, col], color='orange')
-                if abs(1 - (fib_display['9.33'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.25):
+                if abs(1 - (fib_display['9.33'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['9.33'].transpose().plot.line(ax=self.axes[row, col], color='black')
-                if abs(1 - (fib_display['10.13'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.33):
+                if abs(1 - (fib_display['10.13'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['10.13'].transpose().plot.line(ax=self.axes[row, col], color='green',linestyle='dashdot')
-                if abs(1 - (fib_display['11.13'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.33):
+                if abs(1 - (fib_display['11.13'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['11.13'].transpose().plot.line(ax=self.axes[row, col], color='black',linestyle='dashdot')
-                if abs(1 - (fib_display['12.54'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.4):
+                if abs(1 - (fib_display['12.54'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['12.54'].transpose().plot.line(ax=self.axes[row, col], color='brown',linestyle='dashed')
-                if abs(1 - (fib_display['13.17'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.45):
+                if abs(1 - (fib_display['13.17'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['13.17'].transpose().plot.line(ax=self.axes[row, col], color='brown',linestyle='dashed')
-                if abs(1 - (fib_display['14.17'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.45):
+                if abs(1 - (fib_display['14.17'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['14.17'].transpose().plot.line(ax=self.axes[row, col], color='black')
-                if abs(1 - (fib_display['15.55'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.5):
+                if abs(1 - (fib_display['15.55'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['15.55'].transpose().plot.line(ax=self.axes[row, col], color='green',linestyle='dashed')
-                if abs(1 - (fib_display['16.32'].iloc[-1] / data['Close'].iloc[-10:].mean())) < perc_target * (1.5):
+                if abs(1 - (fib_display['16.32'].iloc[-1] / data['Close'].iloc[-4:].mean())) < perc_target or (row == 1 and col == 1):
                     fib_display['16.32'].transpose().plot.line(ax=self.axes[row, col], color='red',linestyle='dotted')
                 fib_display = fib_display.reset_index(drop=True)
             except Exception as e:
@@ -235,26 +235,62 @@ class Display:
         data = self.data_predict_display.reset_index()
         data.transpose().plot(ax=self.axes[row, col], kind='line', color=color)
 
-    def display_line(self, color='g', row=0, col=1, is_divergence=False):
+    def display_line(self, color='g', row=0, col=1, is_divergence=False, out = 1):
         self.axes[row,col].clear()
         if is_divergence:
             indices_dict = {0: 'Close'}
         else:
-            indices_dict = {0: 'Close EMA14 Distance', 1: 'Close EMA30 Distance',
+            if out == 1:
+                indices_dict = {0: 'Close EMA14 Distance', 1: 'Close EMA30 Distance',
                             2: 'Close Fib1 Distance',3: 'Close Fib2 Distance',
                             4: 'Num Consec Candle Dir', 5: 'Upper Keltner Close Diff',
                             6: 'Lower Keltner Close Diff', 7: 'Open', 8: 'Close'}
+            elif out == 2:
+                indices_dict = {0:'Last2Volume Cur Volume Diff', 1:'Open Upper Kelt Diff',
+                2:'Open Lower Kelt Diff', 3:'High Upper Kelt Diff',
+                4:'High Lower Kelt Diff', 5:'Low Upper Kelt Diff',
+                6:'Low Lower Kelt Diff', 7:'Close Upper Kelt Diff',
+                8:'Close Lower Kelt Diff', 9:'EMA 14 30 Diff',
+                10:'Base Fib High Diff', 11:'Base Fib Low Diff',
+                12:'Next1 Fib High Diff', 13:'Next1 Fib Low Diff',
+                14:'Next2 Fib High Diff', 15:'Next2 Fib Low Diff',
+                16:'Open', 17:'High', 18:'Low', 19:'Close',
+                20:'Last3High Base Fib', 21:'Last3Low Base Fib',
+                22:'Last3High Next1 Fib', 23:'Last3Low Next1 Fib',
+                24:'Last3High Next2 Fib', 25:'Last3Low Next2 Fib'}
+            elif out == 3:
+                indices_dict = {0:'Upper Kelt',
+                1: 'Lower Kelt', 2:'Middle Kelt', 3:'EMA 14', 4:'EMA 30',
+                5:'Base Fib',
+                6:'Next1 Fib',
+                7:'Next2 Fib',
+                8:'Open', 9:'High', 10:'Low', 11:'Close',
+                12:'Last3High', 13:'Last3Low'}
+
         self.data_display2 = pd.concat([self.data_display.reset_index(), self.data_predict_display.reset_index()],
                                        ignore_index=False).set_flags(allows_duplicate_labels=True)
-        self.data_display2['index'] = [0, 0]
-        # self.data_display2 = self.data_display2.set_index('index')
-        # self.data_display2['Open'].plot(ax=self.axes[row, col], x='index', y='Open',
-        #                                 style=f'{self.color_map.get(color)}x')
-        #
-        # self.data_display2['index'] = [1, 1]
-        self.data_display2 = self.data_display2.set_index('index')
-        self.axes[row,col].set_xticklabels([])
-        self.data_display2['Close'].plot(x='Close', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
+        if out == 1:
+            self.data_display2['index'] = [0, 0]
+            self.data_display2 = self.data_display2.set_index('index')
+            self.axes[row,col].set_xticklabels([])
+            self.data_display2['Close'].plot(x='Close', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
+        elif 2 <= out <= 3: # display open,high,low,close
+            self.data_display2['index'] = [0, 0]
+            self.data_display2 = self.data_display2.set_index('index')
+            self.axes[row,col].set_xticklabels([])
+            self.data_display2['Open'].plot(x='Open', y='Open', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
+            self.data_display2['index'] = [1, 1]
+            self.data_display2 = self.data_display2.set_index('index')
+            self.axes[row,col].set_xticklabels([])
+            self.data_display2['High'].plot(x='High', y='High', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
+            self.data_display2['index'] = [2, 2]
+            self.data_display2 = self.data_display2.set_index('index')
+            self.axes[row,col].set_xticklabels([])
+            self.data_display2['Low'].plot(x='Low', y='Low', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
+            self.data_display2['index'] = [3, 3]
+            self.data_display2 = self.data_display2.set_index('index')
+            self.axes[row,col].set_xticklabels([])
+            self.data_display2['Close'].plot(x='Close', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
 
         # if divergence, add open label
         try:
@@ -268,14 +304,34 @@ class Display:
         for i, row2 in enumerate(self.data_display2.index):
             for j, col2 in enumerate(self.data_display2.columns):
                 if not is_divergence:
-                    if i == 0:
-                        if j == 8:  # Bottom Left
-                            y = round(self.data_display2.iloc[i][j], 2)
-                            self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
-                    else:
-                        if j == 8:  # Top right
-                            y = round(self.data_display2.iloc[i][j], 2)
-                            self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                    if out == 1: #legacy output
+                        if i == 0:
+                            if j == 8:  # Bottom Left
+                                y = round(self.data_display2.iloc[i][j], 2)
+                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
+                        else:
+                            if j == 8:  # Top right
+                                y = round(self.data_display2.iloc[i][j], 2)
+                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                    elif out == 2:
+                        if i == 0:
+                            if 16 <= j <= 19:  # Bottom Left
+                                y = round(self.data_display2.iloc[i][j], 2)
+                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
+                        else:
+                            if 16 <= j <= 19:  # Top right
+                                y = round(self.data_display2.iloc[i][j], 2)
+                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                    elif out == 3:
+                        if i == 0:
+                            if 8 <= j <= 11:  # Bottom Left
+                                y = round(self.data_display2.iloc[i][j], 2)
+                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
+                        else:
+                            if 8 <= j <= 11:  # Top right
+                                y = round(self.data_display2.iloc[i][j], 2)
+                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+
                 else:  # divergence
                     if i == 0:
                         if j == 0 or j == 1 or j == 2:
@@ -286,26 +342,61 @@ class Display:
                             y = round(self.data_display2.iloc[i][j], 2)
                             self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
 
-    def display_predict_only(self, color=None, row=0, col=1, is_divergence=False):
-        self.axes[row,col].clear()
+    def display_predict_only(self, color=None, row=0, col=1, is_divergence=False, out = 2 ):
         if is_divergence:
             indices_dict = {0: 'Close'}
         else:
-            indices_dict = {0: 'Close EMA14 Distance', 1: 'Close EMA30 Distance',
+            if out == 1:
+                indices_dict = {0: 'Close EMA14 Distance', 1: 'Close EMA30 Distance',
                             2: 'Close Fib1 Distance',3: 'Close Fib2 Distance',
                             4: 'Num Consec Candle Dir', 5: 'Upper Keltner Close Diff',
                             6: 'Lower Keltner Close Diff', 7: 'Open', 8: 'Close'}
+            elif out == 2:
+                indices_dict = {0:'Last2Volume Cur Volume Diff', 1:'Open Upper Kelt Diff',
+                2:'Open Lower Kelt Diff', 3:'High Upper Kelt Diff',
+                4:'High Lower Kelt Diff', 5:'Low Upper Kelt Diff',
+                6:'Low Lower Kelt Diff', 7:'Close Upper Kelt Diff',
+                8:'Close Lower Kelt Diff', 9:'EMA 14 30 Diff',
+                10:'Base Fib High Diff', 11:'Base Fib Low Diff',
+                12:'Next1 Fib High Diff', 13:'Next1 Fib Low Diff',
+                14:'Next2 Fib High Diff', 15:'Next2 Fib Low Diff',
+                16:'Open', 17:'High', 18:'Low', 19:'Close',
+                20:'Last3High Base Fib', 21:'Last3Low Base Fib',
+                22:'Last3High Next1 Fib', 23:'Last3Low Next1 Fib',
+                24:'Last3High Next2 Fib', 25:'Last3Low Next2 Fib'}
+            elif out == 3:
+                indices_dict = {0: 'Upper Kelt',
+                                1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
+                                5: 'Base Fib',
+                                6: 'Next1 Fib',
+                                7: 'Next2 Fib',
+                                8: 'Open', 9: 'High', 10: 'Low', 11: 'Close',
+                                12: 'Last3High', 13: 'Last3Low'}
 
         self.data_predict_display2 = self.data_predict_display
-        self.data_predict_display2['index'] = [0]
-        # self.data_predict_display2 = self.data_predict_display2.set_index('index')
-        # self.data_predict_display2['Open'].plot(ax=self.axes[row, col], x='index', y='Open',
-        #                                         style=f'{self.color_map.get(color)}x')
-        #
-        # self.data_predict_display2['index'] = [1]
-        data = self.data_predict_display2.set_index('index')
-        self.axes[row,col].set_xticklabels([])
-        data['Close'].plot(x='index', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
+        if out == 1:
+            self.data_predict_display2['index'] = [0]
+            data = self.data_predict_display2.set_index('index')
+            self.axes[row,col].set_xticklabels([])
+            data['Close'].plot(x='index', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
+        elif 2 <= out <= 3:
+            self.data_predict_display2['index'] = [0]
+            data = self.data_predict_display2.set_index('index')
+            self.axes[row,col].set_xticklabels([])
+            data['Open'].plot(x='index', y='Open', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
+            self.data_predict_display2['index'] = [1]
+            data = self.data_predict_display2.set_index('index')
+            self.axes[row,col].set_xticklabels([])
+            data['High'].plot(x='index', y='High', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
+            self.data_predict_display2['index'] = [2]
+            data = self.data_predict_display2.set_index('index')
+            self.axes[row,col].set_xticklabels([])
+            data['Low'].plot(x='index', y='Low', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
+            self.data_predict_display2['index'] = [3]
+            data = self.data_predict_display2.set_index('index')
+            self.axes[row,col].set_xticklabels([])
+            data['Close'].plot(x='index', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
+
         # Under divergence print range label
         try:
             if is_divergence:
@@ -324,9 +415,19 @@ class Display:
                         y = round(data.iloc[i][j], 2)
                         self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
                 else:
-                    if j == 7 or j == 8:
-                        y = round(data.iloc[i][j], 2)
-                        self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                    if out == 1:
+                        if j == 7 or j == 8:
+                            y = round(data.iloc[i][j], 2)
+                            self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                    elif out == 2:
+                        if 16 <= j <= 19:
+                            y = round(data.iloc[i][j], 2)
+                            self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                    elif out == 3:
+                        if 8 <= j <= 11:
+                            y = round(data.iloc[i][j], 2)
+                            self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+
 # dis = Display()
 # dis.read_studies("2021-06-22--2021-08-12","SPY")
 # dis.display_divergence(ticker='SPY', dates=None, color='green')

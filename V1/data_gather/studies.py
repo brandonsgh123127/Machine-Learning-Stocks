@@ -232,7 +232,7 @@ class Studies(Gather):
                                                                               self.data["Date"].iloc[-1],
                                                                               'id': self.study_id}, multi=True)
                         # Retrieve date, verify it is in date range, remove from date range
-                        for res in check_cache_studies_db_result:
+                        for idx,res in enumerate(check_cache_studies_db_result):
                             res = res.fetchall()
                             # Convert datetime to str
                             for r in res:
@@ -248,8 +248,7 @@ class Studies(Gather):
                                     break
                                 else:
                                     # check if date is there, if not fail this
-                                    study_data = study_data.append({f'ema{length}': r[1]},
-                                                                   ignore_index=True)
+                                    study_data = pd.concat([study_data,pd.DataFrame({f'ema{length}': r[1]},index=[idx])])
                                     if date in date_range:
                                         date_range.remove(date)
                                     else:
@@ -263,7 +262,7 @@ class Studies(Gather):
                         self.ema_cnx.close()
                         raise mysql.connector.errors.DatabaseError()
             if len(date_range) == 0 and not self._force_generate and not skip_db:  # continue loop if found cached data
-                self.applied_studies = pd.concat([self.applied_studies, study_data], axis=1)
+                self.applied_studies = pd.concat(objs=[self.applied_studies, study_data], axis=1)
             # Insert data into db if query above is not met
             else:
                 # if not self._force_generate:
@@ -286,7 +285,7 @@ class Studies(Gather):
                     data = data.rename(columns={'Close': f'ema{length}'}).ewm(span=int(length),
                                                                               adjust=True).mean().reset_index() if not simple else \
                             data.rename(columns={'Close': f'ema{length}'}).rolling(int(length)).mean().fillna(0).reset_index()
-                    self.applied_studies = pd.concat([self.applied_studies, data], axis=1)
+                    self.applied_studies = pd.concat(objs=[self.applied_studies, data], axis=1)
                     del data
                     gc.collect()
                 if not skip_db:
@@ -768,7 +767,7 @@ class Studies(Gather):
                     )
                 insert_list.append(insert_tuple)  # add tuple to list
                 # duplicate row by 1
-                self.fibonacci_extension = self.fibonacci_extension.append([self.fibonacci_extension.iloc[0]] * 1,
+                self.fibonacci_extension = pd.concat(objs=[self.fibonacci_extension,self.fibonacci_extension.iloc[0].to_frame().transpose()],
                                                                            ignore_index=True)
 
             try:
@@ -792,7 +791,7 @@ class Studies(Gather):
                 pass
         else:
             for index, row in self.data.iterrows():
-                self.fibonacci_extension = self.fibonacci_extension.append([self.fibonacci_extension.iloc[0]] * 1,
+                self.fibonacci_extension = pd.concat(objs=[self.fibonacci_extension,self.fibonacci_extension.iloc[0].to_frame().transpose()],
                                                                            ignore_index=True)
 
         '''
@@ -1185,7 +1184,7 @@ val1    val3_________________________          vall2
                                                                               self.data["Date"].iloc[-1],
                                                                               'id': self.study_id}, multi=True)
                     # Retrieve date, verify it is in date range, remove from date range
-                    for res in check_cache_studies_db_result:
+                    for idx, res in enumerate(check_cache_studies_db_result):
                         # print(str(res.statement))
                         res = res.fetchall()
                         for r in res:
@@ -1201,7 +1200,7 @@ val1    val3_________________________          vall2
                                     flush=True)
                                 break
                             else:
-                                fib_data = fib_data.append({'0.202': r[1], '0.236': r[2],
+                                fib_data = pd.concat(objs=[fib_data,pd.DataFrame({'0.202': r[1], '0.236': r[2],
                                                             '0.241': r[3], '0.273': r[4],
                                                             '0.283': r[5], '0.316': r[6],
                                                             '0.382': r[7], '0.5': r[8],
@@ -1226,8 +1225,8 @@ val1    val3_________________________          vall2
                                                             '14.17': r[30],
                                                             '15.55': r[31],
                                                             '16.32': r[32],
-                                                            },
-                                                           ignore_index=True)
+                                                            },index=[idx])],
+                                                           axis=1)
                                 # check if date is there, if not fail this
                                 if date in date_range:
                                     date_range.remove(date)
@@ -1294,7 +1293,7 @@ val1    val3_________________________          vall2
                     # local_max_high = local_max_high.rename({"High": 'max_high'}, axis='columns')
 
                     # After finding min and max values, we can look for local mins and maxes by iterating
-                    new_set = pd.concat([local_max_high,local_max_low]).sort_values(by=['Date']).drop_duplicates().reset_index()
+                    new_set = pd.concat(objs=[local_max_high,local_max_low]).sort_values(by=['Date']).drop_duplicates().reset_index()
 
                     new_set['High'] = new_set['High'].astype(np.float_)
                     self.data['High'] = self.data['High'].astype(np.float_)
@@ -1410,7 +1409,7 @@ val1    val3_________________________          vall2
                                                                      })
                             self.insert_fib_vals(skip_db=skip_db,interval=interval,opt_fib_vals=opt_fib_vals,val1=val1,val2=val2,val3=val3)  # insert to db
                         else:  # else, append
-                            self.fibonacci_extension = self.fibonacci_extension.append({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
+                            self.fibonacci_extension = pd.concat(objs=[self.fibonacci_extension,pd.DataFrame(data={'0.202': [self.fib_help(val1, val2, val3, 0.202)],
                                                                  '0.236': [self.fib_help(val1, val2, val3, 0.236)],
                                                                  '0.241': [self.fib_help(val1, val2, val3, 0.241)],
                                                                  '0.273': [self.fib_help(val1, val2, val3, 0.273)],
@@ -1442,7 +1441,7 @@ val1    val3_________________________          vall2
                                                                  '14.17': [self.fib_help(val1, val2, val3, 14.17)],
                                                                  '15.55': [self.fib_help(val1, val2, val3, 15.55)],
                                                                  '16.32': [self.fib_help(val1, val2, val3, 16.32)]
-                                                                 })
+                                                                 })])
                     except Exception as e:
                         exc_type, exc_obj, exc_tb = sys.exc_info()
                         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -1472,19 +1471,17 @@ val1    val3_________________________          vall2
                 # self.data_cp=self.data_cp.reset_index()
                 ema_task = self.apply_ema(length, length, skip_db=skip_db,interval=interval,simple=True)  # apply length ema for middle band
                 self.keltner = pd.DataFrame({'middle': [], 'upper': [], 'lower': []}, dtype=float)
-                true_range = pd.DataFrame(columns=['trueRange'], dtype=float)
-                avg_true_range = pd.DataFrame(columns=['AvgTrueRange'], dtype=float)
+                true_range: pd.DataFrame
+                avg_true_range : pd.DataFrame
                 prev_row = None
                 await ema_task
                 for index, row in self.data_cp.iterrows():
                     # CALCULATE TR ---MAX of ( H – L ; H – C.1 ; C.1 – L )
                     if index == 0:  # previous close is not valid, so just do same day
                         prev_row = row
-                        true_range = true_range.append(
-                            {'trueRange': max(abs(row['High'] - row['Low']),
+                        true_range = pd.DataFrame(data={'trueRange': max(abs(row['High'] - row['Low']),
                                               abs(row['High'] - row['Low']),
-                                              abs(row['Low'] - row['Low']))},
-                            ignore_index=True)
+                                              abs(row['Low'] - row['Low']))},index=[index],dtype=np.float64)
                     else:  # get previous close vals
                         try:
                             contains_16 = row['Date'].hour == 16
@@ -1492,19 +1489,22 @@ val1    val3_________________________          vall2
                                 continue
                         except Exception as e:
                             print(e)
-                        true_range = true_range.append({'trueRange': float(max(abs(row['High'] - row['Low']),
+                        true_range = pd.concat(objs=[true_range,pd.DataFrame(data={'trueRange': float(max(abs(row['High'] - row['Low']),
                                                                          abs(row['High'] - prev_row['Close']),
-                                                                         abs(row['Low'] - prev_row['Close'])))},
+                                                                         abs(row['Low'] - prev_row['Close'])))},index=[index])],
                                                        ignore_index=True)
                         prev_row = row
                 # iterate through keltner and calculate ATR
                 for index, row in self.data_cp.iterrows():
                     try:
-                        if index == len(self.data_cp.index) - 1:
-                            avg_true_range = avg_true_range.append({'AvgTrueRange': avg_true_range['AvgTrueRange'].iloc[index-1]},
+                        if index == 0:
+                            avg_true_range = pd.DataFrame(data={'AvgTrueRange': true_range['trueRange'].iloc[index]},
+                                                          index=[index],dtype=np.float64)
+                        elif index == len(self.data_cp.index) - 1:
+                            avg_true_range = pd.concat(objs=[avg_true_range, pd.DataFrame(data={'AvgTrueRange': avg_true_range['AvgTrueRange'].iloc[index-1]},index=[index])],
                                                                    ignore_index=True)  # add blank values
-                        elif index == 0 or index <= length:
-                            avg_true_range = avg_true_range.append({'AvgTrueRange': true_range['trueRange'].iloc[index]},
+                        elif index <= length:
+                            avg_true_range = pd.concat(objs=[avg_true_range,pd.DataFrame(data={'AvgTrueRange': true_range['trueRange'].iloc[index]},index=[index])],
                                                                    ignore_index=True)  # add blank values
                         else:
                             end_atr = None
@@ -1515,7 +1515,8 @@ val1    val3_________________________          vall2
                                     # summation of all values
                                     end_atr = float(end_atr + true_range['trueRange'].iloc[i])
                             end_atr = end_atr / length
-                            avg_true_range = avg_true_range.append({'AvgTrueRange': end_atr}, ignore_index=True)
+                            avg_true_range = pd.concat(objs=[avg_true_range,pd.DataFrame(data={'AvgTrueRange': end_atr},index=[index])],
+                                                       ignore_index=True)
                     except Exception as e:
                         raise Exception("[Error] Failed to calculate Keltner ATR...\n", str(e))
         except:
@@ -1536,13 +1537,13 @@ val1    val3_________________________          vall2
                 #                                        , ignore_index=True)
                 #
                 # else:  # else
-                self.keltner = self.keltner.append({'middle': self.applied_studies[f'ema14'].iloc[index],
+                self.keltner = pd.concat(objs=[self.keltner,pd.DataFrame(data={'middle': self.applied_studies[f'ema14'].iloc[index],
                                                         'upper': self.applied_studies[f'ema14'].iloc[index]
                                                                  + (factor * avg_true_range['AvgTrueRange'].iloc[
                                                                                   index]),
                                                         'lower': self.applied_studies[f'ema14'].iloc[index]
                                                                  - (factor * avg_true_range['AvgTrueRange'].iloc[
-                                                                             index])}
+                                                                             index])},index=[index])]
                                                        , ignore_index=True)
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()

@@ -40,7 +40,8 @@ class launcher:
                       skip_threshold: float = 0.05,
                       interval: str = '1d',
                       opt_fib_vals: list = [],
-                      dis: Optional[Display] = None,skip_display: bool = False):
+                      dis: Optional[Display] = None,skip_display: bool = False,
+                      out: int = 1):
         # Call machine learning model
         self.sampler.set_ticker(ticker)
         self.sampler.reset_data()
@@ -71,7 +72,7 @@ class launcher:
             if not unnormalized_data:
                 with self.listLock:
                     if not is_divergence:
-                        dis.display_predict_only(color=f'{color}', row=row, col=col)
+                        dis.display_predict_only(color=f'{color}', row=row, col=col,out=out)
                     else:
                         dis.display_predict_only(color=f'{color}', row=row, col=col, is_divergence=is_divergence)
             else: # Boxplot
@@ -88,7 +89,7 @@ class launcher:
             else:
                 with self.listLock:
                     if not is_divergence:
-                        dis.display_line(color=f'{color}', row=row, col=col)
+                        dis.display_line(color=f'{color}', row=row, col=col, out=out)
                     else:
                         dis.display_line(color=f'{color}', row=row, col=col, is_divergence=is_divergence)
         return ticker, ldata[0], ldata[1]
@@ -98,7 +99,7 @@ class launcher:
 async def main(nn_dict: dict = {}, ticker: str = "SPY",
                has_actuals: bool = True, force_generate=False,
                interval='Daily',opt_fib_vals:list=[],
-               dis: Optional[Display] = None,skip_display: bool = False):
+               dis: Optional[Display] = None,skip_display: bool = False, output: int = 4):
     listLock = threading.Lock()
     loop = get_event_loop()
     launch = launcher()
@@ -173,42 +174,33 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY",
 
 
     _has_actuals = has_actuals
-
+    out = output
     # Generate Data for usage in display_model
-    data_task = await loop.run_in_executor(launch._executor,launch.gen.generate_data_with_dates,dates[0], dates[1], False, force_generate, False, n_interval,ticker,opt_fib_vals)
+    data_task = await loop.run_in_executor(launch._executor,launch.gen.generate_data_with_dates,dates[0], dates[1], False, force_generate, out, False, n_interval,ticker,opt_fib_vals)
     data = await gather(data_task)
     del data_task
     data = data[0]
 
+    # Clear out specific axis, as there are multiple models outputted to the axis
+    dis.axes[0,1].clear()
+
     # BOX PLOT CALL
-    box_plot_task = await loop.run_in_executor(launch._executor,launch.display_model,nn_dict["relu_1layer_l2"],"relu_1layer_l2", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
-                         n_interval,opt_fib_vals,dis,skip_display)
+    box_plot_task = await loop.run_in_executor(launch._executor,launch.display_model,nn_dict["new_scaled_2layer"],"new_scaled_2layer", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
+                         n_interval,opt_fib_vals,dis,skip_display,out)
 
     #
     # Model_Out_2 LABEL
     if _has_actuals:
         task1 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_2layer_0regularization"],"2", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval,[],dis,skip_display)
-        task2 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_1layer_l2"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval,[],dis,skip_display)
-        task3 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval,[],dis,skip_display)
+                    nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else nn_dict["scaled_2layer"] if out == 3 else nn_dict["new_scaled_2layer"] if out == 4 else "","relu_multilayer_l2" if out==1 else "new_multi_analysis_l2" if out == 2 else "scaled_2layer" if out == 3 else "new_scaled_2layer" if out == 4 else "", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval,[],dis,skip_display,out)
     else:
         task1 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_2layer_0regularization"],"relu_2layer_0regularization", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval,[],dis,skip_display)
-        task2 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_1layer_l2"],"relu_1layer_l2", _has_actuals, ticker, 'black', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval,[],dis,skip_display)
-        task3 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_2layer_l1l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'magenta', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval,[],dis,skip_display)
+                    nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else nn_dict["scaled_2layer"] if out == 3 else nn_dict["new_scaled_2layer"] if out == 4 else "","relu_multilayer_l2" if out==1 else "new_multi_analysis_l2" if out == 2 else "scaled_2layer" if out == 3 else "new_scaled_2layer" if out == 4 else "", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    0.05, n_interval,[],dis,skip_display,out)
     gc.collect()
-    await gather(box_plot_task, task1, task2, task3)
-    del box_plot_task, task1, task2, task3
+    await gather(box_plot_task, task1)
+    del box_plot_task, task1
     dis.fig.canvas.draw()  # draw image before returning
     fig = dis.fig
     axes = dis.axes
@@ -288,12 +280,13 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
     task_list = []
     for ticker in tickers:
         try:
+            out = 1
             await launch.gen.set_ticker(ticker)
-            data = await launch.gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, True, n_interval)
+            data = await launch.gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, out, True, n_interval)
             # print(data,flush=True)
             task_list.append(launch.display_model(
-                    nn_dict["relu_multilayer_l2"],"relu_2layer_l1l2", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
-                    percent, n_interval))
+                    nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else "","relu_2layer_l1l2" if out ==1 else "new_multi_analysis_l2" if out == 2 else "", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
+                    percent, n_interval,[],None,True,out))
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -316,15 +309,27 @@ if __name__ == "__main__":
     _force_generate = sys.argv[4] == 'True'
     loop = new_event_loop()
     neural_net = Network(0, 0)
-    model_choices: list = ['relu_multilayer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2', 'relu_1layer_l2']
+    model_choices: list = [
+        # 'relu_multilayer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2', 'relu_1layer_l2',
+        #                    'new_multi_analysis_l2', 'new_multi_analysis_2layer_0regularization',
+        #                    'new_scaled_l2','new_scaled_l2_60m','new_scaled_l2_5m',
+    'new_scaled_2layer']
     nn_models = [NN_Model(item) for item in model_choices]
     for model in nn_models:
-        model.create_model()
-    nn_dict: dict = {'relu_multilayer_l2': nn_models[0],
-                          'relu_2layer_0regularization': nn_models[1],
-                          'relu_2layer_l1l2': nn_models[2],
-                          'relu_1layer_l2': nn_models[3]}
+        model.create_model(is_training=False)
+    nn_dict: dict = {
+        # 'relu_multilayer_l2': nn_models[0],
+                     #      'relu_2layer_0regularization': nn_models[1],
+                     #      'relu_2layer_l1l2': nn_models[2],
+                     #      'relu_1layer_l2': nn_models[3],
+                     # 'new_multi_analysis_l2': nn_models[4],
+                     # 'new_multi_analysis_2layer_0regularization': nn_models[5],
+                     # 'new_scaled_l2': nn_models[6],
+                     # 'new_scaled_l2_60m': nn_models[7],
+                     # 'new_scaled_l2_5m': nn_models[8],
+                     'new_scaled_2layer': nn_models[0]
+                     }
     dis = Display()
     loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2],
                                  has_actuals=_has_actuals, force_generate=_force_generate,
-                                 interval='1wk',opt_fib_vals=['7.44'],dis=dis,skip_display=False))
+                                 interval='1d',dis=dis,skip_display=False,output=4))

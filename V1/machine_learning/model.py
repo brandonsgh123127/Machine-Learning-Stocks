@@ -4,11 +4,13 @@ from pathlib import Path
 from random import random
 
 from keras import regularizers, layers, initializers, optimizers, callbacks
-from tensorflow.python.keras import Input
-from tensorflow.python.keras.models import Model, load_model
+import keras.backend as k
+from keras import Input
+from keras.initializers.initializers_v1 import HeUniform
+from keras.models import Model, load_model
+import V1.machine_learning.custom_layers as custom_layers
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-from V1.data_generator.generate_sample import Sample
 
 
 class NN_Model(ABC):
@@ -17,20 +19,32 @@ class NN_Model(ABC):
         self.path = Path(os.getcwd()).absolute()
         self.model_map_names = {"relu_multilayer_l2": 1, "relu_2layer_0regularization": 2,
                                 "relu_2layer_l1l2": 3,
-                                "relu_1layer_l2": 4}
+                                "relu_1layer_l2": 4,
+                                "new_multi_analysis_l2": 5,
+                                "new_multi_analysis_2layer_0regularization": 6,
+                                "new_scaled_l2": 7,
+                                "new_scaled_l2_60m": 7,
+                                "new_scaled_l2_5m": 7,
+                                "new_scaled_2layer_0regularization": 8,
+                                "scaled_2layer": 9,
+                                "test_2layer": 10,
+                                "new_scaled_2layer": 12,
+                                "SPY_relu_multilayer_l2": 11}
         self.model_name = choice
         self.model_choice: str = self.get_mapping(choice)
-        self.model=None
+        self.model = None
+        self.cp_callback: callbacks.ModelCheckpoint = None
 
     def get_mapping(self, choice: str):
         return self.model_map_names[choice]
 
-    def create_model(self):
-        if 0 < self.model_choice <= 4:
+    def create_model(self, is_training=True):
+        if 0 < self.model_choice <= 4 or self.model_choice == 11:
             nn_input = Input(shape=(1, 126))  # 14 * 9 cols
-        elif 4 < self.model_choice <= 6:
-            nn_input = Input(shape=(1, 126))
-
+        elif 5 <= self.model_choice <= 6:
+            nn_input = Input(shape=(1, 130))  # 5 * 26 cols
+        elif 7 <= self.model_choice <= 15:
+            nn_input = Input(shape=(1, 70))  # 5 * 14 cols
         """
          These are legacy models... Takes in 14 days worth of data, then attempts to create a model to predict 1 datapoint outwards
         Model Struct:
@@ -45,76 +59,205 @@ class NN_Model(ABC):
                 + 'Open'
                 + 'Close'
        """
-        if 0 < self.model_choice <= 4:
+        if 0 < self.model_choice <= 4 or self.model_choice == 11:
             if self.model_choice == 1:
-                nn = layers.Dense(126, activation=layers.LeakyReLU(alpha=0.3),
-                                        activity_regularizer=regularizers.l2(0.01))(
-                    nn_input)
-                nn = layers.Dropout(0.25)(nn)
-                nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.3),
-                                        activity_regularizer=regularizers.l2(0.01))(nn)
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
+                nn = layers.Dense(64, activation=layers.LeakyReLU(alpha=0.3))(nn)
                 nn2 = layers.Dense(1, activation='linear', activity_regularizer=regularizers.l2(0.01))(
+                    nn)
+                nn2 = layers.Dense(1, activation='linear',)(
                     nn)
 
             elif self.model_choice == 2:
-                nn = layers.Dense(126, activation=layers.LeakyReLU(alpha=0.3))(
-                    nn_input)
-                nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.3))(nn)
-                nn = layers.Dropout(0.25)(nn)
+                nn = layers.Dense(64, activation=layers.LeakyReLU(alpha=0.3),activity_regularizer=regularizers.l1(0.02))(nn_input)
+                nn = custom_layers.TrainableDropout(0.5).call(nn,is_training)
                 nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.2))(nn)
-                nn2 = layers.Dense(1, activation='linear')(nn)
+                nn2 = layers.Dense(1, activation='linear', activity_regularizer=regularizers.l2(0.01))(
+                    nn)
+                nn2 = layers.Dense(1, activation='linear',)(
+                    nn)
             elif self.model_choice == 3:
-                nn = layers.Dense(126,
-                                        kernel_initializer=initializers.GlorotNormal(seed=None))(
-                    nn_input)
-                nn = layers.Dense(44, activation=layers.LeakyReLU(alpha=0.5))(nn)
-                nn = layers.Dropout(0.25)(nn)
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
+                nn = layers.Dense(48, activation=layers.LeakyReLU(alpha=0.2))(nn)
+                nn = custom_layers.TrainableDropout(0.25).call(nn,is_training)
                 nn = layers.Dense(12, activation=layers.LeakyReLU(alpha=0.2),
-                                        kernel_regularizer=regularizers.l1_l2(0.01, 0.002))(nn)
-                nn2 = layers.Dense(1, activation='sigmoid')(nn)
+                                  kernel_regularizer=regularizers.l1_l2(0.02, 0.005))(nn)
+                nn2 = layers.Dense(1, activation='linear')(nn)
 
             elif self.model_choice == 4:
-                nn = layers.Dense(126, activation=layers.LeakyReLU(alpha=0.3))(
+                nn = custom_layers.TrainableDropout(0.25).call(nn_input,is_training)
+                nn = layers.Dense(64, activation=layers.LeakyReLU(alpha=0.3))(nn)
+                nn2 = layers.Dense(1, activation='linear')(nn)
+            elif self.model_choice == 11:
+                nn = layers.Dense(126, activation=layers.LeakyReLU(alpha=0.3),
+                                  )(
                     nn_input)
-                nn = layers.Dense(36, activation=layers.LeakyReLU(alpha=0.3))(nn)
-                nn2 = layers.Dense(1, activation='sigmoid')(nn)
+                nn = custom_layers.TrainableDropout(0.5).call(nn,is_training)
+                nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.3),
+                                  activity_regularizer=regularizers.l2(0.01))(nn)
+                nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.3),
+                                  )(nn)
+                nn2 = layers.Dense(1, activation='linear', activity_regularizer=regularizers.l2(0.01))(
+                    nn)
 
             nn = Model(inputs=nn_input, outputs=[nn2])
-            nn.compile(optimizer=optimizers.Adam(lr=0.01, beta_1=0.90, beta_2=0.997), loss='mse',
-                       metrics=['MeanAbsoluteError', 'MeanSquaredError'])
-        elif 4 < self.model_choice <= 6:
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.01, beta_1=0.90, beta_2=0.997), loss='mse',
+                       metrics=['accuracy', 'MeanSquaredError'])
+        elif 5 <= self.model_choice <= 6:
             """
-               Newer model to-be implemented, which includes the following to record 1 data point ahead...
+               Newer model to-be implemented, which includes the following to record 3 data points ahead...
                 Model Struct:
-                    - Input X Columns worth of data
-                        + Volume
-                        + 
-                        + 
-                        + 
-                        + 
-                        + 
+                    - Input 26 Columns worth of data
+                        + Last2Volume Cur Volume Diff
+                        + Open Upper Kelt Diff
+                        + Open Lower Kelt Diff
+                        + High Upper Kelt Diff
+                        + High Lower Kelt Diff
+                        + Low Upper Kelt Diff
+                        + Low Lower Kelt Diff
+                        + Close Upper Kelt Diff
+                        + Close Lower Kelt Diff
+                        + EMA 14 30 Diff
+                        + Base Fib High Diff
+                        + Base Fib Low Diff
+                        + Next1 Fib High Diff
+                        + Next1 Fib Low Diff
+                        + Next2 Fib High Diff
+                        + Next2 Fib Low Diff
+                        + Open
+                        + High
+                        + Low
+                        + Close
+                        + Last3High Base Fib
+                        + Last3Low Base Fib
+                        + Last3High Next1 Fib
+                        + Last3Low Next1 Fib
+                        + Last3High Next2 Fib
+                        + Last3Low Next2 Fib
             """
-            print()
+            if self.model_choice == 5:
+                nn = layers.Dense(130, activation=layers.LeakyReLU(alpha=0.3),
+                                  activity_regularizer=regularizers.l2(0.01))(
+                    nn_input)
+                nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.3),
+                                  activity_regularizer=regularizers.l2(0.01))(nn)
+                nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.3),
+                                  activity_regularizer=regularizers.l2(0.01))(nn)
+                nn2 = layers.Dense(4, activation='linear', activity_regularizer=regularizers.l2(0.01))(
+                    nn)
+
+            elif self.model_choice == 6:
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
+                nn = layers.Dense(64, activation=layers.LeakyReLU(alpha=0.2),activity_regularizer=regularizers.l1(0.005))(
+                    nn)
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
+                nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.2))(nn)
+                nn2 = layers.Dense(4, activation='linear')(
+                    nn)
+            nn = Model(inputs=nn_input, outputs=[nn2])
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.001, beta_1=0.90, beta_2=0.998), loss='mse',
+                       metrics=['accuracy', 'MeanSquaredError'])
+        elif 7 <= self.model_choice <= 15:
+            """
+               Newer model to-be implemented, which includes the following to record 5 data points ahead...
+                Model Struct:
+                    - Input 14 Columns worth of data
+                        +  Upper Kelt
+                        +  Lower Kelt 
+                        +  Middle Kelt 
+                        +  EMA 14 
+                        +  EMA 30 
+                        + Base Fib
+                        + Next1 Fib
+                        + Next2 Fib 
+                        + Open
+                        + High
+                        + Low
+                        + Close
+                        + Last3High 
+                        + Last3Low
+            """
+            if self.model_choice == 7:
+                nn = layers.Dense(16, kernel_initializer='he_uniform', bias_initializer=HeUniform(seed=None),
+                                  activation=layers.LeakyReLU(alpha=0.3))(
+                    nn_input)
+                nn = layers.Dense(8, activation=layers.LeakyReLU(alpha=0.35))(nn)
+
+            elif self.model_choice == 8:
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
+                nn = layers.Dense(32, activation=layers.LeakyReLU(alpha=0.2))(
+                    nn)
+            elif self.model_choice == 9:
+                nn = layers.Dense(32, activation=layers.LeakyReLU(alpha=0.2),bias_initializer=HeUniform(seed=None))(
+                    nn_input)
+                nn = custom_layers.TrainableDropout(0.5).call(nn,is_training)
+                nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.2))(nn)
+            elif self.model_choice == 10:
+                nn = custom_layers.TrainableDropout(0.25).call(nn_input,is_training)
+                nn = layers.Dense(16, activation=layers.LeakyReLU(alpha=0.4))(
+                    nn)
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
+                nn = layers.Dense(16, activation=layers.LeakyReLU(alpha=0.4))(nn) # change back to 12 for orig model
+            elif self.model_choice == 12:
+                # ORIGINAL 67 percent accuracy model
+                # To test, need to revert normalization for out == 4
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
+                nn = layers.Dense(32, activation=layers.LeakyReLU(alpha=0.2))(
+                    nn)
+                nn = layers.Dense(8, activation=layers.LeakyReLU(alpha=0.2))(nn)
+            elif self.model_choice == 13:
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
+                nn = layers.Dense(32,activation='linear')(
+                    nn)
+                nn = layers.Dense(8)(nn)
+            nn2 = layers.Dense(4, activation='linear')(nn)
+            nn = Model(inputs=nn_input, outputs=[nn2])
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.003 if self.model_choice < 12 else 0.001, beta_1=0.95, beta_2=0.998), loss='mse',
+                       metrics=['accuracy', 'MeanSquaredError'])
+
             # Convert to a model
         self.model = nn
         return nn
+    """
+    Initialize keras modelcheckpoint, used for saving weights
+    """
+    def model_checkpoint_callback(self,ck_path: str):
+        self.cp_callback = callbacks.ModelCheckpoint(
+            filepath=f'{ck_path}/cp.ckpt',
+            save_weights_only=True,
+            verbose=1,
+            monitor='val_accuracy',
+            mode='max',
+            save_best_only=True)
     def save_model(self):
+        # Ensure model is saved without training phase set
+        # k.set_learning_phase(0)
         self.model.save(f'{self.path}/data/{self.model_name}')
-    def choose_random_ticker(self, csv_file:str):
+        # Resume training phase after saving
+        # k.set_learning_phase(1)
+
+
+    def choose_random_ticker(self, csv_file: str):
         with open(csv_file) as f:
             ticker = random.choice(f.readlines())
             ticker = ticker[0:ticker.find(',')]
             print(ticker)
             return ticker
-    def load_model(self, name=None):
+
+    def load_model(self, name=None, is_training=True):
         try:
+            # When training a model, we want to ensure dropout is set when loading the model up
+            # if is_training:
+            #     k.set_learning_phase(1)
+            # else:
+            #     k.set_learning_phase(0
             self.model_name = name
             nn = load_model(
                 f'{self.path}/data/{name}')
             for model_choice, name_loc in self.model_map_names.items():
                 if name == name_loc:
                     self.model_choice = model_choice
-            self.model=nn
+            self.model = nn
             return nn
         except:
             print(f'[INFO] No model exists for {name}, creating new model...')

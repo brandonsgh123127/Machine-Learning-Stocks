@@ -1,5 +1,4 @@
 import sys
-import tkinter as tk
 import os
 from asyncio import AbstractEventLoop, Task
 from concurrent.futures import ThreadPoolExecutor
@@ -26,12 +25,15 @@ from tkinter import StringVar
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import asyncio
 import nest_asyncio
+import mttkinter.mtTkinter as tk
+
 nest_asyncio.apply()
+
 
 class GUI(Thread_Pool):
 
     # Initialize necessary data for GUI
-    def __init__(self, loop: AbstractEventLoop ):
+    def __init__(self, loop: AbstractEventLoop):
         super().__init__(amount_of_threads=1)
         self.loop = loop
         self._executor = ThreadPoolExecutor(8)
@@ -52,19 +54,30 @@ class GUI(Thread_Pool):
         self.image = None
         neural_net = Network(0, 0)
         self.dis = Display()
-        model_choices: list = ['relu_multilayer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2',
-                               'relu_1layer_l2']
+        model_choices: list = [
+            # 'relu_multilayer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2',
+            #                    'relu_1layer_l2', 'new_multi_analysis_l2', 'new_multi_analysis_2layer_0regularization',
+            #                    "new_scaled_l2",'new_scaled_l2_60m','new_scaled_l2_5m',
+            "new_scaled_2layer"]
         nn_models = [NN_Model(item) for item in model_choices]
         for model in nn_models:
-            model.create_model()
-        self.nn_dict: dict = {'relu_multilayer_l2': nn_models[0],
-                         'relu_2layer_0regularization': nn_models[1],
-                         'relu_2layer_l1l2': nn_models[2],
-                         'relu_1layer_l2': nn_models[3]}
+            model.create_model(is_training=False)
+        self.nn_dict: dict = {
+            # 'relu_multilayer_l2': nn_models[0],
+            # 'relu_2layer_0regularization': nn_models[1],
+            # 'relu_2layer_l1l2': nn_models[2],
+            # 'relu_1layer_l2': nn_models[3],
+            #      'new_multi_analysis_l2': nn_models[4],
+            #      'new_multi_analysis_2layer_0regularization': nn_models[5],
+            #      "new_scaled_l2": nn_models[6],
+            #      'new_scaled_l2_60m': nn_models[7],
+            #      'new_scaled_l2_5m': nn_models[8],
+            "new_scaled_2layer": nn_models[0]
+        }
 
         self.window = tk.Tk(screenName='Stock Analysis')
         self.window.attributes('-fullscreen', False)
-        w, h = self.window.winfo_screenwidth()-10, self.window.winfo_screenheight()-10
+        w, h = self.window.winfo_screenwidth() - 10, self.window.winfo_screenheight() - 10
         self.window.geometry("%dx%d+0+0" % (w, h))
 
         self.content = ttk.Frame(self.window, width=300, height=200)
@@ -73,7 +86,6 @@ class GUI(Thread_Pool):
         self.auto_refresh = tk.BooleanVar()
         self.auto_refresh.set(False)
 
-
         self.watchlist = []
         self.quick_select = StringVar(self.content)
         self.quick_select.set('Select Stock from Dropdown')  # default value
@@ -81,7 +93,7 @@ class GUI(Thread_Pool):
         self.interval_text = StringVar(self.content)
         self.interval_text.set('Daily')  # default value
         self.stock_input = tk.Entry(self.content)
-        self.quick_select.trace('w', lambda event=1,event2=1,event3=1: self.job_queue.put(self.quick_gen(event)))
+        self.quick_select.trace('w', lambda event=1, event2=1, event3=1: self.job_queue.put(self.quick_gen(event)))
         self.generate_button = ttk.Button(self.content, text="Generate", command=self.generate_callback)
         # self.output_image = tk.Canvas(self.window,width=1400,height=1400,bg='white')
 
@@ -90,29 +102,31 @@ class GUI(Thread_Pool):
         self.window.bind('<F9>', lambda event=1: self.cache_queue.put(self.find_biggest_moves_callback()))
         s = ttk.Style(self.window)
         self.page_loc = 1  # Map page number to location
-        try:  # if image exists, don't recreate
-            self.buttonImage.size
-        except:
-            self.buttonImage = Image.open(f'{self.path}/data/icons/next.png')
-            self.buttonPhoto = ImageTk.PhotoImage(self.buttonImage)
-            self.buttonImage2 = Image.open(f'{self.path}/data/icons/previous.png')
-            self.buttonPhoto2 = ImageTk.PhotoImage(self.buttonImage2)
-            self.next_page_button = ttk.Button(self.content, padding='10 10 10 10', image=self.buttonPhoto, text="",
-                                               command=lambda: self.job_queue.put(self.analysis_page()))
-            self.next_page_button.grid(column=6, row=5)
-            self.previous_page_button = ttk.Button(self.content, padding='10 10 10 10', image=self.buttonPhoto2,
-                                                   text="", command=lambda: self.job_queue.put(self.predict_page()))
-            self.previous_page_button.grid(column=5, row=5)
+        # try:  # if image exists, don't recreate
+        #     self.buttonImage.size
+        # except:
+        #     self.buttonImage = Image.open(f'{self.path}/data/icons/next.png')
+        #     self.buttonPhoto = ImageTk.PhotoImage(self.buttonImage)
+        #     self.buttonImage2 = Image.open(f'{self.path}/data/icons/previous.png')
+        #     self.buttonPhoto2 = ImageTk.PhotoImage(self.buttonImage2)
+        #     self.next_page_button = ttk.Button(self.content, padding='10 10 10 10', image=self.buttonPhoto, text="",
+        #                                        command=lambda: self.job_queue.put(self.analysis_page()))
+        #     self.next_page_button.grid(column=7, row=5)
+        #     self.previous_page_button = ttk.Button(self.content, padding='10 10 10 10', image=self.buttonPhoto2,
+        #                                            text="", command=lambda: self.job_queue.put(self.predict_page()))
+        #     self.previous_page_button.grid(column=5, row=5)
 
         # self.output_image.pack(expand='yes',side='right')
         self.background_tasks_label = tk.Label(self.content,
                                                text=f'Currently pre-loading a few stocks, this may take a bit...')
+        self.page_label = tk.Label(self.content,
+                                   text=self.page_loc)
+        self.page_label.grid(row=4, column=6)
         self.exited = False
         self.loc = 0
         self.lock = threading.Lock()
         self.is_retrieving = True
         s.configure('.', background='white')
-
 
     async def dropdown_callback(self, event=None):
         self.cache_queue.put(self.load_dropdown(type(event)))
@@ -121,8 +135,8 @@ class GUI(Thread_Pool):
 
     async def find_biggest_moves_callback(self, event=None):
         await self.search_big_moves(event, self.force_bool.get(),
-                                                             self.boolean1.get(),
-                                                             0.015)
+                                    self.boolean1.get(),
+                                    0.015)
         return 0
 
     """
@@ -145,11 +159,11 @@ class GUI(Thread_Pool):
                 pnl_percent_task = get_preview_prices(ticker, True)
                 percent_task_list.append(pnl_percent_task)
             else:
-                pnl_percent_task = get_preview_prices(ticker,False)
+                pnl_percent_task = get_preview_prices(ticker, False)
                 percent_task_list.append(pnl_percent_task)
         pnl_percent = [await task for task in percent_task_list]
-        for index,val in enumerate(pnl_percent):
-           self.watchlist.append(f'{ticker_queue.get()}     {val}')
+        for index, val in enumerate(pnl_percent):
+            self.watchlist.append(f'{ticker_queue.get()}     {val}')
         del pnl_percent, percent_task_list
 
         # destroy object before proceeding
@@ -167,7 +181,7 @@ class GUI(Thread_Pool):
     """
 
     async def search_big_moves(self, event=None, _force_generation: bool = False, _has_actuals: bool = False,
-                         percent: float = 0.03):
+                               percent: float = 0.03):
 
         watchlist_file = open(f'{self.path}/data/watchlist/default.csv', 'r')
         lines = watchlist_file.readlines()
@@ -179,7 +193,7 @@ class GUI(Thread_Pool):
             except:
                 ticker = line.strip().upper()
             tickers.append(ticker)
-        noted_moves = find_all_big_moves(self.nn_dict,tickers,_force_generation,_has_actuals,
+        noted_moves = find_all_big_moves(self.nn_dict, tickers, _force_generation, _has_actuals,
                                          percent, self.interval_text.get())
         # After setting noted moves, populate self noted to str
         noted_moves = await noted_moves
@@ -207,19 +221,21 @@ class GUI(Thread_Pool):
         if self.page_loc == 1:
             self.job_queue.put(self.load_model(
                 self.stock_input.get(), self.boolean1.get(), False, self.force_bool.get()))
-        elif self.page_loc == 2:
-            self.job_queue.put(self.analyze_model(
+        elif 2 <= self.page_loc <= 3:
+            self.job_queue.put(self.load_model(
                 self.stock_input.get(), self.boolean1.get(), False, self.force_bool.get()))
-    async def add_fib_val(self,event=None):
+
+    async def add_fib_val(self, event=None):
         try:
-            val=self.fib_opt_val_input.get()
+            val = self.fib_opt_val_input.get()
             self.opt_fib_vals_set.add(str(val))
-            self.fib_opt_val_list.insert("end",val)
+            self.fib_opt_val_list.insert("end", val)
         except Exception as e:
             print(f'[INFO] Failed to add fib value to listbox!\n\t{str(e)}')
-    async def delete_fib_val(self,event=None):
+
+    async def delete_fib_val(self, event=None):
         try:
-            idx=self.fib_opt_val_list.curselection()
+            idx = self.fib_opt_val_list.curselection()
             val = self.fib_opt_val_list.get(idx)
             self.opt_fib_vals_set.remove(str(val))
             self.fib_opt_val_list.delete(idx)
@@ -227,7 +243,8 @@ class GUI(Thread_Pool):
             print(f'[INFO] Failed to remove fib value to listbox!\n\t{str(e)}')
 
     """Analyze stock through charting"""
-    async   def image_retrieval_thread(self, loop, task):
+
+    async def image_retrieval_thread(self, loop, task):
         asyncio.set_event_loop(loop)
         await task
         self.img = task[0]
@@ -252,7 +269,8 @@ class GUI(Thread_Pool):
         self.stock_input.select_range(0, tk.END)
         return 0
 
-    async def analyze_model(self, ticker, has_actuals, is_not_closed, is_caching=False, force_generation=False, opt_fib_vals=[]):
+    async def analyze_model(self, ticker, has_actuals, is_not_closed, is_caching=False, force_generation=False,
+                            opt_fib_vals=[]):
         if self.page_loc == 2:  # Analyze page
             self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
             if not is_caching:
@@ -260,41 +278,41 @@ class GUI(Thread_Pool):
             analyze_task = analyze_stock(self.nn_dict, ticker, has_actuals,
                                          force_generate=force_generation,
                                          opt_fib_vals=opt_fib_vals,
-                                         dis=self.dis,skip_display=False)
-            t = threading.Thread(target=self.image_retrieval_thread, args=(self.loop,analyze_task))
+                                         dis=self.dis, skip_display=False,
+                                         output=3)
+            t = threading.Thread(target=self.image_retrieval_thread, args=(self.loop, analyze_task))
             t.daemon = True
             t.start()
 
     """Load a Analysis/Predict model for predicting values"""
 
     async def load_model(self, ticker, has_actuals=False, is_caching=False, force_generation=False):
-        if self.page_loc == 1:  # Prediction page only...
-            # self.output_image.delete('all')
-            self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
-            if not is_caching:
-                self.generate_button.grid_forget()
-            analysis_task = await analyze_stock(self.nn_dict, ticker, has_actuals, force_generation,
-                                         self.interval_text.get(),list(self.opt_fib_vals_set),
-                                                dis=self.dis, skip_display=False)
+        # self.output_image.delete('all')
+        self.background_tasks_label.config(text=f'Currently loading {ticker}, this may take a bit...')
+        if not is_caching:
+            self.generate_button.grid_forget()
+        analysis_task = await analyze_stock(self.nn_dict, ticker, has_actuals, force_generation,
+                                            self.interval_text.get(), list(self.opt_fib_vals_set),
+                                            dis=self.dis, skip_display=False, output=3)
 
-            # analysis_res = asyncio.gather(analysis_task)
-            self.img = analysis_task[0]
-            # self.image = ImageTk.PhotoImage(self.img)
+        # analysis_res = asyncio.gather(analysis_task)
+        self.img = analysis_task[0]
+        # self.image = ImageTk.PhotoImage(self.img)
 
-            gc.collect()
-            # self.output_image.create_image(600,500,image=self.image)
-            # self.output_image.pack(side='bottom')
-            try:
-                self.canvas.get_tk_widget().destroy()
-            except:
-                pass
-            self.canvas = FigureCanvasTkAgg(self.img, master=self.window)
-            self.canvas.draw()
-            self.canvas.get_tk_widget().pack(side='bottom', fill='both', expand=1)
-            for idx, thread in enumerate(self.threads):
-                self.threads.pop(idx)
-            self.background_tasks_label.config(text=f'Currently pre-loading a few stocks, this may take a bit...')
-            # self.generate_button.grid(column=3, row=2)
+        gc.collect()
+        # self.output_image.create_image(600,500,image=self.image)
+        # self.output_image.pack(side='bottom')
+        try:
+            self.canvas.get_tk_widget().destroy()
+        except:
+            pass
+        self.canvas = FigureCanvasTkAgg(self.img, master=self.window)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(side='bottom', fill='both', expand=1)
+        for idx, thread in enumerate(self.threads):
+            self.threads.pop(idx)
+        self.background_tasks_label.config(text=f'Currently pre-loading a few stocks, this may take a bit...')
+        # self.generate_button.grid(column=3, row=2)
         self.stock_input.focus_set()
         self.stock_input.select_range(0, tk.END)
         return 0
@@ -309,23 +327,26 @@ class GUI(Thread_Pool):
         self.window.destroy()
         exit(0)
 
-
     """ Swap to Analysis page """
 
     async def analysis_page(self):
-        if self.page_loc == 1:  # Predict page
-            self.page_loc = 2
+        if 1 <= self.page_loc <= 2:  # Predict page
+            self.page_loc = self.page_loc + 1
+            self.page_label.config(text=self.page_loc)
             self.generate_button.grid_remove()
-            self.generate_button = ttk.Button(self.content, text="Analyze", command=await self.generate_callback)
+            self.generate_button = ttk.Button(self.content, text="Analyze",
+                                              command=lambda event=1: self.job_queue.put(self.generate_callback()))
             # self.output_image.delete('all')
 
     """ Swap to Predict page """
 
     async def predict_page(self):
-        if self.page_loc == 2:  # Analysis page
-            self.page_loc = 1
+        if 1 < self.page_loc <= 3:  # Analysis page
+            self.page_loc = self.page_loc - 1
+            self.page_label.config(text=self.page_loc)
             self.generate_button.grid_remove()
-            self.generate_button = ttk.Button(self.content, text="Generate", command=await self.generate_callback)
+            self.generate_button = ttk.Button(self.content, text="Generate",
+                                              command=lambda event=1: self.job_queue.put(self.generate_callback()))
             # self.output_image.delete('all')
 
     """ Manages GUI-side.  Button actions map to functions"""
@@ -337,10 +358,6 @@ class GUI(Thread_Pool):
         t = threading.Thread(target=self.cache_loop_in_thread, args=(self.loop,))
         t.daemon = True
         t.start()
-        t = threading.Thread(target=self.auto_refresh_in_thread, args=(self.loop,))
-        t.daemon = True
-        t.start()
-
 
         self.content.pack(side='top')
         self.stock_label = tk.Label(self.content, text="Stock:")
@@ -350,14 +367,16 @@ class GUI(Thread_Pool):
         self.boolean1 = tk.BooleanVar()
         self.boolean1.set(False)
         self.fib_opt_val_input = tk.Entry(self.content)
-        self.fib_opt_val_input.grid(column=1,row=4)
-        self.fib_opt_val_add_button = ttk.Button(self.content, text="Add", command= lambda event=1: self.job_queue.put(self.add_fib_val()))
-        self.fib_opt_val_add_button.grid(column=1,row=5)
-        self.fib_opt_val_remove_button = ttk.Button(self.content, text="Remove", command= lambda event=1: self.job_queue.put(self.delete_fib_val()))
-        self.fib_opt_val_remove_button.grid(column=2,row=5)
+        self.fib_opt_val_input.grid(column=1, row=4)
+        self.fib_opt_val_add_button = ttk.Button(self.content, text="Add",
+                                                 command=lambda event=1: self.job_queue.put(self.add_fib_val()))
+        self.fib_opt_val_add_button.grid(column=1, row=5)
+        self.fib_opt_val_remove_button = ttk.Button(self.content, text="Remove",
+                                                    command=lambda event=1: self.job_queue.put(self.delete_fib_val()))
+        self.fib_opt_val_remove_button.grid(column=2, row=5)
         self.fib_opt_val_list = tk.Listbox(self.content)
-        self.fib_opt_val_list.grid(column=1,row=6)
-        self.opt_fib_vals_set: set = {'',}
+        self.fib_opt_val_list.grid(column=1, row=6)
+        self.opt_fib_vals_set: set = {'', }
         self.opt_fib_vals_set.remove('')
         self.force_bool = tk.BooleanVar()
         self.force_bool.set(False)
@@ -368,7 +387,8 @@ class GUI(Thread_Pool):
 
         self.has_actuals = ttk.Checkbutton(self.content, text="Compare Predicted", variable=self.boolean1)
         self.has_actuals.grid(column=6, row=1)
-        self.generate_button = ttk.Button(self.content, text="Generate", command= lambda event=1: self.job_queue.put(self.generate_callback()))
+        self.generate_button = ttk.Button(self.content, text="Generate",
+                                          command=lambda event=1: self.job_queue.put(self.generate_callback()))
         self.generate_button.grid(column=1, row=5)
         # self.next_page_button.pack(side='bottom')
         self.cache_queue.put(self.load_dropdown())
@@ -387,7 +407,8 @@ class GUI(Thread_Pool):
                 time.sleep(2)
 
     """ Constant loop that checks for tasks to-be completed.  Manages Computations"""
-    def job_loop_in_thread(self,loop):
+
+    def job_loop_in_thread(self, loop):
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self.jobtask_loop())
 
@@ -411,7 +432,7 @@ class GUI(Thread_Pool):
             self.obj = None
             load_task: Task = None
 
-            jobs_list=[]
+            jobs_list = []
             # Queue for when the generate button is submitted and any other button actions go here
             # if self.job_queue.qsize() > 0:
             #     self.start_loading()
@@ -493,6 +514,7 @@ class GUI(Thread_Pool):
                         self.is_retrieving = True
             except:
                 pass
+
     async def auto_refresh_loop(self):
         loop = asyncio.get_event_loop()
         asyncio.set_event_loop(loop)
@@ -501,14 +523,15 @@ class GUI(Thread_Pool):
                 raise ChildProcessError('[INFO] Application Signal End.')
             while self.auto_refresh.get() is True:
                 await self.load_model(self.stock_input.get(), self.boolean1.get(),
-                                    force_generation=self.force_bool.get())
+                                      force_generation=self.force_bool.get())
                 time.sleep(30)
             time.sleep(1)
+
+
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     ui = GUI(loop)
     task1 = asyncio.Task(ui.run())
-    run_task = loop.run_until_complete(task1)
     loop.run_forever()
-
-
+    run_task = loop.run_until_complete(task1)
+    ui.auto_refresh_in_thread(loop)

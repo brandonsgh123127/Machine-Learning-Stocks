@@ -208,7 +208,7 @@ class Gather:
                 # Retrieve date, verify it is in date range, remove from date range
                 for result in check_cache_studies_db_result:
                     result = result.fetchall()
-                    for res in result:
+                    for idx, res in enumerate(result):
                         # Convert datetime to str
                         date = datetime.date.strftime(res[0], "%Y-%m-%d")
 
@@ -217,9 +217,9 @@ class Gather:
                                 f'[INFO] No prior data found for {self.indicator.upper()if not ticker else ticker.upper()} from {start_date.strftime("%Y-%m-%d")} to {end_date.strftime("%Y-%m-%d")}... Generating data...!\n',
                                 flush=True)
                         else:
-                            new_data = new_data.append({'Date': date, 'Open': float(res[1]), 'High': float(res[2]),
+                            new_data = pd.concat(objs=[new_data, pd.DataFrame({'Date': date, 'Open': float(res[1]), 'High': float(res[2]),
                                                         'Low': float(res[3]), 'Close': float(res[4]),
-                                                        'Adj. Close': float(res[5]) if not is_utilizing_yfinance else float(res[4])}, ignore_index=True)
+                                                        'Adj. Close': float(res[5]) if not is_utilizing_yfinance else float(res[4])},index=[idx])], axis=1)
                             # check if date is there, if not fail this
                             if date in date_range:
                                 date_range.remove(date)
@@ -350,7 +350,6 @@ class Gather:
                                                                       '%Y-%m-%d')),
                                                               end=(end_date + datetime.timedelta(days=6)).strftime(
                                                                   '%Y-%m-%d'))
-
                             else:
                                 if update_self:
                                     self.data = get_data(self.indicator.upper() if not ticker else ticker.upper(), start_date=start_date.strftime("%Y-%m-%d"),
@@ -579,6 +578,7 @@ class Gather:
                                     'Adj Close': row['Adj Close']}, multi=True)
 
                         except mysql.connector.errors.IntegrityError as e:
+                            print('dfkajdkfoi')
                             pass
                         except Exception as e:
                             # print(self.data)

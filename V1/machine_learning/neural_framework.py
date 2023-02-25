@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import random
 
-from tensorflow.python.keras.models import Model
+from keras.models import Model
 
 
 class Neural_Framework(ABC):

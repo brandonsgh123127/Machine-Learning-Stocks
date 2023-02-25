@@ -95,6 +95,11 @@ class Generator():
             start = datetime.datetime.utcnow() - datetime.timedelta(
                 days=2)
             end = datetime.datetime.utcnow()
+            # If morning time before market open, do last 2 days
+            if end.date().weekday() == 1 and datetime.datetime.utcnow().hour < 14:
+                end = end - datetime.timedelta(days=1)
+                start = start - datetime.timedelta(days=1)
+
         self.studies.set_force_generate(force_generation)
         if end.date().weekday() == 5:# Saturday
             data = await self.studies.set_data_from_range(start - datetime.timedelta(days=1),
@@ -118,7 +123,7 @@ class Generator():
             return 'n/a     n/a'
 
     async def generate_data_with_dates(self, date1=None, date2=None, is_not_closed=False, force_generate=False,
-                                 skip_db=False, interval='1d', ticker: Optional[str] = None, opt_fib_vals: list = []):
+                                 out=1, skip_db=False, interval='1d', ticker: Optional[str] = None, opt_fib_vals: list = []):
         studies = Studies(self.ticker if not ticker else ticker, force_generate=force_generate)
         studies.date_set = (date1, date2)
         # Loop until valid data populates
@@ -139,10 +144,11 @@ class Generator():
         query_params.update(query_param2);
         query_params.update(query_param3);
         query_params.update(query_param4)
-        try:
-            studies.data = studies.data.drop(['Volume'], axis=1)
-        except:
-            pass
+        if out == 1 or out == 3 or out == 4:
+            try:
+                studies.data = studies.data.drop(['Volume'], axis=1)
+            except:
+                pass
 
         try:
             studies.data = studies.data.drop(['Adj Close'], axis=1)

@@ -16,21 +16,21 @@ class Sample(Normalizer):
         self.ticker = ticker
         self.path = Path(os.getcwd()).absolute()
 
-    def generate_sample(self, out=8, _has_actuals=False, rand_date=False, is_divergence=False, skip_db=False,
+    def generate_sample(self, out=1, _has_actuals=False, rand_date=False, is_divergence=False, skip_db=False,
                         interval='1d',opt_fib_vals=[]):
         self.cnx = self.db_con.cursor(buffered=True)
         if not _has_actuals:
             # print("Predict Mode")
-            self.DAYS_SAMPLED = 14
+            self.DAYS_SAMPLED = 14 if out == 1 else 5 if 2 <= out <= 3 else 0
         else:
-            self.DAYS_SAMPLED = 15
+            self.DAYS_SAMPLED = 15 if out == 1 else 6 if 2 <= out <= 3 else 0
         # If data has been set via neural_network, don't read data
         if self.data is not None:
             pass
         else:
             # Read the current ticker data
             try:
-                self.read_data(self.ticker, rand_dates=rand_date, skip_db=skip_db, interval=interval,opt_fib_vals=opt_fib_vals)
+                self.read_data(self.ticker, rand_dates=rand_date, out=out,skip_db=skip_db, interval=interval,opt_fib_vals=opt_fib_vals)
             except Exception as e:
                 print(f'[ERROR] Failed to read sample data for ticker {self.ticker}')
                 raise Exception(str(e))
@@ -53,9 +53,9 @@ class Sample(Normalizer):
             else:
                 rc = self.normalize_divergence(out=out)
             if rc == 1:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                print(exc_type, fname, exc_tb.tb_lineno)
+                # exc_type, exc_obj, exc_tb = sys.exc_info()
+                # fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                # print(exc_type, fname, exc_tb.tb_lineno)
                 self.cnx.close()
                 raise Exception("[Error] Normalize did not return exit code 1")
 
@@ -63,7 +63,8 @@ class Sample(Normalizer):
             raise Exception('[ERROR] Failed to Normalize data!\n', e)
         try:
             if len(self.normalized_data) < self.DAYS_SAMPLED:
-                self.read_data(self.ticker, rand_dates=rand_date,opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
+                print(f'[INFO] Re-Fetching data since the len of data is {len(self.normalized_data)}, which is  < {self.DAYS_SAMPLED}')
+                self.read_data(self.ticker, rand_dates=rand_date,out=out,opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
                 if not is_divergence:
                     self.convert_derivatives(out=out)
                 else:
@@ -107,8 +108,8 @@ class Sample(Normalizer):
         self.cnx.close()
         return 0
 
-    def unnormalize(self, data):
-        return super().unnormalize(data)
+    def unnormalize(self, data, out: int = 1):
+        return super().unnormalize(data, out)
 
     '''
      Getters/Setters
