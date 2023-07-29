@@ -4,7 +4,11 @@ from pathlib import Path
 import os
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+from matplotlib import pyplot as plt
+from sklearn.decomposition import PCA
+from sklearn.feature_selection import f_regression
+from sklearn.feature_selection import SelectKBest
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.preprocessing import Normalizer as SKNormalizer
 import mysql.connector
 from mysql.connector import errorcode
@@ -29,6 +33,7 @@ class Normalizer():
         self.unnormalized_data = pd.DataFrame()
         self.path = Path(os.getcwd()).absolute()
         self.min_max = MinMaxScaler(feature_range=(0,1))
+        self.standard_scaler = StandardScaler()
         self.normalizer = SKNormalizer()
         self.gen = Generator(ticker=ticker, force_generate=force_generate)
         self.studies = None
@@ -102,6 +107,10 @@ class Normalizer():
             else:
                 initial_date = date
             await self.gen.set_ticker(ticker)
+        except Exception as e:
+            print(f"[ERROR] Failed to set dates back while retrieving db data.\r\nException: {e}")
+        try:
+            print("[INFO] Generating data with dates.")
             vals = await self.gen.generate_data_with_dates(initial_date - datetime.timedelta(days=150 if '1d' in interval else\
                                     300 if '1wk' in interval else\
                                     600 if '1mo' in interval else\
@@ -145,6 +154,7 @@ class Normalizer():
             d1 = datetime.datetime.strptime('1/1/2007 1:00 AM', '%m/%d/%Y %I:%M %p') if interval == '1d' or interval == '1m' or interval == '1wk' else\
                 datetime.datetime.now() - datetime.timedelta(days=730) if interval == '30m' or interval == '60m' or interval == '1h' or interval == '4h' else \
                     datetime.datetime.now() - datetime.timedelta(days=50)
+            print(f"[INFO] Gathering data between ranges {d1} and {d2}")
             # get time diff then get time in seconds
             delta = d2 - d1
             # print(delta.days,delta.seconds)
@@ -155,12 +165,13 @@ class Normalizer():
         else:
             date = None
         try:
+            print("[INFO] Reading db data.")
             loop = asyncio.new_event_loop()
             loop.run_until_complete(self.mysql_read_data(ticker, date=date, out=out,
                                                          skip_db=skip_db,interval=interval,opt_fib_vals=opt_fib_vals))
         except Exception as e:
-            print('[ERROR] Failed to read data!\n', str(e))
-            raise RuntimeError(f'[ERROR] Failed to read data!',e)
+            print(f'\n[ERROR] Failed to read data!\r\nException: {e}')
+            raise Exception(e)
         try:
             self.data = self.data.drop(['Adj Close'], axis=1)
         except:
@@ -187,7 +198,10 @@ class Normalizer():
         except:
             pass
         data = data.astype(np.float_)
-        self.studies = self.studies.astype(np.float_)
+        try:
+            self.studies = self.studies.astype(np.float_)
+        except:
+            print('[INFO] Couldn\'t convert emas to type <float>')
         try:
             self.keltner = self.keltner.astype(np.float_)
         except:
@@ -215,10 +229,10 @@ class Normalizer():
                                                  'Last3High Next2 Fib','Last3Low Next2 Fib']if out ==2 else \
                                                 ['Upper Kelt',
                                                 'Lower Kelt','Middle Kelt','EMA 14','EMA 30',
-                                                'Base Fib', 'Next1 Fib', 'Next2 Fib',
                                                 'Open','High','Low','Close',
                                                 'Last3High','Last3Low'] if out == 3 or out == 4 else [])
         if out == 1: # Do legacy model data generation for 14 days worth of stuff
+            print("[INFO] Calculating data for last 14 days")
             target_fib1 = None
             target_fib2 = None
             last_3 = data['Close'].iloc[-3:]
@@ -230,21 +244,26 @@ class Normalizer():
                 direction = "+"
             else:
                 direction = "-"
-            for index,item in self.fib.items():
-                if direction == "+": # Check if avg is greater than fib val, record
-                    if last_3_avg_close > item.iloc[-1]:
-                        i = item.iloc[-1]
+            try:
+                for index,item in self.fib.items():
+                    if direction == "+": # Check if avg is greater than fib val, record
+                        if last_3_avg_close > item.iloc[-1]:
+                            i = item.iloc[-1]
+                        else:
+                            j = item.iloc[-1]
+                            break
                     else:
-                        j = item.iloc[-1]
-                        break
-                else:
-                    if last_3_avg_close < item.iloc[-1]:
-                        i = item.iloc[-1]
-                    else:
-                        j = item.iloc[-1]
-                        break
+                        if last_3_avg_close < item.iloc[-1]:
+                            i = item.iloc[-1]
+                        else:
+                            j = item.iloc[-1]
+                            break
+            except Exception as e:
+                print(f"[ERROR] Failed to iterate through self fib values!\r\nException: {e}")
+                raise Exception(e)
             target_fib2 = j
             target_fib1 = i
+            print("[INFO] Iterating through rows to calculate data.")
             for index, row in data.iterrows():
                 try:
                     if index == 0:
@@ -301,8 +320,10 @@ class Normalizer():
                         self.normalized_data.loc[index, "Close EMA14 Distance"] = data.at[index, "Close"] - self.studies.at[index, 'ema14']
                         self.normalized_data.loc[index, "Close EMA30 Distance"] = data.at[index, "Close"] - self.studies.at[index, 'ema30']
                 except Exception as e:
+                    print(f"[ERROR] Failed to calculate data for last 14 days!\r\nException: {e}")
                     raise AssertionError(f'[ERROR] Failed normalization!\nCurrent Data: \n{self.data}\nCurrent normalized data:\n{self.normalized_data}')
         elif out == 2: # New model - 3 days worth of generation for 26 cols...
+            print("[INFO] Calculating data for last 3 days")
             third_last = data.iloc[-1]
             last_3_high = data['High'].iloc[-3:].mean()
             last_3_low = data['Low'].iloc[-3:].mean()
@@ -339,10 +360,8 @@ class Normalizer():
                             else:
                                 save_point = item.iloc[-1]
             except Exception as e:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                print(fname, exc_type, exc_obj, exc_tb.tb_lineno)
-                print(f'[ERROR] Failed to iterate through fibonacci to find key fib points...\n{str(e)}')
+                print(f'[ERROR] Failed to iterate through fibonacci to find key fib points...\r\nException: {e}')
+                raise Exception(e)
             next1_fib = j
             next2_fib = k
             base_fib1 = i
@@ -392,9 +411,10 @@ class Normalizer():
                     self.normalized_data.loc[index, "Last3High Next2 Fib"] = last_3_high - next2_fib
                     self.normalized_data.loc[index, "Last3Low Next2 Fib"] = last_3_low - next2_fib
                 except Exception as e:
-                    print(f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\nException: {str(e)}')
+                    print(f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\r\nException{e}')
                     raise AssertionError(f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\nException: {str(e)}')
         elif out == 3:
+            print("[INFO] Calculating data for last n days")
             third_last = data.iloc[-1]
             last_3_high = data['High'].iloc[-3:].mean()
             last_3_low = data['Low'].iloc[-3:].mean()
@@ -431,10 +451,8 @@ class Normalizer():
                             else:
                                 save_point = item.iloc[-1]
             except Exception as e:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                print(fname, exc_type, exc_obj, exc_tb.tb_lineno)
-                print(f'[ERROR] Failed to iterate through fibonacci to find key fib points...\n{str(e)}')
+                print(f'[ERROR] Failed to iterate through fibonacci to find key fib points.\r\nException: {e}')
+                raise Exception(e)
             next1_fib = j
             next2_fib = k
             base_fib1 = i
@@ -446,39 +464,29 @@ class Normalizer():
                     if index <= 1:
                         last_3_high = data['High'].iloc[index]
                         last_3_low = data['Low'].iloc[index]
-                        self.normalized_data.loc[index, "Open"] = 0
-                        self.normalized_data.loc[index, "High"] = 0
-                        self.normalized_data.loc[index, "Low"] = 0
-                        self.normalized_data.loc[index, "Close"] = 0
                     elif index < 3: # If not sufficient amount of days surpassed, do this
                         last_3_high = data['High'].iloc[:index].mean()
                         last_3_low = data['Low'].iloc[:index].mean()
-                        self.normalized_data.loc[index, "Open"] = data.at[index, "Open"] - data.at[index - 1, "Open"]
-                        self.normalized_data.loc[index, "High"] = data.at[index, "High"] - data.at[index - 1, "High"]
-                        self.normalized_data.loc[index, "Low"] = data.at[index, "Low"] - data.at[index - 1, "Low"]
-                        self.normalized_data.loc[index, "Close"] = data.at[index, "Close"] - data.at[index - 1, "Close"]
                     else:
                         last_3_high = data['High'].iloc[index-3:index].mean()
                         last_3_low = data['Low'].iloc[index-3:index].mean()
-                        self.normalized_data.loc[index, "Open"] = data.at[index, "Open"] - data.at[index - 1, "Open"]
-                        self.normalized_data.loc[index, "High"] = data.at[index, "High"] - data.at[index - 1, "High"]
-                        self.normalized_data.loc[index, "Low"] = data.at[index, "Low"] - data.at[index - 1, "Low"]
-                        self.normalized_data.loc[index, "Close"] = data.at[index, "Close"] - data.at[index - 1, "Close"]
-                    self.normalized_data.loc[index, "Upper Kelt"] = self.keltner.at[index, "upper"] - data.at[index,"High"]
-                    self.normalized_data.loc[index, "Lower Kelt"] = self.keltner.at[index, "lower"] - data.at[index,"Low"]
-                    self.normalized_data.loc[index, "Middle Kelt"] = self.keltner.at[index, "middle"] - data.at[index,"Close"]
-                    self.normalized_data.loc[index, "EMA 14"] = self.studies.at[index, 'ema14'] - data.at[index,"Open"]
-                    self.normalized_data.loc[index, "EMA 30"] = self.studies.at[index, 'ema30'] - data.at[index,"Close"]
-                    self.normalized_data.loc[index, "Base Fib"] = abs(base_fib1 - data.at[index,"Close"])
-                    self.normalized_data.loc[index, "Next1 Fib"] = abs(next1_fib - data.at[index,"Close"])
-                    self.normalized_data.loc[index, "Next2 Fib"] = abs(next2_fib - data.at[index,"Close"])
-                    self.normalized_data.loc[index, "Last3High"] = last_3_high - data.at[index,"High"]
-                    self.normalized_data.loc[index, "Last3Low"] = last_3_low - data.at[index,"Low"]
+                    self.normalized_data.loc[index, "Open"] = data.at[index, "Open"]
+                    self.normalized_data.loc[index, "High"] = data.at[index, "High"]
+                    self.normalized_data.loc[index, "Low"] = data.at[index, "Low"]
+                    self.normalized_data.loc[index, "Close"] = data.at[index, "Close"]
+                    self.normalized_data.loc[index, "Upper Kelt"] = self.keltner.at[index, "upper"]
+                    self.normalized_data.loc[index, "Lower Kelt"] = self.keltner.at[index, "lower"]
+                    self.normalized_data.loc[index, "Middle Kelt"] = self.keltner.at[index, "middle"]
+                    self.normalized_data.loc[index, "EMA 14"] = self.studies.at[index, 'ema14']
+                    self.normalized_data.loc[index, "EMA 30"] = self.studies.at[index, 'ema30']
+                    self.normalized_data.loc[index, "Last3High"] = last_3_high
+                    self.normalized_data.loc[index, "Last3Low"] = last_3_low
                     #print(self.normalized_data)
                 except Exception as e:
-                    print(f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\nException: {str(e)}')
+                    print(f'{str(e)}\n[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\n')
                     raise AssertionError(f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\nException: {str(e)}')
         elif out == 4:
+            print("[INFO] Calculating for the last n days.")
             third_last = data.iloc[-1]
             last_3_high = data['High'].iloc[-3:].mean()
             last_3_low = data['Low'].iloc[-3:].mean()
@@ -515,10 +523,8 @@ class Normalizer():
                             else:
                                 save_point = item.iloc[-1]
             except Exception as e:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                print(fname, exc_type, exc_obj, exc_tb.tb_lineno)
-                print(f'[ERROR] Failed to iterate through fibonacci to find key fib points...\n{str(e)}')
+                print(f'[ERROR] Failed to iterate through fibonacci to find key fib points.\r\nException: {e}')
+                raise Exception(e)
             next1_fib = j
             next2_fib = k
             base_fib1 = i
@@ -552,8 +558,8 @@ class Normalizer():
                     self.normalized_data.loc[index, "Last3Low"] = last_3_low
                     #print(self.normalized_data)
                 except Exception as e:
-                    print(f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\nException: {str(e)}')
-                    raise AssertionError(f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\nException: {str(e)}')
+                    print(f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\r\nException: {e}')
+                    raise AssertionError(f'{str(e)}\n[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\n')
         return 0
 
     '''
@@ -564,7 +570,8 @@ class Normalizer():
         self.unnormalized_data = self.normalized_data
         try:
             if 3 <= out <= 4:
-                scaler = self.normalizer.fit(self.unnormalized_data)
+                print("[INFO] Out is set to 3/4.  Standard scaler fit_transform in progress.")
+                scaler = self.standard_scaler.fit_transform(self.unnormalized_data)
                 # Get w values for row normalization in order to reverse matrices
                 self.w = {}
                 self.w['Upper Kelt'] = np.sqrt(sum(self.unnormalized_data['Upper Kelt'].to_numpy() ** 2))
@@ -572,9 +579,6 @@ class Normalizer():
                 self.w['Middle Kelt'] = np.sqrt(sum(self.unnormalized_data['Middle Kelt'].to_numpy() ** 2))
                 self.w['EMA 14'] = np.sqrt(sum(self.unnormalized_data['EMA 14'].to_numpy() ** 2))
                 self.w['EMA 30'] = np.sqrt(sum(self.unnormalized_data['EMA 30'].to_numpy() ** 2))
-                self.w['Base Fib'] = np.sqrt(sum(self.unnormalized_data['Base Fib'].to_numpy() ** 2))
-                self.w['Next1 Fib'] = np.sqrt(sum(self.unnormalized_data['Next1 Fib'].to_numpy() ** 2))
-                self.w['Next2 Fib'] = np.sqrt(sum(self.unnormalized_data['Next2 Fib'].to_numpy() ** 2))
                 self.w['Open'] = np.sqrt(sum(self.unnormalized_data['Open'].to_numpy() ** 2))
                 self.w['High'] = np.sqrt(sum(self.unnormalized_data['High'].to_numpy() ** 2))
                 self.w['Low'] = np.sqrt(sum(self.unnormalized_data['Low'].to_numpy() ** 2))
@@ -582,8 +586,9 @@ class Normalizer():
                 self.w['Last3High'] = np.sqrt(sum(self.unnormalized_data['Last3High'].to_numpy() ** 2))
                 self.w['Last3Low'] = np.sqrt(sum(self.unnormalized_data['Last3Low'].to_numpy() ** 2))
             else:
-                scaler = self.min_max.fit(self.unnormalized_data)
-            self.normalized_data = pd.DataFrame(scaler.fit_transform(self.unnormalized_data) if out != 4 else self.unnormalized_data.to_numpy(),
+                print("[INFO] Out is not 3/4.  MinMax scaler fit_transform in progress.")
+                scaler = self.min_max.fit_transform(self.unnormalized_data)
+            self.normalized_data = pd.DataFrame(scaler if out != 4 else self.unnormalized_data.to_numpy(),
                                                 columns=['Close EMA14 Distance',
                                                          'Close EMA30 Distance',
                                                          'Close Fib1 Distance',
@@ -607,27 +612,64 @@ class Normalizer():
                                                  'Last3High Next2 Fib','Last3Low Next2 Fib']if out ==2 else \
                                                     ['Upper Kelt',
                                                      'Lower Kelt', 'Middle Kelt', 'EMA 14', 'EMA 30',
-                                                     'Base Fib', 'Next1 Fib', 'Next2 Fib',
                                                      'Open', 'High', 'Low', 'Close',
                                                      'Last3High', 'Last3Low'] if out == 3 or out == 4 else [])
             self.normalized_data = self.normalized_data[-15 if out == 1 else -6 if 2 <= out <= 4 else 0:]
         except Exception as e:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
-            print('[ERROR] Failed to normalize!\n', str(e))
-            return 1
+            print(f'[ERROR] Failed to normalize data points!\r\nException: {e}')
+            raise Exception(e)
         return 0
+
+    '''
+    Do PCA on vectors
+    '''
+    def pca(self):
+        self.pca = PCA(n_components=1)
+        try:
+            self.pca_normalized_data = pd.DataFrame(self.pca.fit_transform(self.normalized_data))
+            print(self.pca_normalized_data)
+        except Exception as e:
+            print(f"[ERROR] Failed to fit transform on normalized data!\r\nException: {e}")
+            raise Exception(e)
+        # # Use for debugging num components needed
+        # plt.rcParams["figure.figsize"] = (12, 6)
+        # fig, ax = plt.subplots()
+        # xi = np.arange(1, 6, step=1)
+        # y = np.cumsum(pca.explained_variance_ratio_)
+        # plt.ylim(0.0, 1.1)
+        # plt.plot(xi, y, marker='o', linestyle='--', color='b')
+        # plt.xlabel('Number of Components')
+        # plt.xticks(np.arange(0, 11, step=1))  # change from 0-based array index to 1-based human-readable label
+        # plt.ylabel('Cumulative variance (%)')
+        # plt.title('The number of components needed to explain variance')
+        # plt.axhline(y=0.95, color='r', linestyle='-')
+        # plt.text(0.5, 0.85, '95% cut-off threshold', color='red', fontsize=16)
+        # ax.grid(axis='x')
+        # plt.show()
+
+        print(f"[INFO] Explained variance ratio: {self.pca.explained_variance_ratio_}")
+        print(f"[INFO] Singular values: {self.pca.singular_values_}")
+        return self.pca
+    def feature_selection(self, x, y):
+        # configure to select all features
+        fs = SelectKBest(score_func=f_regression, k='all')
+        # learn relationship from training data
+        fs.fit(self.pca)
+        # transform train input data
+        X_train_fs = fs.transform(self.pca)
+        for i in range(len(fs.scores_)):
+            print('Feature %d: %f' % (i, fs.scores_[i]))
+        # plot the scores
+        plt.bar([i for i in range(len(fs.scores_))], fs.scores_)
+        plt.show()
 
     '''
         Unnormalize data
     '''
 
     def unnormalize(self, data, out: int = 1):
-        if out == 4:
-            pass
-        elif out == 3:
-            scaler = self.normalizer.fit(self.unnormalized_data)
+        if 3 <= out <= 4:
+            scaler = self.standard_scaler.inverse_transform(self.normalized_data)
         else:
             scaler = self.min_max.fit(self.unnormalized_data)
         tmp_data = pd.DataFrame(columns=['Close EMA14 Distance', 'Close EMA30 Distance',
@@ -649,7 +691,6 @@ class Normalizer():
                                      'Last3High Next2 Fib', 'Last3Low Next2 Fib'] if out == 2 else \
                                         ['Upper Kelt',
                                          'Lower Kelt', 'Middle Kelt', 'EMA 14', 'EMA 30',
-                                         'Base Fib', 'Next1 Fib', 'Next2 Fib',
                                          'Open', 'High', 'Low', 'Close',
                                          'Last3High', 'Last3Low'] if out == 3 or out == 4 else [])
         # Set data manually to preserve order
@@ -658,11 +699,11 @@ class Normalizer():
         except:
             pass
         tmp_data['Close'] = data['Close']
-        if 2 <= out <= 4: # Add high/low
-            tmp_data['High'] = (data['High'] * self.w['High']) if out != 4 else data['High']
-            tmp_data['Low'] = (data['Low'] * self.w['Low']) if out != 4 else data['Low']
-            tmp_data['Open'] = (tmp_data['Open'] * self.w['Open']) if out != 4 else data['Open']
-            tmp_data['Close'] = (tmp_data['Close'] * self.w['Close']) if out != 4 else data['Close']
+        # if 3 <= out <= 4: # Add high/low
+        #     tmp_data['High'] = (data['High'] * self.w['High']) if out != 4 else data['High']
+        #     tmp_data['Low'] = (data['Low'] * self.w['Low']) if out != 4 else data['Low']
+        #     tmp_data['Open'] = (tmp_data['Open'] * self.w['Open']) if out != 4 else data['Open']
+        #     tmp_data['Close'] = (tmp_data['Close'] * self.w['Close']) if out != 4 else data['Close']
         return pd.DataFrame(scaler.inverse_transform((tmp_data.to_numpy())) if out != 3 and out != 4 else tmp_data.to_numpy(), columns=['Close EMA14 Distance',
                                                                                       'Close EMA30 Distance',
                                                                                       'Close Fib1 Distance',
@@ -686,9 +727,8 @@ class Normalizer():
                                      'Last3High Next2 Fib', 'Last3Low Next2 Fib'] if out == 2 else \
                                         ['Upper Kelt',
                                          'Lower Kelt', 'Middle Kelt', 'EMA 14', 'EMA 30',
-                                         'Base Fib', 'Next1 Fib', 'Next2 Fib',
                                          'Open', 'High', 'Low', 'Close',
-                                         'Last3High', 'Last3Low'] if out == 3 or out == 4 else [])
+                                         'Last3High', 'Last3Low'] if 3 <= out <= 4 else [])
 
 # norm = Normalizer()
 # norm.read_data("2016-03-18","CCL")

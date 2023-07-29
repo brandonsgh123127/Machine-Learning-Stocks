@@ -48,6 +48,7 @@ class NN_Model(ABC):
         """
          These are legacy models... Takes in 14 days worth of data, then attempts to create a model to predict 1 datapoint outwards
         Model Struct:
+        OUT 1
             - Input 9 columns worth of data
                 + 'Close EMA14 Distance'
                 + 'Close EMA30 Distance'
@@ -105,6 +106,7 @@ class NN_Model(ABC):
                        metrics=['accuracy', 'MeanSquaredError'])
         elif 5 <= self.model_choice <= 6:
             """
+            OUT 2
                Newer model to-be implemented, which includes the following to record 3 data points ahead...
                 Model Struct:
                     - Input 26 Columns worth of data
@@ -159,17 +161,15 @@ class NN_Model(ABC):
                        metrics=['accuracy', 'MeanSquaredError'])
         elif 7 <= self.model_choice <= 15:
             """
+            OUT 3
                Newer model to-be implemented, which includes the following to record 5 data points ahead...
                 Model Struct:
-                    - Input 14 Columns worth of data
+                    - Input 11 Columns worth of data
                         +  Upper Kelt
                         +  Lower Kelt 
                         +  Middle Kelt 
                         +  EMA 14 
                         +  EMA 30 
-                        + Base Fib
-                        + Next1 Fib
-                        + Next2 Fib 
                         + Open
                         + High
                         + Low
@@ -199,12 +199,17 @@ class NN_Model(ABC):
                 nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
                 nn = layers.Dense(16, activation=layers.LeakyReLU(alpha=0.4))(nn) # change back to 12 for orig model
             elif self.model_choice == 12:
-                # ORIGINAL 67 percent accuracy model
-                # To test, need to revert normalization for out == 4
-                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
-                nn = layers.Dense(32, activation=layers.LeakyReLU(alpha=0.2))(
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input, is_training)
+                nn = layers.Dense(32, activation='linear')(
                     nn)
-                nn = layers.Dense(8, activation=layers.LeakyReLU(alpha=0.2))(nn)
+                nn = layers.Dense(8, activation='linear')(nn)
+            # elif self.model_choice == 12:
+            #     # ORIGINAL 67 percent accuracy model
+            #     # To test, need to revert normalization for out == 4
+            #     nn = custom_layers.TrainableDropout(0.5).call(nn_input, is_training)
+            #     nn = layers.Dense(32, activation=layers.LeakyReLU(alpha=0.2))(
+            #         nn)
+            #     nn = layers.Dense(8, activation=layers.LeakyReLU(alpha=0.2))(nn)
             elif self.model_choice == 13:
                 nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
                 nn = layers.Dense(32,activation='linear')(

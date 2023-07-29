@@ -42,8 +42,7 @@ class Network(Neural_Framework):
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
-            print('[Error] Failed batch!\n Exception: ', str(e))
+            print(str(e),'\n[Error] Failed batch!\n',exc_type, fname, exc_tb.tb_lineno)
             return 1
         except Exception as e:
             print(str(e))
@@ -80,13 +79,13 @@ class Network(Neural_Framework):
             train = []
             train_targets = []
             BATCHES = self.BATCHES
-            out = 1 if nn.model_choice <= 4 or nn.model_choice == 11 else 2 if 4 < nn.model_choice <= 6 else 3 if 6 < nn.model_choice <= 15 else 0
+            out = 1 if nn.model_choice <= 4 or nn.model_choice == 11 else 2 if 5 <= nn.model_choice <= 6 else 3 if 7 <= nn.model_choice <= 15 else 0
             j = 1
             while j <= BATCHES:
                 try:
                     rc = self.generate_sample(True, rand_date, interval, out,ticker=ticker)
                 except Exception as e:
-                    print('[ERROR] Failed to generate sample\n', str(e))
+                    print(str(e),'\n[ERROR] Failed to generate sample\n')
                     continue
                 try:
                     if nn.model_choice <= 4 or nn.model_choice == 11:
@@ -94,7 +93,7 @@ class Network(Neural_Framework):
                     elif 4 < nn.model_choice <= 6:
                         train.append(reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 130)))
                     elif 6 < nn.model_choice <= 15:
-                        train.append(reshape(self.sampler.normalized_data.iloc[:-1].to_numpy(), (1, 70)))
+                        train.append(reshape(self.sampler.pca_normalized_data.iloc[:-1].to_numpy(), (1, 55)))
                     # print(len(self.sampler.normalized_data),self.sampler.normalized_data.iloc[-15:])
                     tmp = self.sampler.normalized_data.iloc[-1:]
                     if out == 1:
@@ -107,9 +106,8 @@ class Network(Neural_Framework):
                 except Exception as e:
                     exc_type, exc_obj, exc_tb = sys.exc_info()
                     fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(str(e),'\n[ERROR] Failed to specify train_target value!\n')
                     print(exc_type, fname, exc_tb.tb_lineno)
-
-                    print('[ERROR] Failed to specify train_target value!\n Exception: ', str(e))
                     continue
                 except:
                     print('[ERROR] Unknown error has occurred while training!')
@@ -124,6 +122,7 @@ class Network(Neural_Framework):
             x=stack(train)
             y=stack(train_targets)
             x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.20, shuffle=True)
+            self.sampler.feature_selection(x_train,y_train)
             history = nn.model.fit(x=x,
                                 y=y,
                                 batch_size=64 if out == 1 \
@@ -239,9 +238,13 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
         valid_datetime = (valid_datetime.replace(day=1))
         valid_date = (valid_date.replace(day=1))
     # print(valid_datetime,flush=True)
-    retrieve_tdata_result = cnx.execute(check_cache_tdata_db_stmt, {'stock': f'{ticker.upper()}',
+    try:
+        retrieve_tdata_result = cnx.execute(check_cache_tdata_db_stmt, {'stock': f'{ticker.upper()}',
                                                                     'date': valid_datetime.strftime('%Y-%m-%d')},
                                         multi=True)
+    except Exception as e:
+        print(f"[ERROR] Failed to check database for existing neural network data!\r\nException: {e}")
+        raise Exception(e)
     for retrieve_result in retrieve_tdata_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
@@ -250,9 +253,11 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
              FROM stocks.`stock` USE INDEX (`stockid`) WHERE
                `stocks`.`stock`.`stock` = %(stock)s
                 """
-            result = cnx.execute(check_stockid_db_stmt, {'stock': f'{ticker.upper()}'
+            try:
+                result = cnx.execute(check_stockid_db_stmt, {'stock': f'{ticker.upper()}'
                                                          }, multi=True)
-
+            except Exception as e:
+                print(f"[ERROR] Failed to Retrieve stock id during neural network retrieval!\r\nException: {e}")
             for retrieve_result in retrieve_tdata_result:
                 id_res = retrieve_result.fetchall()
                 if len(id_res) == 0:
@@ -311,11 +316,15 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
          WHERE stocks.`{interval}data`.`stock-id` = %(stock-id)s
            AND stocks.`{interval}data`.`date` = %(date)s
             """
-
-    retrieve_data_result = cnx.execute(check_cache_fdata_db_stmt, {'stock-id': stock_id,
+    print("[INFO] Checking for stored nn data in db by checking for from/to-dates")
+    try:
+        retrieve_data_result = cnx.execute(check_cache_fdata_db_stmt, {'stock-id': stock_id,
                                                                    'date': valid_date if not is_utilizing_yfinance else
                                                                    valid_datetime.strftime("%Y-%m-%d %H:%M:%S")},
                                        multi=True)
+    except Exception as e:
+        print(f"[ERROR] Failed to check for from/to-date for  nn data!\r\nException: {e}")
+        raise Exception(e)
     for retrieve_result in retrieve_data_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
@@ -388,7 +397,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
         cnx.close()
         pass
     except Exception as e:
-        print('[ERROR] Failed to check cached nn-data!\n', str(e))
+        print(str(e),'\n[ERROR] Failed to check cached nn-data!\n')
         cnx.close()
         raise mysql.connector.errors.DatabaseError()
     return None
@@ -403,6 +412,7 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
          opt_fib_vals: list = []):
     # Check to see if empty data value was passed in.
     # If true, exit out of function
+    # 4 Output types as of 7/28
     out = 1 if nn.model_choice <= 4 or nn.model_choice == 11 else 2 if 4 < nn.model_choice <= 6 else 3 if 7 <= nn.model_choice <= 10 else 4 if 12 <= nn.model_choice <= 15 else -1
     if data is None:
         return None, None, None, None, None, None
@@ -435,6 +445,7 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
     stock_id = None
 
     try:
+        print("[INFO] Checking Database Cache for Model.")
         vals = check_db_cache(cnx, ticker, has_actuals, name, force_generation, interval=interval)
         predicted = vals[0]
         stock_id = vals[1]
@@ -442,22 +453,26 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
         to_date_id = vals[3]
         del vals
     except Exception as e:
+        print(f"[ERROR] Failed to check DB cache for nn data\r\nException: {e}")
         pass
 
     # Start ML calculations
     if predicted is None or force_generation:
+        print("[INFO] Generating nn data.")
         # sampler.__init__(ticker)
         # If data is populated, go ahead and utilize it, skip over data check for normalizer...
         if isinstance(data,tuple) and len(data) != 0:
+            print("[INFO] data has been generated prior.  Setting data.")
             sampler.set_sample_data(data[0], data[1], data[2], data[3])
         # if not type tuple, then this means that no data was passed in...
         train = None
         try:
+            print("[INFO] Generating sample given data.")
             sampler.generate_sample(_has_actuals=has_actuals, out=out, rand_date=rand_date, interval=interval,opt_fib_vals=opt_fib_vals)
             sampler.trim_data(has_actuals)
         except Exception as e:
-            print('[ERROR] Failed to generate sample for neural_network!', str(e))
-            return 1
+            print(f'[ERROR] Failed to generate sample for neural_network!\r\nException: {e}')
+            raise Exception(e)
         try:  # verify there is no extra 'index' column
             sampler.data = sampler.data.drop(['index'], axis=1)
         except Exception as e:
@@ -476,18 +491,18 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
                     reshape(sampler.normalized_data.iloc[-14 if not has_actuals else -15:].to_numpy(), (1, 1, 126 if not has_actuals else 135))
                 except Exception as e:
                     print(f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
-                    return None, None, None, None, None, None
+                    raise Exception(e)
             elif 2 <= out <= 4:
                 try:
-                    reshape(sampler.normalized_data.iloc[-5 if not has_actuals else -6:].to_numpy(), (1, 1, 156 if has_actuals and out == 2 else 130 if out == 2 else 84 if has_actuals and (out == 3 or out == 4) else 70 if out == 3 or out == 4 else 0))
+                    reshape(sampler.normalized_data.iloc[-5 if not has_actuals else -6:].to_numpy(), (1, 1, 156 if has_actuals and out == 2 else 130 if out == 2 else 66 if has_actuals and (out == 3 or out == 4) else 55 if out == 3 or out == 4 else 0))
                 except Exception as e:
                     print(f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
-                    return None, None, None, None, None, None
+                    raise Exception(e)
             with device(device_opt):
                 if has_actuals:
-                    train = (reshape(sampler.normalized_data.iloc[-15 if out == 1 else -6 if 2 <= out <= 4 else 0:-1].to_numpy(), (1, 1, 126 if out ==1 else 156 if not has_actuals and out == 2 else 130 if out == 2 else 70 if (out == 3 or out == 4 )and has_actuals else 84 if out == 3 or out == 4 else 0)))
+                    train = (reshape(sampler.normalized_data.iloc[-15 if out == 1 else -6 if 2 <= out <= 4 else 0:-1].to_numpy(), (1, 1, 126 if out ==1 else 156 if not has_actuals and out == 2 else 130 if out == 2 else 66 if (out == 3 or out == 4 )and has_actuals else 55 if out == 3 or out == 4 else 0)))
                 else:
-                    train = (reshape(sampler.normalized_data[-14 if out == 1 else -5 if 2 <= out <= 4 else 0:].to_numpy(), (1, 1, 126 if out==1 else 130 if out == 2 else 70 if out == 3 or out == 4 else 0)))
+                    train = (reshape(sampler.normalized_data[-14 if out == 1 else -5 if 2 <= out <= 4 else 0:].to_numpy(), (1, 1, 126 if out==1 else 130 if out == 2 else 55 if out == 3 or out == 4 else 0)))
                 train = asarray(train).astype(float_)
                 stacked_train = stack(train)
                 prediction = nn.model.predict(stacked_train)
@@ -536,6 +551,7 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
             """
         if from_date_id is not None and to_date_id is not None:
             try:
+                print("[INFO] Uploading NN data to db.")
                 check_cache_studies_db_result = cnx.execute(check_cache_nn_db_stmt,
                                                             {'id': f'{from_date_id}{to_date_id}{ticker.upper()}{name}',
                                                              'stock-id': stock_id,
@@ -546,14 +562,21 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
                 db_con.commit()
             except mysql.connector.errors.IntegrityError:
                 cnx.close()
+                print(f"[ERROR] DB Integrity Error.\r\nException: {e}")
                 pass
             except Exception as e:
-                print(f'[ERROR] Failed to insert id {stock_id} nn-data for model {name}!\nException:\n', str(e))
+                print(f'[ERROR] Failed to insert id {stock_id} nn-data for model {name}!\nException:\r\n{str(e)}')
                 cnx.close()
                 pass
         cnx.close()
-    unnormalized_prediction_df = sampler.unnormalize(predicted,out=out)
+    try:
+        print("[INFO] Attempting to unnormalize data.")
+        unnormalized_prediction_df = sampler.unnormalize(predicted,out=out)
+    except Exception as e:
+        print(f"[ERROR] Failed to unnormalize data!\r\nException: {e}")
+        raise Exception(e)
     if 2 <= out <= 4:
+        print("[INFO] out is 2/3/4, getting last unnormalized value.")
         open = unnormalized_prediction_df['Open'].iloc[-1]
         high = unnormalized_prediction_df['High'].iloc[-1]
         low = unnormalized_prediction_df['Low'].iloc[-1]
@@ -562,17 +585,18 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
 
     # space = pd.DataFrame([[0,0]],columns=['Open','Close'])
     if out == 1: # Legacy model
+        print("[INFO] Legacy model, appending predicted values to df")
         unnormalized_predict_values = sampler.data.append(pd.DataFrame([[unnormalized_prediction[0, 1] +
                                                                      sampler.data['Close'].iloc[-1]]],
                                                                    columns=['Close']), ignore_index=True)
     elif 2 <= out <= 4:
+        print("[INFO] Out is 2/3/4, appending predicted values to df")
         unnormalized_predict_values = pd.concat(objs=[sampler.data, pd.DataFrame([[open,high,low,close]],
                                                                    columns=['Open','High','Low','Close'])], ignore_index=True)
-        print(unnormalized_prediction_df)
     del unnormalized_prediction
     predicted_unnormalized = pd.concat([unnormalized_predict_values])
     del unnormalized_predict_values
-    return sampler.unnormalize(predicted,out=out), sampler.unnormalized_data.tail(
+    return unnormalized_prediction_df, sampler.unnormalized_data.tail(
         1), predicted_unnormalized, sampler.keltner, sampler.fib, sampler.studies
 
 
@@ -627,7 +651,7 @@ def main():
 
     # # 7
     # thread_manager.start_worker(threading.Thread(target=run, args=(32, 64, "new_scaled_l2",'1d')))
-    # # thread_manager.join_workers()
+    # thread_manager.join_workers()
     #
     # # 8
     # thread_manager.start_worker(threading.Thread(target=run, args=(32, 64, "new_scaled_2layer_0regularization")))
@@ -635,16 +659,16 @@ def main():
     #
 
     # 9
-    thread_manager.start_worker(threading.Thread(target=run, args=(32, 64, "scaled_2layer")))
+    # thread_manager.start_worker(threading.Thread(target=run, args=(32, 64, "scaled_2layer")))
+    # # thread_manager.join_workers()
+    #
+    # # 10
+    # thread_manager.start_worker(threading.Thread(target=run, args=(32, 64, "test_2layer")))
     # thread_manager.join_workers()
-
-    # 10
-    thread_manager.start_worker(threading.Thread(target=run, args=(32, 64, "test_2layer")))
-    thread_manager.join_workers()
 
     # # 12
-    # thread_manager.start_worker(threading.Thread(target=run, args=(32, 64, "new_scaled_2layer")))
-    # thread_manager.join_workers()
+    thread_manager.start_worker(threading.Thread(target=run, args=(32, 64, "new_scaled_2layer")))
+    thread_manager.join_workers()
 
     # run(50,75,'relu_2layer_dropout_l1_l2')
     # copy_logs(path,'relu_2layer_dropout_l1_l2')

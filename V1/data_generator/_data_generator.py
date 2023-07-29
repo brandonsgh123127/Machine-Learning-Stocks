@@ -70,13 +70,13 @@ class Generator():
             studies.apply_ema("30", self.studies.get_date_difference(dates[0], dates[1]))
             # studies.set_data_from_range(dates[0],dates[1])
         except Exception as e:
-            print(f'[ERROR] Failed to generate ema studies for {self.ticker}!\n{str(e)}')
+            print(f'{str(e)}\n[ERROR] Failed to generate ema studies for {self.ticker}!\n')
             return
         try:
             studies.apply_fibonacci()
             studies.keltner_channels(20, 2.0, None)
         except Exception as e:
-            print(f'[ERROR] Failed to generate fib/keltner studies for {self.ticker}!\n{str(e)}')
+            print(f'{str(e)}\n[ERROR] Failed to generate fib/keltner studies for {self.ticker}!\n')
             return
         del studies
 
@@ -99,8 +99,9 @@ class Generator():
             if end.date().weekday() == 1 and datetime.datetime.utcnow().hour < 14:
                 end = end - datetime.timedelta(days=1)
                 start = start - datetime.timedelta(days=1)
-
+        print(f'[INFO] Generating data for {ticker} from {start.strftime("%Y%m%d%H%M")} to {end.strftime("%Y%m%d%H%M")}')
         self.studies.set_force_generate(force_generation)
+        print(f"[INFO] Setting data depending on weekday.  Weekday is currently {end.date().weekday()}")
         if end.date().weekday() == 5:# Saturday
             data = await self.studies.set_data_from_range(start - datetime.timedelta(days=1),
                                              end, _force_generate=force_generation,ticker=ticker,update_self=False)
@@ -119,7 +120,7 @@ class Generator():
         try:
             return f'{round(data[["Close"]].iloc[-2:].diff().iloc[1].to_list()[0], 3)}     {round(data[["Close"]].iloc[-2:].pct_change().iloc[1].to_list()[0] * 100, 3)}%'
         except Exception as e:
-            print(f'[ERROR] Failed to gather quick data for {ticker}...\n', str(e))
+            print(str(e),f'\n[ERROR] Failed to gather quick data for {ticker}...\n')
             return 'n/a     n/a'
 
     async def generate_data_with_dates(self, date1=None, date2=None, is_not_closed=False, force_generate=False,
@@ -128,12 +129,13 @@ class Generator():
         studies.date_set = (date1, date2)
         # Loop until valid data populates
         try:
+            print("[INFO] Gathering Stock Data.")
             ema_task = studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval,ticker=ticker)
             await ema_task
             # studies.data = studies.data.reset_index()
         except Exception as e:
-            print(f'[ERROR] Failed to generate data!\n', str(e))
-            raise Exception
+            print(f'[ERROR] Failed to generate stock data!\r\nException: {e}')
+            raise Exception(e)
         # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
         query_param1 = {"query": "{}".format(self.ticker if not ticker else ticker)}
         query_param2 = {"maxResults": "500"}
@@ -166,17 +168,25 @@ class Generator():
         try:
             date_diff = studies.get_date_difference(studies.date_set[0], studies.date_set[1])
             await studies.apply_ema("14", date_diff, skip_db=skip_db, interval=interval)
-            # print(len(studies.data),len(studies.applied_studies['ema14']))
+        except Exception as e:
+            print(f'{str(e)}\n[ERROR] Failed to generate `EMA 14` for {self.ticker if not ticker else ticker}!')
+            raise Exception(e)
+        try:
             await studies.apply_ema("30", date_diff, skip_db=skip_db, interval=interval)
+        except Exception as e:
+            print(f'{str(e)}\n[ERROR] Failed to generate `EMA 30` for {self.ticker if not ticker else ticker}!')
+            raise Exception(e)
+        try:
             await studies.apply_fibonacci(skip_db=skip_db, interval=interval,opt_fib_vals=opt_fib_vals)
+        except Exception as e:
+            print(f'{str(e)}\n[ERROR] Failed to generate `Fibonacci Extensions` for {self.ticker if not ticker else ticker}!')
+            raise Exception(e)
+        try:
             await studies.keltner_channels(20, 2.0, None, skip_db=skip_db, interval=interval)
             # Final join
         except Exception as e:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
-            print(f'[ERROR] Failed to generate studies for {self.ticker if not ticker else ticker}!\n{str(e)}')
-            return
+            print(f'{str(e)}\n[ERROR] Failed to generate `Keltner Channel` for {self.ticker if not ticker else ticker}!')
+            raise Exception(e)
         return studies.data, studies.applied_studies, studies.fibonacci_extension, studies.keltner
 
     def get_ticker(self):

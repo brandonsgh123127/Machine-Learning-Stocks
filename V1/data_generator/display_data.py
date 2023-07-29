@@ -261,11 +261,8 @@ class Display:
             elif out == 3:
                 indices_dict = {0:'Upper Kelt',
                 1: 'Lower Kelt', 2:'Middle Kelt', 3:'EMA 14', 4:'EMA 30',
-                5:'Base Fib',
-                6:'Next1 Fib',
-                7:'Next2 Fib',
-                8:'Open', 9:'High', 10:'Low', 11:'Close',
-                12:'Last3High', 13:'Last3Low'}
+                5:'Open', 6:'High', 7:'Low', 8:'Close',
+                9:'Last3High', 10:'Last3Low'}
 
         self.data_display2 = pd.concat([self.data_display.reset_index(), self.data_predict_display.reset_index()],
                                        ignore_index=False).set_flags(allows_duplicate_labels=True)
@@ -324,11 +321,11 @@ class Display:
                                 self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
                     elif out == 3:
                         if i == 0:
-                            if 8 <= j <= 11:  # Bottom Left
+                            if 5 <= j <= 8:  # Bottom Left
                                 y = round(self.data_display2.iloc[i][j], 2)
                                 self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
                         else:
-                            if 8 <= j <= 11:  # Top right
+                            if 5 <= j <= 8:  # Top right
                                 y = round(self.data_display2.iloc[i][j], 2)
                                 self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
 
@@ -367,11 +364,8 @@ class Display:
             elif out == 3:
                 indices_dict = {0: 'Upper Kelt',
                                 1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
-                                5: 'Base Fib',
-                                6: 'Next1 Fib',
-                                7: 'Next2 Fib',
-                                8: 'Open', 9: 'High', 10: 'Low', 11: 'Close',
-                                12: 'Last3High', 13: 'Last3Low'}
+                                5: 'Open', 6: 'High', 7: 'Low', 8: 'Close',
+                                9: 'Last3High', 10: 'Last3Low'}
 
         self.data_predict_display2 = self.data_predict_display
         if out == 1:
@@ -424,7 +418,7 @@ class Display:
                             y = round(data.iloc[i][j], 2)
                             self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
                     elif out == 3:
-                        if 8 <= j <= 11:
+                        if 5 <= j <= 8:
                             y = round(data.iloc[i][j], 2)
                             self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
 

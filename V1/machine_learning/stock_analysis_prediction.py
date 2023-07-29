@@ -45,18 +45,24 @@ class launcher:
         # Call machine learning model
         self.sampler.set_ticker(ticker)
         self.sampler.reset_data()
-        if not is_divergence:
-            ldata = load(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
-                         force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False, data=data,
-                         interval=interval, sampler=self.sampler,opt_fib_vals=opt_fib_vals)
-        else:
-            ldata = load_divergence(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
-                                    force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False,
-                                    data=data, interval=interval)
+        print(f"[INFO] Utilizing `{name}` model to predict data.")
+        try:
+            if not is_divergence:
+                ldata = load(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
+                             force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False, data=data,
+                             interval=interval, sampler=self.sampler,opt_fib_vals=opt_fib_vals)
+            else:
+                ldata = load_divergence(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
+                                        force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False,
+                                        data=data, interval=interval)
+        except Exception as e:
+            print(f"[ERROR] Failed to generate NN data for {ticker.upper()}!\r\nException: {e}")
+            raise Exception(e)
         if isinstance(ldata, int): # If None, that means no data was passed into load (ticker is bad now, or failed to generate data)
             return ticker, None, None
         # if skipping display, return only predicted value and last val, as that is what we care about.
         if skip_display:
+            print("[INFO] Display portion has been skipped.")
             predict_close = ldata[0]['Close'].iloc[0]
             if isinstance(data, tuple):  # if tuple, take 1st df and get close
                 self.saved_predictions.put((ticker, predict_close, data[0]['Close'].iloc[-1]))
@@ -66,6 +72,7 @@ class launcher:
                 return ticker, predict_close, data.iloc[-1]
         # read data for loading into display portion
         with self.listLock:
+            print("[INFO] Loading data into display.")
             dis.read_studies_data(ldata[0], ldata[1], ldata[3], ldata[4], ldata[5])
         # display data
         if not _has_actuals:  # if prediction, proceed
@@ -280,18 +287,20 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
     task_list = []
     for ticker in tickers:
         try:
-            out = 1
+            out = 1 # Change if needed
             await launch.gen.set_ticker(ticker)
+            print("[INFO] Generating necessary data (stock data/ema/fib/keltner).")
             data = await launch.gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, out, True, n_interval)
             # print(data,flush=True)
+            print("[INFO] Preparing to generate & display model.")
             task_list.append(launch.display_model(
                     nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else "","relu_2layer_l1l2" if out ==1 else "new_multi_analysis_l2" if out == 2 else "", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
                     percent, n_interval,[],None,True,out))
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(f'{e}\n[ERROR] Could not generate an NN dataset for {ticker}!  Continuing...', flush=True)
             print(exc_type, fname, exc_tb.tb_lineno)
-            print(f'[ERROR] Could not generate an NN dataset for {ticker}!  Continuing...\n\tException: {e}', flush=True)
     [await task for task in task_list]
     saved_predictions: list = []
     while not launch.saved_predictions.empty():

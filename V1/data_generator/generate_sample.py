@@ -28,56 +28,51 @@ class Sample(Normalizer):
         if self.data is not None:
             pass
         else:
+            print(f"[INFO] Generating ticker data for {self.ticker}.")
             # Read the current ticker data
             try:
                 self.read_data(self.ticker, rand_dates=rand_date, out=out,skip_db=skip_db, interval=interval,opt_fib_vals=opt_fib_vals)
             except Exception as e:
-                print(f'[ERROR] Failed to read sample data for ticker {self.ticker}')
+                print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {str(e)}')
                 raise Exception(str(e))
         # Iterate through dataframe and retrieve random sample
+        # Create dataframes for storing per model-basis
         try:
-            if not is_divergence:
-                self.convert_derivatives(out=out)
-            else:
-                self.convert_divergence()
-        except:
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
-            self.cnx.close()
-            raise Exception(f"[ERROR] Failed to Normalize data for {self.ticker}")
-        self.normalized_data = self.normalized_data.iloc[-self.DAYS_SAMPLED:]
-        try:
-            if not is_divergence:
-                rc = self.normalize(out=out)
-            else:
-                rc = self.normalize_divergence(out=out)
-            if rc == 1:
-                # exc_type, exc_obj, exc_tb = sys.exc_info()
-                # fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                # print(exc_type, fname, exc_tb.tb_lineno)
-                self.cnx.close()
-                raise Exception("[Error] Normalize did not return exit code 1")
-
+            print("[INFO] Converting data to new row values")
+            self.convert_derivatives(out=out)
         except Exception as e:
-            raise Exception('[ERROR] Failed to Normalize data!\n', e)
+            print(f"[ERROR] Failed to calculate new row values for data!\r\nException: {e}")
+            self.cnx.close()
+            raise Exception(e)
+        # Minimum amount of days sampled in df
+        self.normalized_data = self.normalized_data.iloc[-self.DAYS_SAMPLED:]
+        # Attempt normalization of data
+        try:
+            print("[INFO] Attempting to normalize data.")
+            self.normalize(out=out)
+        except Exception as e:
+            print(f'[ERROR] Failure calling normalize function!\r\nException: {e}')
+            raise Exception(e)
+        # Attempt to reload data if not enough days are loaded...
         try:
             if len(self.normalized_data) < self.DAYS_SAMPLED:
                 print(f'[INFO] Re-Fetching data since the len of data is {len(self.normalized_data)}, which is  < {self.DAYS_SAMPLED}')
                 self.read_data(self.ticker, rand_dates=rand_date,out=out,opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
-                if not is_divergence:
-                    self.convert_derivatives(out=out)
-                else:
-                    self.convert_divergence()
+                self.convert_derivatives(out=out)
+                self.normalize(out=out)
         except Exception as e:
-            print("[ERROR] FAILED to GENERATE SAMPLE\n", str(e))
-            exc_type, exc_obj, exc_tb = sys.exc_info()
-            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
+            print("[ERROR] Attempted to generate new normalized data after min amount of days has not been met, ",
+                  "but failed to regenerate due to error listed\n", str(e))
             self.cnx.close()
-            return 1
+            raise Exception(e)
+        # Now that we normalized, we need to do PCA, then feature extraction
+        try:
+            print("[INFO] PCA calculation called.")
+            self.pca()
+        except Exception as e:
+            print(f"[ERROR] Failed to execute PCA\r\nException: {e}")
+            raise Exception(e)
         self.cnx.close()
-        return 0
 
     def generate_divergence_sample(self, _has_actuals=False, rand_date=False,opt_fib_vals=[]):
         self.cnx = self.db_con.cursor(buffered=True)
@@ -93,7 +88,7 @@ class Sample(Normalizer):
             try:
                 self.read_data(self.ticker, rand_dates=rand_date,opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
             except Exception as e:
-                print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\n{str(e)}')
+                print(f'{str(e)}\n[ERROR] Failed to read sample data for ticker {self.ticker}')
                 raise Exception(str(e))
         # Iterate through dataframe and retrieve random sample
         self.convert_divergence()

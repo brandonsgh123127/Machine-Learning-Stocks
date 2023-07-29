@@ -60,7 +60,7 @@ class Gather:
                                access_token_secret="by7SUTtNPOYgAws0yliwk9YdiWIloSdv8kYX0YKic28UE",
                                sleep_on_rate_limit="true")
         self.indicator = indicator
-        self.data: pdr.DataReader = None
+        self.data: pd.DataFrame = pd.DataFrame({'Date':[], 'Open':[], 'High':[], 'Low':[], 'Close':[], 'Adj. Close':[]})
         self.date_set = ()
         self.bearer = "AAAAAAAAAAAAAAAAAAAAAJdONwEAAAAAzi2H1WrnhmAddAQKwveAfRN1DAY%3DdSFsj3bTRnDqqMxNmnxEKTG6O6UN3t3VMtnC0Y7xaGxqAF1QVq"
         self.headers = {"Authorization": "Bearer {0}".format(self.bearer), "content-type": "application/json",
@@ -137,7 +137,7 @@ class Gather:
                 if datetime_date.weekday() == 6:
                     date_range.remove(d)
             # iterate through each data row and verify data is in place before continuing...
-            new_data = pd.DataFrame(columns=['Date', 'Open', 'High', 'Low', 'Close', 'Adj. Close'])
+            new_data = pd.DataFrame({'Date':[], 'Open':[], 'High':[], 'Low':[], 'Close':[], 'Adj. Close':[]})
             self.cnx = self.db_con.cursor()
             self.cnx.autocommit = True
             check_cache_studies_db_stmt=''
@@ -200,6 +200,7 @@ class Gather:
                     """
 
             try:
+                print("[INFO] Verifying data is in db.")
                 check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,
                                                                  {'stock': self.indicator.upper() if not ticker else ticker.upper(),
                                                                   'sdate': start_date.strftime('%Y-%m-%d'),
@@ -208,6 +209,7 @@ class Gather:
                 # Retrieve date, verify it is in date range, remove from date range
                 for result in check_cache_studies_db_result:
                     result = result.fetchall()
+                    print("[INFO] Found DB Stock Data, loading.")
                     for idx, res in enumerate(result):
                         # Convert datetime to str
                         date = datetime.date.strftime(res[0], "%Y-%m-%d")
@@ -219,32 +221,34 @@ class Gather:
                         else:
                             new_data = pd.concat(objs=[new_data, pd.DataFrame({'Date': date, 'Open': float(res[1]), 'High': float(res[2]),
                                                         'Low': float(res[3]), 'Close': float(res[4]),
-                                                        'Adj. Close': float(res[5]) if not is_utilizing_yfinance else float(res[4])},index=[idx])], axis=1)
+                                                        'Adj. Close': float(res[5]) if not is_utilizing_yfinance else float(res[4])},index=[idx])], ignore_index=True)
                             # check if date is there, if not fail this
                             if date in date_range:
                                 date_range.remove(date)
                             else:
                                 continue
             except mysql.connector.errors.IntegrityError:  # should not happen
+                print("[ERROR] Integrity Error while retrieving Data.")
                 self.cnx.close()
                 pass
             except Exception as e:
-                print('[ERROR] Failed to check cached data!\n', str(e))
+                print(str(e),'\n[ERROR] Failed to check cached stock data!\n')
                 self.cnx.close()
                 raise mysql.connector.errors.DatabaseError()
         if len(date_range) == 0 and not _force_generate and not skip_db:  # If all dates are satisfied, set data
+            print("[INFO] All dates have data, thus, setting.")
             if update_self:
-                self.data = new_data
                 try:
+                    self.data = new_data
                     self.data['Date'] = pd.to_datetime(self.data['Date'])
-                except:
-                    print('[INFO] Could not convert Date col to datetime')
+                except Exception as e:
+                    pass
             else:
-                data = new_data
                 try:
-                    data['Date'] = pd.to_datetime(data['Date'])
-                except:
-                    print('[INFO] Could not convert Date col to datetime')
+                    new_data['Date'] = pd.to_datetime(new_data['Date'])
+                except Exception as e:
+                    print(f"[ERROR] Failed to convert date to pd datetime.  Type {type(new_data['Date'])}")
+                    pass
 
         #
         #
@@ -253,6 +257,7 @@ class Gather:
         #
         #
         else:
+            print("[INFO] Stock data not found,or not all dates satisfied.  Thus, generating data. ")
             # if not _force_generate:
             with threading.Lock():
                 try:
@@ -263,127 +268,68 @@ class Gather:
                 self.cnx.autocommit = True
                 if update_self:
                     self.data = None
-                try:
-                    if is_utilizing_yfinance:
-                        ticker_obj = yf.Ticker(self.indicator.upper() if not ticker else ticker.upper())
-                        if update_self:
-                            self.data = ticker_obj.history(interval=interval,
-                                                           start=((start_date - datetime.timedelta(hours=3)).strftime(
-                                                               '%Y-%m-%d') if interval == '5m' else
-                                                                   (start_date - datetime.timedelta(hours=18)).strftime(
-                                                                      '%Y-%m-%d') if '15m' in interval else
-                                                                    (start_date - datetime.timedelta(days=2)).strftime(
-                                                                      '%Y-%m-%d') if '30m' in interval else (start_date - datetime.timedelta(
-                                                                      days=5)).strftime(
-                                                                      '%Y-%m-%d')),
-                                                           end=(end_date + datetime.timedelta(days=6)).strftime(
-                                                               '%Y-%m-%d'))
-                        else:
-                            data = ticker_obj.history(interval=interval,
-                                                      start=((start_date - datetime.timedelta(hours=3)).strftime(
-                                                          '%Y-%m-%d') if interval == '5m' else
-                                                             (start_date - datetime.timedelta(hours=18)).strftime(
-                                                                 '%Y-%m-%d') if '15m' in interval else
-                                                             (start_date - datetime.timedelta(days=2)).strftime(
-                                                                 '%Y-%m-%d') if '30m' in interval else (
-                                                                         start_date - datetime.timedelta(
-                                                                     days=5)).strftime(
-                                                                 '%Y-%m-%d')),
-                                                      end=(end_date + datetime.timedelta(days=6)).strftime('%Y-%m-%d'))
-
-                    else:
-                        if update_self:
-                            self.data = get_data(self.indicator.upper() if not ticker else ticker.upper(), start_date=start_date.strftime("%Y-%m-%d"),
-                                         end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
-                                         interval=interval)
-                        else:
-                            data = get_data(self.indicator.upper() if not ticker else ticker.upper(), start_date=start_date.strftime("%Y-%m-%d"),
-                                         end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
-                                         interval=interval)
-
-                except AssertionError as a:
-                    raise AssertionError(
-                        f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
-                except Exception as e:
-                    retries = 1
-                    max_retries = 4
-                    while retries <= max_retries:
-                        print(
-                            f'[WARN] Failed to gather data for {self.indicator.upper() if not ticker else ticker.upper()}! {retries}/{max_retries} Retr(ies)...\n\tException: {e}')
-                        retries = retries + 1
-                        time.sleep(2 * (retries / 1.33))
+                if is_utilizing_yfinance:
+                    ticker_obj = yf.Ticker(self.indicator.upper() if not ticker else ticker.upper())
+                    if update_self:
                         try:
-                            if is_utilizing_yfinance:
-                                ticker_obj = yf.Ticker(self.indicator.upper() if not ticker else ticker.upper())
-                                if update_self:
-                                    self.data = ticker_obj.history(interval=interval,
-                                                                   start=((start_date - datetime.timedelta(
-                                                                       hours=3)).strftime(
-                                                                       '%Y-%m-%d') if interval == '5m' else
-                                                                          (start_date - datetime.timedelta(
-                                                                              hours=18)).strftime(
-                                                                              '%Y-%m-%d') if '15m' in interval else
-                                                                          (start_date - datetime.timedelta(
-                                                                              days=2)).strftime(
-                                                                              '%Y-%m-%d') if '30m' in interval else (
-                                                                              start_date - datetime.timedelta(
-                                                                              days=4)).strftime(
-                                                                          '%Y-%m-%d') if '60m' in interval else(
-                                                                                      start_date - datetime.timedelta(
-                                                                                  days=5)).strftime(
-                                                                              '%Y-%m-%d')),
-                                                                   end=(end_date + datetime.timedelta(days=6)).strftime(
-                                                                       '%Y-%m-%d'))
-                                else:
-                                    data = ticker_obj.history(interval=interval,
-                                                              start=(
-                                                                  (start_date - datetime.timedelta(hours=3)).strftime(
-                                                                      '%Y-%m-%d') if interval == '5m' else
-                                                                  (start_date - datetime.timedelta(hours=18)).strftime(
-                                                                      '%Y-%m-%d') if '15m' in interval else
-                                                                  (start_date - datetime.timedelta(days=2)).strftime(
-                                                                      '%Y-%m-%d') if '30m' in interval else (
-                                                                              start_date - datetime.timedelta(
-                                                                          days=4)).strftime(
-                                                                      '%Y-%m-%d') if '60m' in interval else
-                                                                  (start_date - datetime.timedelta(days=2)).strftime(
-                                                                      '%Y-%m-%d')),
-                                                              end=(end_date + datetime.timedelta(days=6)).strftime(
-                                                                  '%Y-%m-%d'))
-                            else:
-                                if update_self:
-                                    self.data = get_data(self.indicator.upper() if not ticker else ticker.upper(), start_date=start_date.strftime("%Y-%m-%d"),
-                                                     end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
-                                                     interval=interval)
-                                else:
-                                    data = get_data(self.indicator.upper() if not ticker else ticker.upper(),
-                                                         start_date=start_date.strftime("%Y-%m-%d"),
-                                                         end_date=(end_date + datetime.timedelta(days=6)).strftime(
-                                                             "%Y-%m-%d"),
-                                                         interval=interval)
-
-                            break
-                        except AssertionError as a:
-                            raise Exception(
-                                f'[ERROR] Failed to gather data for specified range.  This is most likely due to stock not existing at this point!\nError:\n{str(a)}')
-                        except KeyError as ke:
-                            raise Exception(f'[ERROR] specific key could not be retrieved in order to complete request for {self.indicator}'+
-                                            f' from {start_date.strftime("%Y-%m-%d")} to {end_date.strftime("%Y-%m-%d")}!\n{str(ke)}')
-                    if retries > max_retries:
-                        print('[ERROR] Failed to gather data!',flush=True)
-                        raise Exception()
+                            self.data = ticker_obj.history(interval=interval,
+                                                       start=((start_date - datetime.timedelta(hours=3)).strftime(
+                                                           '%Y-%m-%d') if interval == '5m' else
+                                                               (start_date - datetime.timedelta(hours=18)).strftime(
+                                                                  '%Y-%m-%d') if '15m' in interval else
+                                                                (start_date - datetime.timedelta(days=2)).strftime(
+                                                                  '%Y-%m-%d') if '30m' in interval else (start_date - datetime.timedelta(
+                                                                  days=5)).strftime(
+                                                                  '%Y-%m-%d')),
+                                                       end=(end_date + datetime.timedelta(days=6)).strftime(
+                                                           '%Y-%m-%d'))
+                        except Exception as e:
+                            print(f"[ERROR] Failed to retrieve Yahoo Finance Stock Data for Self!\r\nException: {str(e)}")
+                            raise Exception(str(e))
                     else:
-                        pass
+                        try:
+                            new_data = ticker_obj.history(interval=interval,
+                                                  start=((start_date - datetime.timedelta(hours=3)).strftime(
+                                                      '%Y-%m-%d') if interval == '5m' else
+                                                         (start_date - datetime.timedelta(hours=18)).strftime(
+                                                             '%Y-%m-%d') if '15m' in interval else
+                                                         (start_date - datetime.timedelta(days=2)).strftime(
+                                                             '%Y-%m-%d') if '30m' in interval else (
+                                                                     start_date - datetime.timedelta(
+                                                                 days=5)).strftime(
+                                                             '%Y-%m-%d')),
+                                                  end=(end_date + datetime.timedelta(days=6)).strftime('%Y-%m-%d'))
+                        except Exception as e:
+                            print(f"[ERROR] Failed to retrieve Yahoo Stock Data!\r\nException: {str(e)}")
+                            raise Exception(str(e))
+                else:
+                    if update_self:
+                        try:
+                            self.data = get_data(self.indicator.upper() if not ticker else ticker.upper(), start_date=start_date.strftime("%Y-%m-%d"),
+                                     end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
+                                     interval=interval)
+                        except Exception as e:
+                            print(f"[ERROR] Failed to retrieve Yahoo_Fin Stock Data for Self!\r\nException: {str(e)}")
+                            raise Exception(str(e))
+                    else:
+                        try:
+                            new_data = get_data(self.indicator.upper() if not ticker else ticker.upper(), start_date=start_date.strftime("%Y-%m-%d"),
+                                     end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
+                                     interval=interval)
+                        except Exception as e:
+                            print(f"[ERROR] Failed to retrieve Yahoo_Fin Stock Data!\r\nException: {str(e)}")
+                            raise Exception(str(e))
                 if update_self:
                     if type(self.data) is pd.DataFrame and self.data.empty:
                         print(f'[ERROR] Data returned for {self.indicator if not ticker else ticker.upper()} is empty!')
                         return 1
                 else:
-                    if type(data) is pd.DataFrame and data.empty:
+                    if type(new_data) is pd.DataFrame and new_data.empty:
                         print(f'[ERROR] Data returned for {self.indicator if not ticker else ticker.upper()} is empty!')
                         return 1
 
                 if not skip_db:
+                    print("[INFO] Confirming stock is in database. ")
                     # Retrieve query from database, confirm that stock is in database, else make new query
                     select_stmt = "SELECT `id` FROM stocks.stock WHERE stock like %(stock)s"
                     resultado = self.cnx.execute(select_stmt, {'stock': self.indicator if not ticker else ticker.upper()}, multi=True)
@@ -392,6 +338,7 @@ class Gather:
                         # Query new stock, id
                         res = result.fetchall()
                         if len(res) == 0:
+                            print("[INFO] Stock not found in database, inserting.")
                             insert_stmt = """INSERT INTO stocks.stock (id, stock) 
                                         VALUES (AES_ENCRYPT(%(stock)s, %(stock)s),%(stock)s)"""
                             try:
@@ -414,23 +361,23 @@ class Gather:
                     if update_self:
                         self.data['Date'] or self.data['Datetime']
                     else:
-                        data['Date'] or data['Datetime']
+                        new_data['Date'] or new_data['Datetime']
                 except KeyError or NotImplementedError:
                     try:
                         if update_self:
                             self.data['Date'] = self.data.index
                             self.data = self.data.reset_index()
                         else:
-                            data['Date'] = data.index
-                            data = data.reset_index()
+                            new_data['Date'] = new_data.index
+                            new_data = new_data.reset_index()
                     except Exception as e:
-                        print('[Error] Failed to add \'Date\' column into data!\n{}'.format(str(e)))
+                        print('{}\n[Error] Failed to add \'Date\' column into data!\n'.format(str(e)))
                 # Rename rows back to original state
                 try:
                     if update_self:
                         self.data = self.data.transpose().drop(['ticker'])
                     else:
-                        data = data.transpose().drop(['ticker'])
+                        new_data = new_data.transpose().drop(['ticker'])
                 except:
                     pass
                 if update_self:
@@ -438,7 +385,7 @@ class Gather:
                     columns={"open": "Open", "high": "High", "low": "Low", "close": "Close", "adjclose": "Adj Close",
                              "volume": "Volume"})
                 else:
-                    data = data.transpose().rename(
+                    new_data = new_data.transpose().rename(
                     columns={"open": "Open", "high": "High", "low": "Low", "close": "Close", "adjclose": "Adj Close",
                              "volume": "Volume"})
 
@@ -447,7 +394,7 @@ class Gather:
                         if update_self:
                             self.data['Date'] = pd.to_datetime(self.data['Date'])
                         else:
-                            data['Date'] = pd.to_datetime(data['Date'])
+                            new_data['Date'] = pd.to_datetime(new_data['Date'])
                     else:
                         if update_self:
                             self.data = self.data.rename(columns={'Datetime':'Date'})
@@ -465,18 +412,18 @@ class Gather:
                             except Exception as e:
                                 print(e)
                         else:
-                            data = data.rename(columns={'Datetime':'Date'})
-                            data = data.drop(['Datetime'],axis=0).transpose()
-                            data['Adj Close'] = data.loc[:, 'Close']
-                            if data.iloc[-1]['Date'] == data.iloc[-2]['Date']:
+                            new_data = new_data.rename(columns={'Datetime':'Date'})
+                            new_data = new_data.drop(['Datetime'],axis=0).transpose()
+                            new_data['Adj Close'] = new_data.loc[:, 'Close']
+                            if new_data.iloc[-1]['Date'] == new_data.iloc[-2]['Date']:
                                 print('[INFO] Duplicate date detected... Removing right after gather.')
-                                data = data.drop(data.index[-1])
+                                new_data = new_data.drop(new_data.index[-1])
                             # Remove latest data point if hour is 4PM EST
                             try:
-                                contains_16 = data.iloc[-1]['Date'].hour == 16
+                                contains_16 = new_data.iloc[-1]['Date'].hour == 16
                                 if contains_16:
                                     print('[INFO] Date with 16:00 in time... Removing right after gather.')
-                                    data = data.drop(data.index[-1])
+                                    new_data = new_data.drop(new_data.index[-1])
                             except Exception as e:
                                 print(e)
                     if update_self:
@@ -492,18 +439,15 @@ class Gather:
                     else:
                         # Remove element if not 1d and value is NaN
                         try:
-                            contains_nan = data['Open'].isnull().values.any()
+                            contains_nan = new_data['Open'].isnull().values.any()
                             if contains_nan:
-                                nan_row = data[data['Open'].isnull()].index.values.astype(int)[0]
+                                nan_row = new_data[new_data['Open'].isnull()].index.values.astype(int)[0]
                                 print('[INFO] Date contains NaN value... Removing right after gather.')
-                                data = data.drop([nan_row])
+                                new_data = new_data.drop([nan_row])
                         except Exception as e:
                             print(e)
-
-
-
                 except Exception as e:
-                    print('[INFO] Could not convert Date col to datetime', str(e))
+                    print(f'[INFO] Could not convert Date col to datetime.\r\nException: {e}')
                 if is_utilizing_yfinance:
                     if update_self:
                         try:
@@ -520,20 +464,21 @@ class Gather:
                             pass
                     else:
                         try:
-                            data = data.drop(['Dividends'],axis=1)
+                            new_data = new_data.drop(['Dividends'],axis=1)
                         except Exception:
                             pass
                         try:
-                            data = data.drop(['index'],axis=1)
+                            new_data = new_data.drop(['index'],axis=1)
                         except:
                             pass
                         try:
-                            data = data.drop(['Stock Splits'],axis=1)
+                            new_data = new_data.drop(['Stock Splits'],axis=1)
                         except:
                             pass
                 if not skip_db:
+                    print("[INFO] Appending stock data to database.")
                     # Append dates to database
-                    for index, row in self.data.iterrows() if update_self else data.iterrows():
+                    for index, row in self.data.iterrows() if update_self else new_data.iterrows():
                         if '1d' in interval:
                             insert_date_stmt = """REPLACE INTO `stocks`.`dailydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
                             VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
@@ -578,7 +523,7 @@ class Gather:
                                     'Adj Close': row['Adj Close']}, multi=True)
 
                         except mysql.connector.errors.IntegrityError as e:
-                            print('dfkajdkfoi')
+                            print('[ERROR] Integrity error while appending stock data to database! ')
                             pass
                         except Exception as e:
                             # print(self.data)
@@ -591,12 +536,12 @@ class Gather:
                         try:
                             self.db_con.commit()
                         except Exception as e:
-                            print('[Error] Could not commit changes for insert day data!\nReason:\n', str(e))
+                            print(str(e),'\n[Error] Could not commit changes for insert day data!\n')
         try:
             self.cnx.close()
         except:
             pass
-        return self.data if update_self else data
+        return self.data if update_self else new_data
 
     def get_option_data(self, date: datetime.date = None):
         with threading.Lock():
@@ -638,10 +583,10 @@ class Gather:
                             price_dict[f'{strike}'] = ((call_contract_name[idx], strike, call_bid[idx]),)
                 print(price_dict.values())
             except Exception as e:
+                print(str(e))
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
-                print(str(e))
                 time.sleep(2)  # Sleep since API does not want to communicate
         return 0
 
