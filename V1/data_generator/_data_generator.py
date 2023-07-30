@@ -116,6 +116,7 @@ class Generator():
                                              end - datetime.timedelta(
                                                  days=1), _force_generate=force_generation,ticker=ticker,update_self=False)
         if data is None:
+            print(f"[ERROR] Couldn't generate data for {ticker}.")
             return 'n/a     n/a'
         try:
             return f'{round(data[["Close"]].iloc[-2:].diff().iloc[1].to_list()[0], 3)}     {round(data[["Close"]].iloc[-2:].pct_change().iloc[1].to_list()[0] * 100, 3)}%'

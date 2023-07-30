@@ -21,9 +21,9 @@ class Sample(Normalizer):
         self.cnx = self.db_con.cursor(buffered=True)
         if not _has_actuals:
             # print("Predict Mode")
-            self.DAYS_SAMPLED = 14 if out == 1 else 5 if 2 <= out <= 3 else 0
+            self.DAYS_SAMPLED = 14 if out == 1 else 5 if 2 <= out <= 4 else 0
         else:
-            self.DAYS_SAMPLED = 15 if out == 1 else 6 if 2 <= out <= 3 else 0
+            self.DAYS_SAMPLED = 15 if out == 1 else 6 if 2 <= out <= 4 else 0
         # If data has been set via neural_network, don't read data
         if self.data is not None:
             pass
@@ -33,8 +33,7 @@ class Sample(Normalizer):
             try:
                 self.read_data(self.ticker, rand_dates=rand_date, out=out,skip_db=skip_db, interval=interval,opt_fib_vals=opt_fib_vals)
             except Exception as e:
-                print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {str(e)}')
-                raise Exception(str(e))
+                raise Exception(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {e}')
         # Iterate through dataframe and retrieve random sample
         # Create dataframes for storing per model-basis
         try:
@@ -45,7 +44,7 @@ class Sample(Normalizer):
             self.cnx.close()
             raise Exception(e)
         # Minimum amount of days sampled in df
-        self.normalized_data = self.normalized_data.iloc[-self.DAYS_SAMPLED:]
+        self.normalized_data = self.normalized_data.iloc[:,-self.DAYS_SAMPLED:]
         # Attempt normalization of data
         try:
             print("[INFO] Attempting to normalize data.")
@@ -66,12 +65,14 @@ class Sample(Normalizer):
             self.cnx.close()
             raise Exception(e)
         # Now that we normalized, we need to do PCA, then feature extraction
-        try:
-            print("[INFO] PCA calculation called.")
-            self.pca()
-        except Exception as e:
-            print(f"[ERROR] Failed to execute PCA\r\nException: {e}")
-            raise Exception(e)
+        # Update: 7/29/23, although PCA is good for finding correlation,
+        # Not good for Supervised learning.
+        # try:
+        #     print("[INFO] PCA calculation called.")
+        #     self.pca()
+        # except Exception as e:
+        #     print(f"[ERROR] Failed to execute PCA\r\nException: {e}")
+        #     raise Exception(e)
         self.cnx.close()
 
     def generate_divergence_sample(self, _has_actuals=False, rand_date=False,opt_fib_vals=[]):
@@ -88,8 +89,8 @@ class Sample(Normalizer):
             try:
                 self.read_data(self.ticker, rand_dates=rand_date,opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
             except Exception as e:
-                print(f'{str(e)}\n[ERROR] Failed to read sample data for ticker {self.ticker}')
-                raise Exception(str(e))
+                # print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {str(e)}')
+                raise Exception(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {str(e)}')
         # Iterate through dataframe and retrieve random sample
         self.convert_divergence()
         self.normalized_data = self.normalized_data.iloc[-(self.DAYS_SAMPLED):]

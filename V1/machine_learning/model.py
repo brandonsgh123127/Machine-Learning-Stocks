@@ -17,7 +17,8 @@ class NN_Model(ABC):
     def __init__(self, choice: str):
         self.nn_input = None
         self.path = Path(os.getcwd()).absolute()
-        self.model_map_names = {"relu_multilayer_l2": 1, "relu_2layer_0regularization": 2,
+        self.model_map_names = {"relu_multilayer_l2": 1,
+                                "relu_2layer_0regularization": 2,
                                 "relu_2layer_l1l2": 3,
                                 "relu_1layer_l2": 4,
                                 "new_multi_analysis_l2": 5,
@@ -28,8 +29,9 @@ class NN_Model(ABC):
                                 "new_scaled_2layer_0regularization": 8,
                                 "scaled_2layer": 9,
                                 "test_2layer": 10,
+                                "SPY_relu_multilayer_l2": 11,
                                 "new_scaled_2layer": 12,
-                                "SPY_relu_multilayer_l2": 11}
+                                }
         self.model_name = choice
         self.model_choice: str = self.get_mapping(choice)
         self.model = None
@@ -39,12 +41,15 @@ class NN_Model(ABC):
         return self.model_map_names[choice]
 
     def create_model(self, is_training=True):
+        print(f"[INFO] Model choice is set to {self.model_choice}")
         if 0 < self.model_choice <= 4 or self.model_choice == 11:
             nn_input = Input(shape=(1, 126))  # 14 * 9 cols
         elif 5 <= self.model_choice <= 6:
             nn_input = Input(shape=(1, 130))  # 5 * 26 cols
-        elif 7 <= self.model_choice <= 15:
-            nn_input = Input(shape=(1, 70))  # 5 * 14 cols
+        elif 7 <= self.model_choice <= 11:
+            nn_input = Input(shape=(1, 55))  # 5 * 11 cols
+        elif 12 <= self.model_choice <= 15:
+            nn_input = Input(shape=(14, 5))  # 5 * 14 cols
         """
          These are legacy models... Takes in 14 days worth of data, then attempts to create a model to predict 1 datapoint outwards
         Model Struct:
@@ -102,8 +107,8 @@ class NN_Model(ABC):
                     nn)
 
             nn = Model(inputs=nn_input, outputs=[nn2])
-            nn.compile(optimizer=optimizers.Adam(learning_rate=0.01, beta_1=0.90, beta_2=0.997), loss='mse',
-                       metrics=['accuracy', 'MeanSquaredError'])
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.01, beta_1=0.90, beta_2=0.997), loss='mean_squared_error',
+                       metrics=['MeanSquaredError'])
         elif 5 <= self.model_choice <= 6:
             """
             OUT 2
@@ -157,9 +162,9 @@ class NN_Model(ABC):
                 nn2 = layers.Dense(4, activation='linear')(
                     nn)
             nn = Model(inputs=nn_input, outputs=[nn2])
-            nn.compile(optimizer=optimizers.Adam(learning_rate=0.001, beta_1=0.90, beta_2=0.998), loss='mse',
-                       metrics=['accuracy', 'MeanSquaredError'])
-        elif 7 <= self.model_choice <= 15:
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.001, beta_1=0.90, beta_2=0.998), loss='mean_squared_error',
+                       metrics=['MeanSquaredError'])
+        elif 7 <= self.model_choice <= 11:
             """
             OUT 3
                Newer model to-be implemented, which includes the following to record 5 data points ahead...
@@ -198,12 +203,40 @@ class NN_Model(ABC):
                     nn)
                 nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
                 nn = layers.Dense(16, activation=layers.LeakyReLU(alpha=0.4))(nn) # change back to 12 for orig model
-            elif self.model_choice == 12:
-                nn = custom_layers.TrainableDropout(0.5).call(nn_input, is_training)
-                nn = layers.Dense(32, activation='linear')(
+            nn2 = layers.Dense(4, activation='linear')(nn)
+            nn = Model(inputs=nn_input, outputs=[nn2])
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.003, beta_1=0.95, beta_2=0.998), loss='mean_squared_error',
+                       metrics=['MeanSquaredError'])
+        elif 12 <= self.model_choice <= 15:
+            """
+            OUT 4
+               Newer model to-be implemented, which includes the following to record 5 data points ahead...
+                Model Struct:
+                    - Input 14 Columns worth of data
+                        +  Upper Kelt
+                        +  Lower Kelt 
+                        +  Middle Kelt 
+                        +  EMA 14 
+                        +  EMA 30 
+                        + Open
+                        + High
+                        + Low
+                        + Close
+                        + Last3High 
+                        + Last3Low
+                        + Base Fib 
+                        + Next1 Fib
+                        + Next2 Fib 
+            """
+            if self.model_choice == 12:
+                # nn = custom_layers.TrainableDropout(0.2).call(nn_input, is_training)
+                nn = layers.LSTM(64,input_shape=(5,14),return_sequences=True)(
+                    nn_input)
+                # nn = custom_layers.TrainableDropout(0.25).call(nn, is_training)
+                nn = layers.LSTM(8,input_shape=(64,1,1))(
                     nn)
-                nn = layers.Dense(8, activation='linear')(nn)
-            # elif self.model_choice == 12:
+                # nn = layers.Dense(8, activation=layers.LeakyReLU(alpha=0.3))(nn_input)
+            # if self.model_choice == 12:
             #     # ORIGINAL 67 percent accuracy model
             #     # To test, need to revert normalization for out == 4
             #     nn = custom_layers.TrainableDropout(0.5).call(nn_input, is_training)
@@ -212,13 +245,13 @@ class NN_Model(ABC):
             #     nn = layers.Dense(8, activation=layers.LeakyReLU(alpha=0.2))(nn)
             elif self.model_choice == 13:
                 nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
-                nn = layers.Dense(32,activation='linear')(
+                nn = layers.Dense(32,activation='relu')(
                     nn)
                 nn = layers.Dense(8)(nn)
             nn2 = layers.Dense(4, activation='linear')(nn)
             nn = Model(inputs=nn_input, outputs=[nn2])
-            nn.compile(optimizer=optimizers.Adam(learning_rate=0.003 if self.model_choice < 12 else 0.001, beta_1=0.95, beta_2=0.998), loss='mse',
-                       metrics=['accuracy', 'MeanSquaredError'])
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.003, beta_1=0.95, beta_2=0.998), loss='mean_squared_error',
+                       metrics=['MeanSquaredError'])
 
             # Convert to a model
         self.model = nn
@@ -231,12 +264,13 @@ class NN_Model(ABC):
             filepath=f'{ck_path}/cp.ckpt',
             save_weights_only=True,
             verbose=1,
-            monitor='val_accuracy',
-            mode='max',
+            monitor='mean_squared_error',
+            mode='auto',
             save_best_only=True)
     def save_model(self):
         # Ensure model is saved without training phase set
         # k.set_learning_phase(0)
+        print(f"[INFO] Saving model to `{self.path}/data/{self.model_name}`")
         self.model.save(f'{self.path}/data/{self.model_name}')
         # Resume training phase after saving
         # k.set_learning_phase(1)

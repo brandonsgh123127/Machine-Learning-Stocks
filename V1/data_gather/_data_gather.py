@@ -300,7 +300,7 @@ class Gather:
                                                              '%Y-%m-%d')),
                                                   end=(end_date + datetime.timedelta(days=6)).strftime('%Y-%m-%d'))
                         except Exception as e:
-                            print(f"[ERROR] Failed to retrieve Yahoo Stock Data!\r\nException: {str(e)}")
+                            # print(f"[ERROR] Failed to retrieve Yahoo Stock Data!\r\nException: {str(e)}")
                             raise Exception(str(e))
                 else:
                     if update_self:
@@ -309,7 +309,7 @@ class Gather:
                                      end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
                                      interval=interval)
                         except Exception as e:
-                            print(f"[ERROR] Failed to retrieve Yahoo_Fin Stock Data for Self!\r\nException: {str(e)}")
+                            # print(f"[ERROR] Failed to retrieve Yahoo_Fin Stock Data for Self!\r\nException: {str(e)}")
                             raise Exception(str(e))
                     else:
                         try:
