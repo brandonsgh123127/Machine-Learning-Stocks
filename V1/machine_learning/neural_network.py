@@ -508,47 +508,55 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
                 try:
                     reshape(sampler.normalized_data.iloc[-14 if not has_actuals else -15:].to_numpy(), (1, 1, 126 if not has_actuals else 135))
                 except Exception as e:
-                    print(f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
-                    raise Exception(e)
-            elif 2 <= out <= 4:
+                    raise Exception(f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
+            elif 2 <= out <= 3:
                 try:
                     reshape(sampler.normalized_data.iloc[-5 if not has_actuals else -6:].to_numpy(), (1, 1, 156 if has_actuals and out == 2 \
                                                                                                         else 130 if out == 2 \
                                                                                                     else 66 if has_actuals and (out == 3) \
                                                                                                     else 55 if out == 3 \
-                                                                                                    else 84 if has_actuals and (out == 4) \
-                                                                                                    else 70 if out == 4 else 0))
+                                                                                                     else 0))
                 except Exception as e:
-                    print(f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
-                    raise Exception(e)
+                    raise Exception(f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
+            elif out == 4:
+                try:
+                    sampler.normalized_data.iloc[:,-5 if not has_actuals else -6:].to_numpy()
+                except Exception as e:
+                    raise Exception(f'[ERROR] Couldn\'t generate ML output for ticker {ticker}.\n\tException: {e}')
             with device(device_opt):
                 if has_actuals:
-                    train = (reshape(sampler.normalized_data.iloc[-15 if out == 1 \
-                                                                    else -6 if 2 <= out <= 4 \
-                                                                    else 0:-1].to_numpy(), (1, 1, 126 if out ==1 \
-                                                                    else 156 if not has_actuals and out == 2 \
-                                                                    else 130 if out == 2 \
-                                                                    else 66 if (out == 3 ) and has_actuals \
-                                                                    else 55 if out == 3 \
-                                                                    else 84 if (out == 4 ) and has_actuals \
-                                                                    else 70 if out == 4 \
-                                                                    else 0)))
+                    if out == 4:
+                        train = reshape(sampler.normalized_data.iloc[:,-6:-1].to_numpy(),(14,5))
+                    else:
+                        train = (reshape(sampler.normalized_data.iloc[:,-15 if out == 1 \
+                                                                        else -6 if 2 <= out <= 4 \
+                                                                        else 0:-1].to_numpy(), (1, 1,
+                                                                        126 if out ==1 \
+                                                                        else 156 if out == 2 \
+                                                                        else 66 if (out == 3 ) \
+                                                                        else 84 if (out == 4 ) \
+                                                                        else 0)))
                 else:
-                    train = (reshape(sampler.normalized_data[-14 if out == 1 \
+                    if out == 4:
+                        train = reshape(sampler.normalized_data.iloc[:,-5:-1].to_numpy(),(14,5))
+                    else:
+                        train = (reshape(sampler.normalized_data[:,-14 if out == 1 \
                                                             else -5 if 2 <= out <= 4 \
                                                             else 0:].to_numpy(), (1, 1, 126 if out==1 \
                                                             else 130 if out == 2 \
                                                             else 55 if out == 3 \
                                                             else 70 if out == 4 \
                                                             else 0)))
-                train = asarray(train).astype(float_)
-                stacked_train = stack(train)
-                prediction = nn.model.predict(stacked_train)
+                train = reshape(asarray(train).astype(float_),(1,14,5))
+                stacked_train = stack(train) # used for legacy out 1-3
+                prediction = nn.model.predict(train) # swapped to train due to time series (out 4)
                 del train, stacked_train
         if out == 1:
             predicted = pd.DataFrame((reshape(prediction, (1, 1))), columns=['Close'])  # NORMALIZED
-        elif 2 <= out <= 4:
+        elif 2 <= out <= 3:
             predicted = pd.DataFrame((reshape(prediction, (1, 4))), columns=['Open','High','Low','Close'])  # NORMALIZED
+        elif out == 4:
+            predicted = pd.DataFrame([prediction[0]], columns=['Open','High','Low','Close'])  # NORMALIZED
         is_utilizing_yfinance = False
         # Upload data to DB given prediction has finished
         if '1d' in interval:
@@ -609,16 +617,24 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
         cnx.close()
     try:
         print("[INFO] Attempting to unnormalize data.")
+        predicted = predicted.transpose() # out 4 - transpose back to how data was passed into model
         unnormalized_prediction_df = sampler.unnormalize(predicted,out=out)
     except Exception as e:
         print(f"[ERROR] Failed to unnormalize data!\r\nException: {e}")
         raise Exception(e)
-    if 2 <= out <= 4:
-        print("[INFO] out is 2/3/4, getting last unnormalized value.")
+    if 2 <= out <= 3:
+        print(f"[INFO] out is {out}, getting last unnormalized value.")
         open = unnormalized_prediction_df['Open'].iloc[-1]
         high = unnormalized_prediction_df['High'].iloc[-1]
         low = unnormalized_prediction_df['Low'].iloc[-1]
         close = unnormalized_prediction_df['Close'].iloc[-1]
+    elif out == 4:
+        print(f"[INFO] out is {out}, getting last unnormalized value.")
+        open = unnormalized_prediction_df[unnormalized_prediction_df.index.isin(['Open'])].iloc[-1].values[0]
+        high = unnormalized_prediction_df[unnormalized_prediction_df.index.isin(['High'])].iloc[-1].values[0]
+        low = unnormalized_prediction_df[unnormalized_prediction_df.index.isin(['Low'])].iloc[-1].values[0]
+        close = unnormalized_prediction_df[unnormalized_prediction_df.index.isin(['Close'])].iloc[-1].values[0]
+
     unnormalized_prediction = unnormalized_prediction_df.to_numpy()
 
     # space = pd.DataFrame([[0,0]],columns=['Open','Close'])
@@ -705,15 +721,15 @@ def main():
     # thread_manager.join_workers()
 
     # # 12
-    thread_manager.start_worker(threading.Thread(target=run, args=(128, 32, "new_scaled_2layer")))
-    thread_manager.join_workers()
+    # thread_manager.start_worker(threading.Thread(target=run, args=(128, 32, "new_scaled_2layer")))
+    # thread_manager.join_workers()
 
     # run(50,75,'relu_2layer_dropout_l1_l2')
     # copy_logs(path,'relu_2layer_dropout_l1_l2')
-    # nn = NN_Model("test_new_model")
-    # nn.load_model("test_new_model")
-    # sampler = Sample('SPY',True)
-    # load(nn,"SPY", False, "test_new_model", True,sampler=sampler)
+    nn = NN_Model("new_scaled_2layer")
+    nn.load_model("new_scaled_2layer",is_training=False)
+    sampler = Sample('SPY',True)
+    load(nn,"SPY", True, "new_scaled_2layer", True,sampler=sampler,rand_date=True)
 
 
 if __name__ == "__main__":

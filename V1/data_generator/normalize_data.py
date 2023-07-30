@@ -701,16 +701,18 @@ class Normalizer():
                                                      'Last3High', 'Last3Low'] if out == 4 else [])
         # Set data manually to preserve order
         try:
-            tmp_data['Open'] = data['Open']
+            tmp_data['Open'] = data[data.index.isin(['Open'])]
         except:
             pass
-        tmp_data['Close'] = data['Close']
+        tmp_data['Close'] = data[data.index.isin(['Close'])]
+        tmp_data = tmp_data.transpose()
+        print(tmp_data)
         # if 3 <= out <= 4: # Add high/low
         #     tmp_data['High'] = (data['High'] * self.w['High']) if out != 4 else data['High']
         #     tmp_data['Low'] = (data['Low'] * self.w['Low']) if out != 4 else data['Low']
         #     tmp_data['Open'] = (tmp_data['Open'] * self.w['Open']) if out != 4 else data['Open']
         #     tmp_data['Close'] = (tmp_data['Close'] * self.w['Close']) if out != 4 else data['Close']
-        return pd.DataFrame(scaler.inverse_transform((tmp_data.to_numpy())) if out != 3 and out != 4 else tmp_data.to_numpy(), columns=['Close EMA14 Distance',
+        return pd.DataFrame(scaler.inverse_transform((tmp_data.to_numpy())) if out != 3 and out != 4 else tmp_data.to_numpy(), index=['Close EMA14 Distance',
                                                                                       'Close EMA30 Distance',
                                                                                       'Close Fib1 Distance',
                                                                                       'Close Fib2 Distance',
