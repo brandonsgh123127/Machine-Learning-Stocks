@@ -728,7 +728,7 @@ def main():
     # copy_logs(path,'relu_2layer_dropout_l1_l2')
     nn = NN_Model("new_scaled_2layer")
     nn.load_model("new_scaled_2layer",is_training=False)
-    sampler = Sample('SPY',True)
+    sampler = Sample('TSLA',True)
     load(nn,"SPY", True, "new_scaled_2layer", True,sampler=sampler,rand_date=True)
 
 

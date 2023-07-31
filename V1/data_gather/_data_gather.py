@@ -6,7 +6,7 @@ import yfinance as yf
 from yahoo_fin.options import get_options_chain
 import datetime
 from pandas_datareader import data as pdr
-import twitter
+# import twitter
 import requests
 import random
 import os, sys
@@ -47,25 +47,25 @@ class Gather:
                      10: 31,
                      11: 30,
                      12: 31}
-    search_url = "https://api.twitter.com/1.1/tweets/search/fullarchive/dev.json"
+    # search_url = "https://api.twitter.com/1.1/tweets/search/fullarchive/dev.json"
 
     def __repr__(self):
         return 'stock_data.gather_data object <%s>' % ",".join(self.indicator)
 
     def __init__(self, indicator=None):
         # Local API Key for twitter account
-        self.api = twitter.Api(consumer_key="wQ6ZquVju93IHqNNW0I4xn4ii",
-                               consumer_secret="PorwKI2n1VpHznwyC38HV8a9xoDMWko4mOIDFfv2q7dQsFn2uY",
-                               access_token_key="1104618795115651072-O3LSWBFVEPENGiTnXqf7cTtNgmNqUF",
-                               access_token_secret="by7SUTtNPOYgAws0yliwk9YdiWIloSdv8kYX0YKic28UE",
-                               sleep_on_rate_limit="true")
+        # self.api = twitter.Api(consumer_key="wQ6ZquVju93IHqNNW0I4xn4ii",
+        #                        consumer_secret="PorwKI2n1VpHznwyC38HV8a9xoDMWko4mOIDFfv2q7dQsFn2uY",
+        #                        access_token_key="1104618795115651072-O3LSWBFVEPENGiTnXqf7cTtNgmNqUF",
+        #                        access_token_secret="by7SUTtNPOYgAws0yliwk9YdiWIloSdv8kYX0YKic28UE",
+        #                        sleep_on_rate_limit="true")
         self.indicator = indicator
         self.data: pd.DataFrame = pd.DataFrame({'Date':[], 'Open':[], 'High':[], 'Low':[], 'Close':[], 'Adj. Close':[]})
         self.date_set = ()
-        self.bearer = "AAAAAAAAAAAAAAAAAAAAAJdONwEAAAAAzi2H1WrnhmAddAQKwveAfRN1DAY%3DdSFsj3bTRnDqqMxNmnxEKTG6O6UN3t3VMtnC0Y7xaGxqAF1QVq"
-        self.headers = {"Authorization": "Bearer {0}".format(self.bearer), "content-type": "application/json",
-                        'Accept-encoding': 'gzip',
-                        'User-Agent': 'twitterdev-search-tweets-python/'}
+        # self.bearer = "AAAAAAAAAAAAAAAAAAAAAJdONwEAAAAAzi2H1WrnhmAddAQKwveAfRN1DAY%3DdSFsj3bTRnDqqMxNmnxEKTG6O6UN3t3VMtnC0Y7xaGxqAF1QVq"
+        # self.headers = {"Authorization": "Bearer {0}".format(self.bearer), "content-type": "application/json",
+        #                 'Accept-encoding': 'gzip',
+        #                 'User-Agent': 'twitterdev-search-tweets-python/'}
         self.new_uuid_gen = None
         self.path = Path(os.getcwd()).absolute()
         tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(self.path))
@@ -85,6 +85,7 @@ class Gather:
                 print("Something is wrong with your user name or password")
             elif err.errno == errorcode.ER_BAD_DB_ERROR:
                 print("Database does not exist")
+                raise Exception("Cannot proceed, no DB exists...")
             else:
                 print(err)
         # Make second connection use for multiple connection threads

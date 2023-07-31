@@ -700,11 +700,11 @@ class Normalizer():
                                                      'Next1 Fib','Next2 Fib',
                                                      'Last3High', 'Last3Low'] if out == 4 else [])
         # Set data manually to preserve order
-        try:
-            tmp_data['Open'] = data[data.index.isin(['Open'])]
-        except:
-            pass
-        tmp_data['Close'] = data[data.index.isin(['Close'])]
+        tmp_data.loc[0,'Open'] = data[data.index.isin(['Open'])].iloc[-1].values[0]
+        if 3 <= out <= 4:
+            tmp_data.loc[0,'High'] = data[data.index.isin(['High'])].iloc[-1].values[0]
+            tmp_data.loc[0,'Low'] = data[data.index.isin(['Low'])].iloc[-1].values[0]
+        tmp_data.loc[0,'Close'] = data[data.index.isin(['Close'])].iloc[-1].values[0]
         tmp_data = tmp_data.transpose()
         print(tmp_data)
         # if 3 <= out <= 4: # Add high/low
