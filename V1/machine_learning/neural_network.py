@@ -723,13 +723,16 @@ def main():
     # # 12
     # thread_manager.start_worker(threading.Thread(target=run, args=(128, 32, "new_scaled_2layer")))
     # thread_manager.join_workers()
+    # # 13
+    thread_manager.start_worker(threading.Thread(target=run, args=(128, 32, "new_scaled_2layer_v2")))
+    thread_manager.join_workers()
 
     # run(50,75,'relu_2layer_dropout_l1_l2')
     # copy_logs(path,'relu_2layer_dropout_l1_l2')
     nn = NN_Model("new_scaled_2layer")
     nn.load_model("new_scaled_2layer",is_training=False)
     sampler = Sample('TSLA',True)
-    load(nn,"SPY", True, "new_scaled_2layer", True,sampler=sampler,rand_date=True)
+    load(nn,"SPY", True, "new_scaled_2layer_v2", True,sampler=sampler,rand_date=True)
 
 
 if __name__ == "__main__":

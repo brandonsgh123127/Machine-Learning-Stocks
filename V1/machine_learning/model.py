@@ -31,6 +31,7 @@ class NN_Model(ABC):
                                 "test_2layer": 10,
                                 "SPY_relu_multilayer_l2": 11,
                                 "new_scaled_2layer": 12,
+                                "new_scaled_2layer_v2": 13,
                                 }
         self.model_name = choice
         self.model_choice: str = self.get_mapping(choice)
@@ -244,10 +245,10 @@ class NN_Model(ABC):
             #         nn)
             #     nn = layers.Dense(8, activation=layers.LeakyReLU(alpha=0.2))(nn)
             elif self.model_choice == 13:
-                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
-                nn = layers.Dense(32,activation='relu')(
+                nn = layers.LSTM(48,input_shape=(5,14),return_sequences=True)(
+                    nn_input)
+                nn = layers.LSTM(6,input_shape=(48,1,1))(
                     nn)
-                nn = layers.Dense(8)(nn)
             nn2 = layers.Dense(4, activation='linear')(nn)
             nn = Model(inputs=nn_input, outputs=[nn2])
             nn.compile(optimizer=optimizers.Adam(learning_rate=0.003, beta_1=0.95, beta_2=0.998), loss='mean_squared_error',
