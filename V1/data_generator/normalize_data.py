@@ -700,19 +700,19 @@ class Normalizer():
                                                      'Next1 Fib','Next2 Fib',
                                                      'Last3High', 'Last3Low'] if out == 4 else [])
         # Set data manually to preserve order
-        tmp_data.loc[0,'Open'] = data[data.index.isin(['Open'])].iloc[-1].values[0]
         if 3 <= out <= 4:
-            tmp_data.loc[0,'High'] = data[data.index.isin(['High'])].iloc[-1].values[0]
-            tmp_data.loc[0,'Low'] = data[data.index.isin(['Low'])].iloc[-1].values[0]
-        tmp_data.loc[0,'Close'] = data[data.index.isin(['Close'])].iloc[-1].values[0]
+            tmp_data = scaler
+            # tmp_data.loc[0, 'Open'] = data[data.index.isin(['Open'])].iloc[-1].values[0]
+            # tmp_data.loc[0,'High'] = data[data.index.isin(['High'])].iloc[-1].values[0]
+            # tmp_data.loc[0,'Low'] = data[data.index.isin(['Low'])].iloc[-1].values[0]
+            # tmp_data.loc[0,'Close'] = data[data.index.isin(['Close'])].iloc[-1].values[0]
         tmp_data = tmp_data.transpose()
-        print(tmp_data)
         # if 3 <= out <= 4: # Add high/low
         #     tmp_data['High'] = (data['High'] * self.w['High']) if out != 4 else data['High']
         #     tmp_data['Low'] = (data['Low'] * self.w['Low']) if out != 4 else data['Low']
         #     tmp_data['Open'] = (tmp_data['Open'] * self.w['Open']) if out != 4 else data['Open']
         #     tmp_data['Close'] = (tmp_data['Close'] * self.w['Close']) if out != 4 else data['Close']
-        return pd.DataFrame(scaler.inverse_transform((tmp_data.to_numpy())) if out != 3 and out != 4 else tmp_data.to_numpy(), index=['Close EMA14 Distance',
+        return pd.DataFrame(scaler.inverse_transform((tmp_data.to_numpy())) if out != 3 and out != 4 else tmp_data, index=['Close EMA14 Distance',
                                                                                       'Close EMA30 Distance',
                                                                                       'Close Fib1 Distance',
                                                                                       'Close Fib2 Distance',

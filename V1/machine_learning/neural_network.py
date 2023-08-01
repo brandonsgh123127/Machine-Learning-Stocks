@@ -538,7 +538,7 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
                                                                         else 0)))
                 else:
                     if out == 4:
-                        train = reshape(sampler.normalized_data.iloc[:,-5:-1].to_numpy(),(14,5))
+                        train = reshape(sampler.normalized_data.iloc[:,-5:].to_numpy(),(14,5))
                     else:
                         train = (reshape(sampler.normalized_data[:,-14 if out == 1 \
                                                             else -5 if 2 <= out <= 4 \
@@ -619,6 +619,7 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
         print("[INFO] Attempting to unnormalize data.")
         predicted = predicted.transpose() # out 4 - transpose back to how data was passed into model
         unnormalized_prediction_df = sampler.unnormalize(predicted,out=out)
+        print(unnormalized_prediction_df)
     except Exception as e:
         print(f"[ERROR] Failed to unnormalize data!\r\nException: {e}")
         raise Exception(e)
@@ -703,6 +704,7 @@ def main():
     # thread_manager.start_worker(threading.Thread(target=run, args=(32, 64, "new_scaled_l2_5m",'5m')))
     # thread_manager.join_workers()
 
+    # # OUT 3
     # # 7
     # thread_manager.start_worker(threading.Thread(target=run, args=(32, 64, "new_scaled_l2",'1d')))
     # thread_manager.join_workers()
@@ -720,19 +722,20 @@ def main():
     # thread_manager.start_worker(threading.Thread(target=run, args=(32, 64, "test_2layer")))
     # thread_manager.join_workers()
 
+    # # OUT 4
     # # 12
     # thread_manager.start_worker(threading.Thread(target=run, args=(128, 32, "new_scaled_2layer")))
     # thread_manager.join_workers()
     # # 13
-    thread_manager.start_worker(threading.Thread(target=run, args=(128, 32, "new_scaled_2layer_v2")))
-    thread_manager.join_workers()
+    # thread_manager.start_worker(threading.Thread(target=run, args=(128, 32, "new_scaled_2layer_v2")))
+    # thread_manager.join_workers()
 
     # run(50,75,'relu_2layer_dropout_l1_l2')
     # copy_logs(path,'relu_2layer_dropout_l1_l2')
-    nn = NN_Model("new_scaled_2layer")
-    nn.load_model("new_scaled_2layer",is_training=False)
+    nn = NN_Model("new_scaled_2layer_v2")
+    nn.load_model("new_scaled_2layer_v2",is_training=False)
     sampler = Sample('TSLA',True)
-    load(nn,"SPY", True, "new_scaled_2layer_v2", True,sampler=sampler,rand_date=True)
+    load(nn,ticker="TSLA", has_actuals=False, name="new_scaled_2layer_v2", force_generation=True,sampler=sampler,rand_date=True)
 
 
 if __name__ == "__main__":
