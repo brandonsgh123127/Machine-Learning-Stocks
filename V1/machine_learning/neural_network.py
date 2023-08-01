@@ -735,7 +735,7 @@ def main():
     nn = NN_Model("new_scaled_2layer_v2")
     nn.load_model("new_scaled_2layer_v2",is_training=False)
     sampler = Sample('TSLA',True)
-    load(nn,ticker="TSLA", has_actuals=False, name="new_scaled_2layer_v2", force_generation=True,sampler=sampler,rand_date=True)
+    load(nn,ticker="TSLA", has_actuals=True, name="new_scaled_2layer_v2", force_generation=True,sampler=sampler,rand_date=True)
 
 
 if __name__ == "__main__":

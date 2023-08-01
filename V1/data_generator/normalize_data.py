@@ -706,7 +706,6 @@ class Normalizer():
             # tmp_data.loc[0,'High'] = data[data.index.isin(['High'])].iloc[-1].values[0]
             # tmp_data.loc[0,'Low'] = data[data.index.isin(['Low'])].iloc[-1].values[0]
             # tmp_data.loc[0,'Close'] = data[data.index.isin(['Close'])].iloc[-1].values[0]
-        tmp_data = tmp_data.transpose()
         # if 3 <= out <= 4: # Add high/low
         #     tmp_data['High'] = (data['High'] * self.w['High']) if out != 4 else data['High']
         #     tmp_data['Low'] = (data['Low'] * self.w['Low']) if out != 4 else data['Low']
