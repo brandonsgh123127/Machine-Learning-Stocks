@@ -32,7 +32,7 @@ class launcher:
         self.listLock = threading.Lock()
         self._executor = ThreadPoolExecutor(4)
         self.gen = Generator(None, Path(os.getcwd()).absolute(), force_generation)
-        self.sampler = Sample(ticker=None,force_generate=False)
+        self.sampler = Sample(ticker=None,force_generate=force_generation)
 
     async def display_model(self, nn: NN_Model = None, name: str = "relu_multilayer_l2", _has_actuals: bool = False, ticker: str = "spy",
                       color: str = "blue", force_generation=False, unnormalized_data=False, row=0, col=1,
@@ -109,7 +109,7 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY",
                dis: Optional[Display] = None,skip_display: bool = False, output: int = 4):
     listLock = threading.Lock()
     loop = get_event_loop()
-    launch = launcher()
+    launch = launcher(force_generate)
     if ticker is not None:
         ticker = ticker
     else:
@@ -199,17 +199,18 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY",
     # Model_Out_2 LABEL
     if _has_actuals:
         task1 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else nn_dict["scaled_2layer"] if out == 3 else nn_dict["new_scaled_2layer"] if out == 4 else "","relu_multilayer_l2" if out==1 else "new_multi_analysis_l2" if out == 2 else "scaled_2layer" if out == 3 else "new_scaled_2layer" if out == 4 else "", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else nn_dict["scaled_2layer"] if out == 3 else nn_dict["new_scaled_2layer_v2"] if out == 4 else "","relu_multilayer_l2" if out==1 else "new_multi_analysis_l2" if out == 2 else "scaled_2layer" if out == 3 else "new_scaled_2layer_v2" if out == 4 else "", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
                     0.05, n_interval,[],dis,skip_display,out)
     else:
         task1 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else nn_dict["scaled_2layer"] if out == 3 else nn_dict["new_scaled_2layer"] if out == 4 else "","relu_multilayer_l2" if out==1 else "new_multi_analysis_l2" if out == 2 else "scaled_2layer" if out == 3 else "new_scaled_2layer" if out == 4 else "", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
+                    nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else nn_dict["scaled_2layer"] if out == 3 else nn_dict["new_scaled_2layer_v2"] if out == 4 else "","relu_multilayer_l2" if out==1 else "new_multi_analysis_l2" if out == 2 else "scaled_2layer" if out == 3 else "new_scaled_2layer_v2" if out == 4 else "", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
                     0.05, n_interval,[],dis,skip_display,out)
     gc.collect()
     await gather(box_plot_task, task1)
     del box_plot_task, task1
     dis.fig.canvas.draw()  # draw image before returning
     fig = dis.fig
+    # print(fig.get_size_inches(),fig.dpi)
     axes = dis.axes
     return fig, axes
 
@@ -287,14 +288,14 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
     task_list = []
     for ticker in tickers:
         try:
-            out = 1 # Change if needed
+            out = 4 # Change if needed
             await launch.gen.set_ticker(ticker)
             print("[INFO] Generating necessary data (stock data/ema/fib/keltner).")
             data = await launch.gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, out, True, n_interval)
             # print(data,flush=True)
             print("[INFO] Preparing to generate & display model.")
             task_list.append(launch.display_model(
-                    nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else "","relu_2layer_l1l2" if out ==1 else "new_multi_analysis_l2" if out == 2 else "", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
+                    nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else nn_dict["new_scaled_2layer"] if out ==4 else "","relu_2layer_l1l2" if out ==1 else "new_multi_analysis_l2" if out == 2 else "new_scaled_2layer" if out == 4 else "", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
                     percent, n_interval,[],None,True,out))
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -322,7 +323,8 @@ if __name__ == "__main__":
         # 'relu_multilayer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2', 'relu_1layer_l2',
         #                    'new_multi_analysis_l2', 'new_multi_analysis_2layer_0regularization',
         #                    'new_scaled_l2','new_scaled_l2_60m','new_scaled_l2_5m',
-    'new_scaled_2layer']
+    'new_scaled_2layer',
+    'new_scaled_2layer_v2']
     nn_models = [NN_Model(item) for item in model_choices]
     for model in nn_models:
         model.create_model(is_training=False)
@@ -336,8 +338,9 @@ if __name__ == "__main__":
                      # 'new_scaled_l2': nn_models[6],
                      # 'new_scaled_l2_60m': nn_models[7],
                      # 'new_scaled_l2_5m': nn_models[8],
-                     'new_scaled_2layer': nn_models[0]
-                     }
+                     'new_scaled_2layer': nn_models[0],
+                    'new_scaled_2layer_v2': nn_models[1]
+    }
     dis = Display()
     loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2],
                                  has_actuals=_has_actuals, force_generate=_force_generate,

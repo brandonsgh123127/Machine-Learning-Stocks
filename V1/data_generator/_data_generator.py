@@ -113,8 +113,7 @@ class Generator():
                                              end, _force_generate=force_generation,ticker=ticker,update_self=False)
         else:
             data = await self.studies.set_data_from_range(start,
-                                             end - datetime.timedelta(
-                                                 days=1), _force_generate=force_generation,ticker=ticker,update_self=False)
+                                             end, _force_generate=force_generation,ticker=ticker,update_self=False)
         if data is None:
             print(f"[ERROR] Couldn't generate data for {ticker}.")
             return 'n/a     n/a'

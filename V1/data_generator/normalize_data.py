@@ -154,7 +154,6 @@ class Normalizer():
             d1 = datetime.datetime.strptime('1/1/2007 1:00 AM', '%m/%d/%Y %I:%M %p') if interval == '1d' or interval == '1m' or interval == '1wk' else\
                 datetime.datetime.now() - datetime.timedelta(days=730) if interval == '30m' or interval == '60m' or interval == '1h' or interval == '4h' else \
                     datetime.datetime.now() - datetime.timedelta(days=50)
-            print(f"[INFO] Gathering data between ranges {d1} and {d2}")
             # get time diff then get time in seconds
             delta = d2 - d1
             # print(delta.days,delta.seconds)
@@ -162,6 +161,14 @@ class Normalizer():
             # append seconds to get a start date
             random_second = random.randrange(int_delta)
             date = d1 + datetime.timedelta(seconds=random_second)
+            days = 150 if '1d' in interval else \
+                300 if '1wk' in interval else \
+                    600 if '1mo' in interval else \
+                        30 if interval == '5m' else \
+                            40 if '15m' in interval else \
+                                50 if '30m' in interval else \
+                                    75 if '60m' in interval else 40
+            print(f"[INFO] Gathering data from date {date} to {date + datetime.timedelta(days=days)} ")
         else:
             date = None
         try:
@@ -199,15 +206,15 @@ class Normalizer():
             pass
         data = data.astype(np.float_)
         try:
-            self.studies = self.studies.astype(np.float_)
+            self.studies = self.studies.astype(np.float_).reset_index()
         except:
             print('[INFO] Couldn\'t convert emas to type <float>')
         try:
-            self.keltner = self.keltner.astype(np.float_)
+            self.keltner = self.keltner.astype(np.float_).reset_index()
         except:
             print('[INFO] Couldn\'t convert keltner to type <float>')
         try:
-            self.fib = self.fib.astype(np.float_)
+            self.fib = self.fib.astype(np.float_).reset_index()
         except:
             print('[INFO] Couldn\'t convert fibonacci sequence to type <float>')
         try:
@@ -503,10 +510,16 @@ class Normalizer():
             i = 0
             j = 0
             k = 0
-            if self.fib['0.273'].iloc[-1] < self.fib['0.283'].iloc[-1]: # get fib direction
-                direction = "+"
-            else:
-                direction = "-"
+            try:
+                if self.fib['0.273'].iloc[-1].values[0] < self.fib['0.283'].iloc[-1].values[0]: # get fib direction
+                    direction = "+"
+                else:
+                    direction = "-"
+            except:
+                if self.fib['0.273'].iloc[-1] < self.fib['0.283'].iloc[-1]:  # get fib direction
+                    direction = "+"
+                else:
+                    direction = "-"
             try:
                 save_point = 0
                 for index,item in self.fib.items():
@@ -670,8 +683,14 @@ class Normalizer():
     '''
 
     def unnormalize(self, data, out: int = 1):
-        if 3 <= out <= 4:
-            scaler = self.standard_scaler.inverse_transform(self.normalized_data)
+        if 2 <= out <= 4:
+            trainPredict_dataset_like = np.zeros(shape=(14, 5) )
+            # print(trainPredict_dataset_like.iloc[5, -1])
+            trainPredict_dataset_like[5, -1] = data.iloc[0, 0] # Open
+            trainPredict_dataset_like[6, -1] = data.iloc[1, 0] # High
+            trainPredict_dataset_like[7, -1] = data.iloc[2, 0] # Low
+            trainPredict_dataset_like[8, -1] = data.iloc[3, 0] # Close
+            scaler = self.standard_scaler.inverse_transform(trainPredict_dataset_like)[:,-1] # Keep modified part only
         else:
             scaler = self.min_max.fit(self.unnormalized_data)
         tmp_data = pd.DataFrame(columns=['Close EMA14 Distance', 'Close EMA30 Distance',
@@ -700,47 +719,19 @@ class Normalizer():
                                                      'Next1 Fib','Next2 Fib',
                                                      'Last3High', 'Last3Low'] if out == 4 else [])
         # Set data manually to preserve order
-        if 3 <= out <= 4:
-            tmp_data = scaler
-            # tmp_data.loc[0, 'Open'] = data[data.index.isin(['Open'])].iloc[-1].values[0]
-            # tmp_data.loc[0,'High'] = data[data.index.isin(['High'])].iloc[-1].values[0]
-            # tmp_data.loc[0,'Low'] = data[data.index.isin(['Low'])].iloc[-1].values[0]
-            # tmp_data.loc[0,'Close'] = data[data.index.isin(['Close'])].iloc[-1].values[0]
+        if 2 <= out <= 4:
+            tmp_data.loc[0, 'Open'] = scaler[5]
+            tmp_data.loc[0, 'High'] = scaler[6]
+            tmp_data.loc[0, 'Low'] = scaler[7]
+            tmp_data.loc[0, 'Close'] = scaler[8]
+        elif out == 1:
+            tmp_data.loc[0, 'Open'] = data['Open']
         # if 3 <= out <= 4: # Add high/low
         #     tmp_data['High'] = (data['High'] * self.w['High']) if out != 4 else data['High']
         #     tmp_data['Low'] = (data['Low'] * self.w['Low']) if out != 4 else data['Low']
         #     tmp_data['Open'] = (tmp_data['Open'] * self.w['Open']) if out != 4 else data['Open']
         #     tmp_data['Close'] = (tmp_data['Close'] * self.w['Close']) if out != 4 else data['Close']
-        return pd.DataFrame(scaler.inverse_transform((tmp_data.to_numpy())) if out != 3 and out != 4 else tmp_data, index=['Close EMA14 Distance',
-                                                                                      'Close EMA30 Distance',
-                                                                                      'Close Fib1 Distance',
-                                                                                      'Close Fib2 Distance',
-                                                                                      'Num Consec Candle Dir',
-                                                                                      'Upper Keltner Close Diff',
-                                                                                      'Lower Keltner Close Diff',
-                                                                                      'Open',
-                                                                                      'Close'] if out == 1 else \
-                                    ['Last2Volume Cur Volume Diff', 'Open Upper Kelt Diff',
-                                     'Open Lower Kelt Diff', 'High Upper Kelt Diff',
-                                     'High Lower Kelt Diff', 'Low Upper Kelt Diff',
-                                     'Low Lower Kelt Diff', 'Close Upper Kelt Diff',
-                                     'Close Lower Kelt Diff', 'EMA 14 30 Diff',
-                                     'Base Fib High Diff', 'Base Fib Low Diff',
-                                     'Next1 Fib High Diff', 'Next1 Fib Low Diff',
-                                     'Next2 Fib High Diff', 'Next2 Fib Low Diff',
-                                     'Open', 'High', 'Low', 'Close',
-                                     'Last3High Base Fib', 'Last3Low Base Fib',
-                                     'Last3High Next1 Fib', 'Last3Low Next1 Fib',
-                                     'Last3High Next2 Fib', 'Last3Low Next2 Fib'] if out == 2 else \
-                                        ['Upper Kelt',
-                                         'Lower Kelt', 'Middle Kelt', 'EMA 14', 'EMA 30',
-                                         'Open', 'High', 'Low', 'Close',
-                                         'Last3High', 'Last3Low'] if out == 3 else ['Upper Kelt',
-                                                     'Lower Kelt', 'Middle Kelt', 'EMA 14', 'EMA 30',
-                                                     'Open', 'High', 'Low', 'Close','Base Fib',
-                                                     'Next1 Fib','Next2 Fib',
-                                                     'Last3High', 'Last3Low'] if out == 4 else [])
-
+        return tmp_data.transpose()
 # norm = Normalizer()
 # norm.read_data("2016-03-18","CCL")
 # norm.convert_derivatives()

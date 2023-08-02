@@ -477,6 +477,7 @@ class Studies(Gather):
             return val3 - ((val2 - val1) * -fib_val)
 
     def upwards_fib(self, new_set, interval):
+        print("[INFO] Doing upwards fib.")
         try:
             # After this, iterate new list and find which direction stock may go
             val1 = None
@@ -502,9 +503,11 @@ class Studies(Gather):
                 print(f'[ERROR] new_set is empty for upwards_fib-{self.indicator}!')
                 return val1, val2, val3
             new_set_dropped_min = new_set.drop(new_set['Low'].idxmin())
+            print(f"[INFO] original set length for fibonacci is {len(new_set_dropped_min)}")
             if new_set['Low'].idxmin() >= 5: # Only do this if not the first 5 values
                 while new_set_dropped_min['Low'].idxmin() >= new_set['Low'].idxmin() - 1:
                     new_set_dropped_min = new_set_dropped_min.drop(new_set_dropped_min['Low'].idxmin())
+            print(f"[INFO] New set length for fibonacci is {len(new_set)}")
             for i, row in new_set.iterrows():  # reverse order iteration
                 if i >= len(new_set) - 1:
                     break
@@ -514,7 +517,7 @@ class Studies(Gather):
 
                     if new_set_dropped_min['Low'].idxmin() <= len(new_set) - max_cutoff:
                         i = new_set_dropped_min['Low'].idxmin()
-
+                        print(f"[INFO] fibonacci value 'i' set to {i}")
                     # find val2 by finding next local high
                     for j, sub in new_set.iterrows():
                         if j <= i:
@@ -557,6 +560,7 @@ class Studies(Gather):
             print(exc_type, fname, exc_tb.tb_lineno)
 
     def downwards_fib(self, new_set, interval):
+        print("[INFO] Doing downwards fib.")
         try:
             # After this, iterate new list and find which direction stock may go
             val1 = None
@@ -635,7 +639,7 @@ class Studies(Gather):
             print(exc_type, fname, exc_tb.tb_lineno)
     def insert_fib_vals(self, skip_db, interval,opt_fib_vals=[],val1=None,val2=None,val3=None):
         # Insert data if not in db...
-        if len(opt_fib_vals) != 0:
+        if len(opt_fib_vals) != 0: # In the case of additional testing fibs, add to fib extension
             opt_fib_val_df = pd.DataFrame([[self.fib_help(val1, val2, val3, float(val)) for val in opt_fib_vals]] if len(opt_fib_vals) != 0 else None,columns=[val for val in opt_fib_vals])
             self.fibonacci_extension = pd.concat([self.fibonacci_extension, opt_fib_val_df],axis=1)
         if not skip_db:
@@ -766,10 +770,6 @@ class Studies(Gather):
                         self.fibonacci_extension.at[0, "16.32"],
                     )
                 insert_list.append(insert_tuple)  # add tuple to list
-                # duplicate row by 1
-                self.fibonacci_extension = pd.concat(objs=[self.fibonacci_extension,self.fibonacci_extension.iloc[0].to_frame().transpose()],
-                                                                           ignore_index=True)
-
             try:
                 insert_studies_db_result = self.fib_cnx.executemany(insert_studies_db_stmt, insert_list)
             except mysql.connector.errors.IntegrityError:
@@ -789,10 +789,6 @@ class Studies(Gather):
                 print(str(e),'\n[ERROR] Failed to insert fib-data element fibonacci!\n')
                 self.fib_cnx.close()
                 pass
-        else:
-            for index, row in self.data.iterrows():
-                self.fibonacci_extension = pd.concat(objs=[self.fibonacci_extension,self.fibonacci_extension.iloc[0].to_frame().transpose()],
-                                                                           ignore_index=True)
 
         '''
         Fibonacci extensions utilized for predicting key breaking points
@@ -1447,6 +1443,10 @@ val1    val3_________________________          vall2
                         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                         print(exc_type, fname, exc_tb.tb_lineno)
                         val1, val2, val3 = self.upwards_fib(new_set, interval)
+            len_df = len(self.data.index + 2)
+            for index in range(0,len_df):
+                self.fibonacci_extension = pd.concat(objs=[self.fibonacci_extension,self.fibonacci_extension.iloc[0].to_frame().transpose()],
+                                                                       ignore_index=True)
             try:
                 self.fibonacci_extension = self.fibonacci_extension.drop(['index'],axis=1)
             except:

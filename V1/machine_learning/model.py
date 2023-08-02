@@ -17,7 +17,8 @@ class NN_Model(ABC):
     def __init__(self, choice: str):
         self.nn_input = None
         self.path = Path(os.getcwd()).absolute()
-        self.model_map_names = {"relu_multilayer_l2": 1,
+        self.model_map_names = {
+            "relu_multilayer_l2": 1,
                                 "relu_2layer_0regularization": 2,
                                 "relu_2layer_l1l2": 3,
                                 "relu_1layer_l2": 4,
@@ -109,7 +110,8 @@ class NN_Model(ABC):
 
             nn = Model(inputs=nn_input, outputs=[nn2])
             nn.compile(optimizer=optimizers.Adam(learning_rate=0.01, beta_1=0.90, beta_2=0.997), loss='mean_squared_error',
-                       metrics=['MeanSquaredError'])
+                           metrics=['MeanSquaredError'])
+
         elif 5 <= self.model_choice <= 6:
             """
             OUT 2
@@ -251,7 +253,7 @@ class NN_Model(ABC):
                     nn)
             nn2 = layers.Dense(4, activation='linear')(nn)
             nn = Model(inputs=nn_input, outputs=[nn2])
-            nn.compile(optimizer=optimizers.Adam(learning_rate=0.003, beta_1=0.95, beta_2=0.998), loss='mean_squared_error',
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.003, beta_1=0.9, beta_2=0.998), loss='mean_squared_error',
                        metrics=['MeanSquaredError'])
 
             # Convert to a model

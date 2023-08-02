@@ -58,7 +58,9 @@ class GUI(Thread_Pool):
             # 'relu_multilayer_l2', 'relu_2layer_0regularization', 'relu_2layer_l1l2',
             #                    'relu_1layer_l2', 'new_multi_analysis_l2', 'new_multi_analysis_2layer_0regularization',
             #                    "new_scaled_l2",'new_scaled_l2_60m','new_scaled_l2_5m',
-            "new_scaled_2layer"]
+            "new_scaled_2layer",
+            'new_scaled_2layer_v2'
+        ]
         nn_models = [NN_Model(item) for item in model_choices]
         for model in nn_models:
             model.create_model(is_training=False)
@@ -72,7 +74,8 @@ class GUI(Thread_Pool):
             #      "new_scaled_l2": nn_models[6],
             #      'new_scaled_l2_60m': nn_models[7],
             #      'new_scaled_l2_5m': nn_models[8],
-            "new_scaled_2layer": nn_models[0]
+            "new_scaled_2layer": nn_models[0],
+            'new_scaled_2layer_v2': nn_models[1]
         }
 
         self.window = tk.Tk(screenName='Stock Analysis')
@@ -81,9 +84,11 @@ class GUI(Thread_Pool):
         self.window.geometry("%dx%d+0+0" % (w, h))
 
         self.content = ttk.Frame(self.window, width=300, height=200)
-        self.boolean1 = tk.BooleanVar()
-        self.force_bool = tk.BooleanVar()
-        self.auto_refresh = tk.BooleanVar()
+        self.boolean1 = tk.BooleanVar(self.window)
+        self.boolean1.set(False)
+        self.force_bool = tk.BooleanVar(self.window)
+        self.force_bool.set(False)
+        self.auto_refresh = tk.BooleanVar(self.window)
         self.auto_refresh.set(False)
 
         self.watchlist = []
@@ -279,7 +284,7 @@ class GUI(Thread_Pool):
                                          force_generate=force_generation,
                                          opt_fib_vals=opt_fib_vals,
                                          dis=self.dis, skip_display=False,
-                                         output=3)
+                                         output=4)
             t = threading.Thread(target=self.image_retrieval_thread, args=(self.loop, analyze_task))
             t.daemon = True
             t.start()
@@ -293,7 +298,7 @@ class GUI(Thread_Pool):
             self.generate_button.grid_forget()
         analysis_task = await analyze_stock(self.nn_dict, ticker, has_actuals, force_generation,
                                             self.interval_text.get(), list(self.opt_fib_vals_set),
-                                            dis=self.dis, skip_display=False, output=3)
+                                            dis=self.dis, skip_display=False, output=4)
 
         # analysis_res = asyncio.gather(analysis_task)
         self.img = analysis_task[0]
@@ -364,8 +369,6 @@ class GUI(Thread_Pool):
         self.stock_label.grid(column=2, row=0)
         self.stock_input.insert(0, 'SPY')
         self.stock_input.grid(column=3, row=0)
-        self.boolean1 = tk.BooleanVar()
-        self.boolean1.set(False)
         self.fib_opt_val_input = tk.Entry(self.content)
         self.fib_opt_val_input.grid(column=1, row=4)
         self.fib_opt_val_add_button = ttk.Button(self.content, text="Add",
@@ -378,14 +381,12 @@ class GUI(Thread_Pool):
         self.fib_opt_val_list.grid(column=1, row=6)
         self.opt_fib_vals_set: set = {'', }
         self.opt_fib_vals_set.remove('')
-        self.force_bool = tk.BooleanVar()
-        self.force_bool.set(False)
-        self.force_refresh = ttk.Checkbutton(self.content, text="Force Regeneration", variable=self.force_bool)
+        self.force_refresh = tk.Checkbutton(self.content, text="Force Regeneration", variable=self.force_bool)
         self.force_refresh.grid(column=1, row=2)
-        self.auto_refresh_checkbutton = ttk.Checkbutton(self.content, text="AutoRefresh", variable=self.auto_refresh)
+        self.auto_refresh_checkbutton = tk.Checkbutton(self.content, text="AutoRefresh", variable=self.auto_refresh)
         self.auto_refresh_checkbutton.grid(column=6, row=2)
 
-        self.has_actuals = ttk.Checkbutton(self.content, text="Compare Predicted", variable=self.boolean1)
+        self.has_actuals = tk.Checkbutton(self.content, text="Compare Predicted", variable=self.boolean1)
         self.has_actuals.grid(column=6, row=1)
         self.generate_button = ttk.Button(self.content, text="Generate",
                                           command=lambda event=1: self.job_queue.put(self.generate_callback()))

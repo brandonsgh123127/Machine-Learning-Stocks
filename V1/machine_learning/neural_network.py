@@ -29,7 +29,7 @@ class Network(Neural_Framework):
         super().__init__(epochs, batch_size)
         self.sampler: Sample = None
     # Used for generation of data via the start
-    def generate_sample(self, _has_actuals=False, rand_date=None, interval = '1d', out = 1, opt_fib_vals = [], ticker: str = None):
+    def generate_sample(self, _has_actuals=False, rand_date=False, interval = '1d', out = 1, opt_fib_vals = [], ticker: str = None):
         path = Path(os.getcwd()).absolute()
         self.sampler.reset_data()
         if ticker is None:
@@ -51,7 +51,7 @@ class Network(Neural_Framework):
         self.sampler.data = self.sampler
 
     def run_model(self, nn: NN_Model = None, rand_date=False,interval='1d',ticker: str = None):
-        self.sampler = Sample()
+        self.sampler = Sample(ticker=ticker)
         models = {}
         try:
             os.mkdir(f"./logs")
@@ -94,7 +94,7 @@ class Network(Neural_Framework):
                         train.append(reshape(self.sampler.normalized_data.iloc[:,:-1].to_numpy(), (55, 1)))
                     elif 12 <= nn.model_choice <= 15: # 5 days * 14
                         train.append(reshape(self.sampler.normalized_data.iloc[:,:-1].to_numpy(), (14, 5)))
-                    tmp = self.sampler.normalized_data.iloc[:,-1:]
+                    tmp = self.sampler.unnormalized_data.iloc[:,-1:]
                     print("[INFO] Adding normalized target data to training data.")
                     if out == 1:
                         tmp = pd.concat([pd.DataFrame([tmp['Close'].to_numpy()])])
@@ -133,11 +133,7 @@ class Network(Neural_Framework):
             try:
                 history = nn.model.fit(x=x_train,
                                 y=y_train,
-                                batch_size=64 if out == 1 \
-                                    else 64 if out == 2 \
-                                    else 32 if out == 3 \
-                                    else 32 if out == 4 \
-                                    else 0,
+                                batch_size=BATCHES,
                                 epochs=1,
                           validation_data=(x_val,y_val),
                           callbacks=[tensorboard_callback,nn.cp_callback])
@@ -150,9 +146,9 @@ class Network(Neural_Framework):
                       f"x val size: {len(x_val)}",
                       f"x val size: {len(y_val)}")
                 raise Exception(e)
-            # Load weights after callback sets new checkpoint :)
-            print("[INFO] Loading weights from fit.")
-            nn.model.load_weights(f'{checkpoint_path}/cp.ckpt')
+            # # Load weights after callback sets new checkpoint :)
+            # print("[INFO] Loading weights from fit.")
+            # nn.model.load_weights(f'{checkpoint_path}/cp.ckpt')
             del train,train_targets, x,y
             models[i] = history.history
             nn.save_model()
@@ -207,7 +203,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
     # check if currently weekend/holiday
     valid_datetime = datetime.utcnow()
     holidays = USFederalHolidayCalendar().holidays(start=valid_datetime,
-                                                   end=(valid_datetime + datetime.timedelta(days=7))).to_pydatetime()
+                                                   end=(valid_datetime + timedelta(days=7))).to_pydatetime()
     valid_date = valid_datetime.date()
     if '1wk' not in interval and '1mo' not in interval:
         if (
@@ -257,6 +253,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
         valid_date = (valid_date.replace(day=1))
     # print(valid_datetime,flush=True)
     try:
+        print("[INFO] Retrieving Data ID / To-Date ID from nn table.")
         retrieve_tdata_result = cnx.execute(check_cache_tdata_db_stmt, {'stock': f'{ticker.upper()}',
                                                                     'date': valid_datetime.strftime('%Y-%m-%d')},
                                         multi=True)
@@ -291,15 +288,15 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
             to_date_id = id_res[0][0].decode('latin1')
 
     if '1wk' in interval:
-        valid_datetime = valid_datetime - datetime.timedelta(days=250)
-        valid_date = valid_date - datetime.timedelta(days=250)
+        valid_datetime = valid_datetime - timedelta(days=250)
+        valid_date = valid_date - timedelta(days=250)
         begin_day = abs(valid_date.weekday())
         if begin_day != 0:
-            valid_date = valid_date - datetime.timedelta(days=begin_day)
-            valid_datetime = valid_datetime - datetime.timedelta(days=begin_day)
+            valid_date = valid_date - timedelta(days=begin_day)
+            valid_datetime = valid_datetime - timedelta(days=begin_day)
     elif '1mo' in interval:
-        valid_datetime = (valid_datetime - datetime.timedelta(days=600))
-        valid_date = (valid_date - datetime.timedelta(days=600))
+        valid_datetime = (valid_datetime - timedelta(days=600))
+        valid_date = (valid_date - timedelta(days=600))
         valid_datetime = (valid_datetime.replace(day=1))
         valid_date = (valid_date.replace(day=1))
 
@@ -334,14 +331,14 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
          WHERE stocks.`{interval}data`.`stock-id` = %(stock-id)s
            AND stocks.`{interval}data`.`date` = %(date)s
             """
-    print("[INFO] Checking for stored nn data in db by checking for from/to-dates")
     try:
+        print("[INFO] Checking for stored nn data in db by checking for from-date")
         retrieve_data_result = cnx.execute(check_cache_fdata_db_stmt, {'stock-id': stock_id,
                                                                    'date': valid_date if not is_utilizing_yfinance else
                                                                    valid_datetime.strftime("%Y-%m-%d %H:%M:%S")},
                                        multi=True)
     except Exception as e:
-        print(f"[ERROR] Failed to check for from/to-date for  nn data!\r\nException: {e}")
+        print(f"[ERROR] Failed to check for to-date for  nn data!\r\nException: {e}")
         raise Exception(e)
     for retrieve_result in retrieve_data_result:
         id_res = retrieve_result.fetchall()
@@ -618,8 +615,7 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
     try:
         print("[INFO] Attempting to unnormalize data.")
         predicted = predicted.transpose() # out 4 - transpose back to how data was passed into model
-        unnormalized_prediction_df = sampler.unnormalize(predicted,out=out)
-        print(unnormalized_prediction_df)
+        unnormalized_prediction_df = sampler.unnormalize(predicted,out=out).transpose()
     except Exception as e:
         print(f"[ERROR] Failed to unnormalize data!\r\nException: {e}")
         raise Exception(e)
@@ -631,10 +627,10 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
         close = unnormalized_prediction_df['Close'].iloc[-1]
     elif out == 4:
         print(f"[INFO] out is {out}, getting last unnormalized value.")
-        open = unnormalized_prediction_df[unnormalized_prediction_df.index.isin(['Open'])].iloc[-1].values[0]
-        high = unnormalized_prediction_df[unnormalized_prediction_df.index.isin(['High'])].iloc[-1].values[0]
-        low = unnormalized_prediction_df[unnormalized_prediction_df.index.isin(['Low'])].iloc[-1].values[0]
-        close = unnormalized_prediction_df[unnormalized_prediction_df.index.isin(['Close'])].iloc[-1].values[0]
+        open = unnormalized_prediction_df['Open'].iloc[-1]
+        high = unnormalized_prediction_df['High'].iloc[-1]
+        low = unnormalized_prediction_df['Low'].iloc[-1]
+        close = unnormalized_prediction_df['Close'].iloc[-1]
 
     unnormalized_prediction = unnormalized_prediction_df.to_numpy()
 
@@ -645,13 +641,13 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
                                                                      sampler.data['Close'].iloc[-1]]],
                                                                    columns=['Close']), ignore_index=True)
     elif 2 <= out <= 4:
-        print("[INFO] Out is 2/3/4, appending predicted values to df")
+        print(f"[INFO] Out is {out}, appending predicted values to df")
         unnormalized_predict_values = pd.concat(objs=[sampler.data, pd.DataFrame([[open,high,low,close]],
                                                                    columns=['Open','High','Low','Close'])], ignore_index=True)
     del unnormalized_prediction
-    predicted_unnormalized = pd.concat([unnormalized_predict_values])
+    predicted_unnormalized = unnormalized_predict_values
     del unnormalized_predict_values
-    return unnormalized_prediction_df, sampler.unnormalized_data.tail(
+    return unnormalized_prediction_df, sampler.unnormalized_data.transpose().tail(
         1), predicted_unnormalized, sampler.keltner, sampler.fib, sampler.studies
 
 
@@ -661,18 +657,30 @@ Run Specified Model by creating model and running batches/epochs.
 """
 
 
-def run(epochs, batch_size, choice: str = None,interval='1d',ticker=None):
+def run(epochs, batch_size, choice: str = None,interval='1d'):
     neural_net = Network(epochs, batch_size)
     nn = NN_Model(choice)
     nn.load_model(choice, is_training=True )
     if nn.model is None:
         nn.create_model(is_training=True)
-    intervals=['1d','1wk','1mo']
+    intervals=['30m','60m','1d','1wk'] # Eventually create models for different time frames
     # random_interval = random.choice(intervals)
-    model = neural_net.run_model(nn,rand_date=True, interval=interval,ticker=ticker)
-    for i in range(1, neural_net.EPOCHS):
-        train_history = model[i]
-        print(train_history)
+    path = Path(os.getcwd()).absolute()
+    for i in range(0,20): # Run a per-ticker model. Create numerous for better accuracy, as output data is now unnormalized
+        ticker = neural_net.choose_random_ticker(Neural_Framework, csv_file=f'{path}/data/watchlist/default.csv')
+        nn.model_name = f'{nn.model_name}_{ticker}_{interval}' if ticker else f'{nn.model_name}_{interval}'
+        checkpoint_path = f'{nn.path}/data/checkpoints/{nn.model_name}/'
+        try:
+            # Load weights after callback sets new checkpoint :)
+            print("[INFO] Loading weights from fit.")
+            nn.model.load_weights(f'{checkpoint_path}/cp.ckpt')
+        except:
+            print("[INFO] No prior model has been created, thus, no checkpoint to load.")
+            pass
+        model = neural_net.run_model(nn,rand_date=True, interval=interval,ticker=ticker)
+        for i in range(1, neural_net.EPOCHS):
+            train_history = model[i]
+            print(train_history)
 
 
 def copy_logs(path: Path = None, dest_folder: str = ""):
@@ -727,15 +735,15 @@ def main():
     # thread_manager.start_worker(threading.Thread(target=run, args=(128, 32, "new_scaled_2layer")))
     # thread_manager.join_workers()
     # # 13
-    # thread_manager.start_worker(threading.Thread(target=run, args=(128, 32, "new_scaled_2layer_v2")))
-    # thread_manager.join_workers()
+    thread_manager.start_worker(threading.Thread(target=run, args=(128, 32, "new_scaled_2layer_v2")))
+    thread_manager.join_workers()
 
     # run(50,75,'relu_2layer_dropout_l1_l2')
     # copy_logs(path,'relu_2layer_dropout_l1_l2')
-    nn = NN_Model("new_scaled_2layer_v2")
-    nn.load_model("new_scaled_2layer_v2",is_training=False)
-    sampler = Sample('TSLA',True)
-    load(nn,ticker="TSLA", has_actuals=True, name="new_scaled_2layer_v2", force_generation=True,sampler=sampler,rand_date=True)
+    # nn = NN_Model("new_scaled_2layer_v2")
+    # nn.load_model("new_scaled_2layer_v2",is_training=False)
+    # sampler = Sample('TSLA',True)
+    # load(nn,ticker="TSLA", has_actuals=True, name="new_scaled_2layer_v2", force_generation=True,sampler=sampler,rand_date=True)
 
 
 if __name__ == "__main__":

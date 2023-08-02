@@ -22,8 +22,11 @@ class Display:
         self.listLock = threading.Lock()
         self.keltner_display = pd.DataFrame()
         self.fig, self.axes = plt.subplots(2, 2)
-        self.fig.set_size_inches(10.5, 10.5)
-        self.fib_display = pd.DataFrame()
+        self.pixel_width = 960
+        self.pixel_height = 540
+        self.req_dpi = 50
+        self.fig.set_size_inches(self.pixel_width / float(self.req_dpi),
+                               self.pixel_height / float(self.req_dpi))
         self.path = Path(os.getcwd()).absolute()
         self.color_map = {'blue': 'b',
                           'green': 'g',
@@ -43,20 +46,23 @@ class Display:
 
     def display_box(self, data=None, row=0, col=0, has_actuals=False,without_fib=False, only_fib=False,opt_fib_vals=[]):
         self.axes[row,col].clear()
+        self.fig.set_size_inches(self.pixel_width / float(self.req_dpi),
+                               self.pixel_height / float(self.req_dpi))
         c = 'blue'
         if data is None:
             raise Exception('[ERROR] data cannot be None!  Exiting display boxplot...')
         try:
             data_len = len(data.index)
             if has_actuals:
-                if not only_fib:
-                    data = data.iloc[int(data_len / 1.33):].reset_index().astype(np.float_)
-                    data_len = len(data.index)
                 if not without_fib and not only_fib:
                     fib_display = self.fib_display.reset_index()
                     if len(fib_display['0.202']) > data_len:
                         fib_display = fib_display.iloc[-data_len:].reset_index()
                         self.studies = self.studies.iloc[-data_len:].reset_index().astype(np.float_)
+                if not only_fib:
+                    data = data.iloc[int(data_len / 1.33):].reset_index().astype(np.float_)
+                    data_len = len(data.index)
+
             else:
                 if not only_fib:
                     data = data.iloc[int(data_len / 1.33):]
@@ -174,8 +180,9 @@ class Display:
             except Exception as e:
                 print(f'failed to do fib_display: {e}')
                 pass
+        data = data.astype(np.float_).reset_index()
         if has_actuals:
-            bplot = data.transpose().boxplot(ax=self.axes[row, col], patch_artist=True,
+            data.transpose().boxplot(ax=self.axes[row, col], patch_artist=True,
                                      boxprops=dict(facecolor='red' if float(data.iloc[-1]['Close']) < float(
                                          data.iloc[-1]['Open']) else 'green'),
                                      capprops=dict(color='red' if float(data.iloc[-1]['Close']) < float(
@@ -190,7 +197,6 @@ class Display:
                                          data.iloc[-1]['Open']) else 'green'),
                                      autorange=True)
         else:
-            data = data.astype(np.float_)
             data.transpose().boxplot(ax=self.axes[row, col], patch_artist=True,
                                      boxprops=dict(facecolor='red' if float(data.iloc[-1]['Close']) < float(
                                          data.iloc[-1]['Open']) else 'green'),
@@ -232,11 +238,16 @@ class Display:
 
     def display_divergence(self, color=None, has_actuals=False, row=1, col=1):
         self.axes[row,col].clear()
+        self.fig.set_size_inches(self.pixel_width / float(self.req_dpi),
+                               self.pixel_height / float(self.req_dpi))
         data = self.data_predict_display.reset_index()
         data.transpose().plot(ax=self.axes[row, col], kind='line', color=color)
 
     def display_line(self, color='g', row=0, col=1, is_divergence=False, out = 1):
         self.axes[row,col].clear()
+        self.fig.set_size_inches(self.pixel_width / float(self.req_dpi),
+                               self.pixel_height / float(self.req_dpi))
+
         if is_divergence:
             indices_dict = {0: 'Close'}
         else:
@@ -263,28 +274,28 @@ class Display:
                 1: 'Lower Kelt', 2:'Middle Kelt', 3:'EMA 14', 4:'EMA 30',
                 5:'Open', 6:'High', 7:'Low', 8:'Close',
                 9:'Last3High', 10:'Last3Low'}
+            elif out == 4:
+                indices_dict = {0: 'Upper Kelt',
+                                1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
+                                5: 'Open', 6: 'High', 7: 'Low', 8: 'Close', 9: 'Base Fib',
+                                10: 'Next1 Fib', 11: 'Next2 Fib',
+                                12: 'Last3High', 13: 'Last3Low'}
 
         self.data_display2 = pd.concat([self.data_display.reset_index(), self.data_predict_display.reset_index()],
                                        ignore_index=False).set_flags(allows_duplicate_labels=True)
         if out == 1:
-            self.data_display2['index'] = [0, 0]
-            self.data_display2 = self.data_display2.set_index('index')
             self.axes[row,col].set_xticklabels([])
             self.data_display2['Close'].plot(x='Close', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
-        elif 2 <= out <= 3: # display open,high,low,close
-            self.data_display2['index'] = [0, 0]
+        elif 2 <= out <= 4: # display open,high,low,close
             self.data_display2 = self.data_display2.set_index('index')
             self.axes[row,col].set_xticklabels([])
             self.data_display2['Open'].plot(x='Open', y='Open', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
-            self.data_display2['index'] = [1, 1]
             self.data_display2 = self.data_display2.set_index('index')
             self.axes[row,col].set_xticklabels([])
             self.data_display2['High'].plot(x='High', y='High', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
-            self.data_display2['index'] = [2, 2]
             self.data_display2 = self.data_display2.set_index('index')
             self.axes[row,col].set_xticklabels([])
             self.data_display2['Low'].plot(x='Low', y='Low', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
-            self.data_display2['index'] = [3, 3]
             self.data_display2 = self.data_display2.set_index('index')
             self.axes[row,col].set_xticklabels([])
             self.data_display2['Close'].plot(x='Close', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
@@ -328,6 +339,15 @@ class Display:
                             if 5 <= j <= 8:  # Top right
                                 y = round(self.data_display2.iloc[i][j], 2)
                                 self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                    elif out == 4:
+                        if i == 0:
+                            if 5 <= j <= 8:  # Bottom Left
+                                y = round(self.data_display2.iloc[i][j], 2)
+                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
+                        else:
+                            if 5 <= j <= 8:  # Top right
+                                y = round(self.data_display2.iloc[i][j], 2)
+                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
 
                 else:  # divergence
                     if i == 0:
@@ -340,6 +360,9 @@ class Display:
                             self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
 
     def display_predict_only(self, color=None, row=0, col=1, is_divergence=False, out = 2 ):
+        self.axes[row,col].clear()
+        self.fig.set_size_inches(self.pixel_width / float(self.req_dpi),
+                               self.pixel_height / float(self.req_dpi))
         if is_divergence:
             indices_dict = {0: 'Close'}
         else:
@@ -366,15 +389,20 @@ class Display:
                                 1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
                                 5: 'Open', 6: 'High', 7: 'Low', 8: 'Close',
                                 9: 'Last3High', 10: 'Last3Low'}
-
+            elif out == 4:
+                indices_dict = {0: 'Upper Kelt',
+                                1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
+                                5: 'Open', 6: 'High', 7: 'Low', 8: 'Close', 9: 'Base Fib',
+                                10: 'Next1 Fib', 11: 'Next2 Fib',
+                                12: 'Last3High', 13: 'Last3Low'}
         self.data_predict_display2 = self.data_predict_display
         if out == 1:
             self.data_predict_display2['index'] = [0]
             data = self.data_predict_display2.set_index('index')
             self.axes[row,col].set_xticklabels([])
             data['Close'].plot(x='index', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
-        elif 2 <= out <= 3:
-            self.data_predict_display2['index'] = [0]
+        elif 2 <= out <= 4:
+            self.data_predict_display2['index'] = [1]
             data = self.data_predict_display2.set_index('index')
             self.axes[row,col].set_xticklabels([])
             data['Open'].plot(x='index', y='Open', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
@@ -382,11 +410,11 @@ class Display:
             data = self.data_predict_display2.set_index('index')
             self.axes[row,col].set_xticklabels([])
             data['High'].plot(x='index', y='High', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
-            self.data_predict_display2['index'] = [2]
+            self.data_predict_display2['index'] = [1]
             data = self.data_predict_display2.set_index('index')
             self.axes[row,col].set_xticklabels([])
             data['Low'].plot(x='index', y='Low', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
-            self.data_predict_display2['index'] = [3]
+            self.data_predict_display2['index'] = [1]
             data = self.data_predict_display2.set_index('index')
             self.axes[row,col].set_xticklabels([])
             data['Close'].plot(x='index', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
@@ -417,10 +445,11 @@ class Display:
                         if 16 <= j <= 19:
                             y = round(data.iloc[i][j], 2)
                             self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
-                    elif out == 3:
+                    elif 3 <= out <= 4:
                         if 5 <= j <= 8:
                             y = round(data.iloc[i][j], 2)
                             self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+
 
 # dis = Display()
 # dis.read_studies("2021-06-22--2021-08-12","SPY")
