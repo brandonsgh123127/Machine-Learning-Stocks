@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import keras
-
 from V1.data_generator import Sample
 from V1.data_generator._data_generator import Generator
 from pathlib import Path
@@ -84,15 +83,15 @@ class launcher:
                         dis.display_predict_only(color=f'{color}', row=row, col=col, is_divergence=is_divergence)
             else: # Boxplot
                 with self.listLock:
-                    dis.display_box(ldata[2], has_actuals=_has_actuals,opt_fib_vals=opt_fib_vals) # Display with fib
-                    dis.display_box(ldata[2], row=1, col=0, has_actuals=_has_actuals, without_fib=True,opt_fib_vals=opt_fib_vals)#Display without fib
-                    dis.display_box(ldata[2], row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True,opt_fib_vals=opt_fib_vals)#Display only fib
+                    dis.display_box(ldata[2].copy(), has_actuals=_has_actuals,without_fib=False,only_fib=False,opt_fib_vals=opt_fib_vals) # Display with fib
+                    dis.display_box(ldata[2].copy(), row=1, col=0, has_actuals=_has_actuals, without_fib=True,only_fib=False,opt_fib_vals=opt_fib_vals)#Display without fib
+                    dis.display_box(ldata[2].copy(), row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True,opt_fib_vals=opt_fib_vals)#Display only fib
         else:
             if unnormalized_data:
                 with self.listLock:
-                    dis.display_box(ldata[2], has_actuals=_has_actuals) # display with fib
-                    dis.display_box(ldata[2], row=1, col=0, has_actuals=_has_actuals, without_fib=True)#Display without fib
-                    dis.display_box(ldata[2], row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True)#Display only fib
+                    dis.display_box(ldata[2].copy(), has_actuals=_has_actuals,without_fib=False,only_fib=False,opt_fib_vals=opt_fib_vals) # display with fib
+                    dis.display_box(ldata[2].copy(), row=1, col=0, has_actuals=_has_actuals, without_fib=True,only_fib=False)#Display without fib
+                    dis.display_box(ldata[2].copy(), row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True)#Display only fib
             else:
                 with self.listLock:
                     if not is_divergence:
@@ -189,7 +188,8 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY",
     data = data[0]
 
     # Clear out specific axis, as there are multiple models outputted to the axis
-    dis.axes[0,1].clear()
+    # dis.axes[0,1].clear()
+    dis.clear_subplots()
 
     # BOX PLOT CALL
     box_plot_task = await loop.run_in_executor(launch._executor,launch.display_model,nn_dict["new_scaled_2layer"],"new_scaled_2layer", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,

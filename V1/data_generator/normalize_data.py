@@ -682,9 +682,9 @@ class Normalizer():
         Unnormalize data
     '''
 
-    def unnormalize(self, data, out: int = 1):
+    def unnormalize(self, data, out: int = 1, has_actuals= False):
         if 2 <= out <= 4:
-            trainPredict_dataset_like = np.zeros(shape=(14, 5) )
+            trainPredict_dataset_like = np.zeros(shape=(14, 6 if has_actuals else 5) )
             # print(trainPredict_dataset_like.iloc[5, -1])
             trainPredict_dataset_like[5, -1] = data.iloc[0, 0] # Open
             trainPredict_dataset_like[6, -1] = data.iloc[1, 0] # High

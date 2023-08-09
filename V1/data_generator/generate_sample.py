@@ -104,8 +104,8 @@ class Sample(Normalizer):
         self.cnx.close()
         return 0
 
-    def unnormalize(self, data, out: int = 1):
-        return super().unnormalize(data, out)
+    def unnormalize(self, data, out: int = 1, has_actuals = False):
+        return super().unnormalize(data, out, has_actuals)
 
     '''
      Getters/Setters

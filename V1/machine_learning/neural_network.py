@@ -615,7 +615,7 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
     try:
         print("[INFO] Attempting to unnormalize data.")
         predicted = predicted.transpose() # out 4 - transpose back to how data was passed into model
-        unnormalized_prediction_df = sampler.unnormalize(predicted,out=out).transpose()
+        unnormalized_prediction_df = sampler.unnormalize(predicted,out=out,has_actuals=has_actuals).transpose()
     except Exception as e:
         print(f"[ERROR] Failed to unnormalize data!\r\nException: {e}")
         raise Exception(e)
@@ -642,7 +642,10 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
                                                                    columns=['Close']), ignore_index=True)
     elif 2 <= out <= 4:
         print(f"[INFO] Out is {out}, appending predicted values to df")
-        unnormalized_predict_values = pd.concat(objs=[sampler.data, pd.DataFrame([[open,high,low,close]],
+        if has_actuals:
+            unnormalized_predict_values = sampler.data
+        else:
+            unnormalized_predict_values = pd.concat(objs=[sampler.data, pd.DataFrame([[open,high,low,close]],
                                                                    columns=['Open','High','Low','Close'])], ignore_index=True)
     del unnormalized_prediction
     predicted_unnormalized = unnormalized_predict_values
