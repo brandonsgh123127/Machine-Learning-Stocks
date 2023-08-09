@@ -94,14 +94,15 @@ class Network(Neural_Framework):
                         train.append(reshape(self.sampler.normalized_data.iloc[:,:-1].to_numpy(), (55, 1)))
                     elif 12 <= nn.model_choice <= 15: # 5 days * 14
                         train.append(reshape(self.sampler.normalized_data.iloc[:,:-1].to_numpy(), (14, 5)))
-                    tmp = self.sampler.unnormalized_data.iloc[:,-1:]
+                    # Get percentage for last column instead of direct value :)
+                    tmp = ((self.sampler.unnormalized_data.iloc[:,-2]-self.sampler.unnormalized_data.iloc[:,-1])/self.sampler.unnormalized_data.iloc[:,-1]) * 100
                     print("[INFO] Adding normalized target data to training data.")
                     if out == 1:
                         tmp = pd.concat([pd.DataFrame([tmp['Close'].to_numpy()])])
                         train_targets.append(reshape(tmp.to_numpy(), (1, 1)))
                     elif 2 <= out <= 4:
-                        tmp = pd.concat([pd.DataFrame([tmp[tmp.index.isin(['Open'])].iloc[0].values[0],tmp[tmp.index.isin(['High'])].iloc[0].values[0],
-                                                       tmp[tmp.index.isin(['Low'])].iloc[0].values[0], tmp[tmp.index.isin(['Close'])].iloc[0].values[0]])])
+                        tmp = pd.concat([pd.DataFrame([tmp[tmp.index.isin(['Open'])].iloc[0],tmp[tmp.index.isin(['High'])].iloc[0],
+                                                       tmp[tmp.index.isin(['Low'])].iloc[0], tmp[tmp.index.isin(['Close'])].iloc[0]])])
                         train_targets.append(reshape(tmp.to_numpy(), (4, 1)))
                 except Exception as e:
                     print(f'[ERROR] Failed to set training data for {self.sampler.ticker}!\r\nException: {e}\r\n',
@@ -613,9 +614,12 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
                 pass
         cnx.close()
     try:
-        print("[INFO] Attempting to unnormalize data.")
+        print("[INFO] Attempting to convert output to numbers.")
         predicted = predicted.transpose() # out 4 - transpose back to how data was passed into model
-        unnormalized_prediction_df = sampler.unnormalize(predicted,out=out,has_actuals=has_actuals).transpose()
+        # Inverse algorithm for getting values out of percentage points
+        unnormalized_prediction_df = ((predicted / 100) * sampler.unnormalized_data.iloc[:, -1]) + sampler.unnormalized_data.iloc[:,
+                                                             -1]
+        # unnormalized_prediction_df = sampler.unnormalize(predicted,out=out).transpose()
     except Exception as e:
         print(f"[ERROR] Failed to unnormalize data!\r\nException: {e}")
         raise Exception(e)
@@ -663,27 +667,24 @@ Run Specified Model by creating model and running batches/epochs.
 def run(epochs, batch_size, choice: str = None,interval='1d'):
     neural_net = Network(epochs, batch_size)
     nn = NN_Model(choice)
-    nn.load_model(choice, is_training=True )
+    nn.load_model(choice, is_training=True)
     if nn.model is None:
         nn.create_model(is_training=True)
     intervals=['30m','60m','1d','1wk'] # Eventually create models for different time frames
     # random_interval = random.choice(intervals)
-    path = Path(os.getcwd()).absolute()
-    for i in range(0,20): # Run a per-ticker model. Create numerous for better accuracy, as output data is now unnormalized
-        ticker = neural_net.choose_random_ticker(Neural_Framework, csv_file=f'{path}/data/watchlist/default.csv')
-        nn.model_name = f'{nn.model_name}_{ticker}_{interval}' if ticker else f'{nn.model_name}_{interval}'
-        checkpoint_path = f'{nn.path}/data/checkpoints/{nn.model_name}/'
-        try:
-            # Load weights after callback sets new checkpoint :)
-            print("[INFO] Loading weights from fit.")
-            nn.model.load_weights(f'{checkpoint_path}/cp.ckpt')
-        except:
-            print("[INFO] No prior model has been created, thus, no checkpoint to load.")
-            pass
-        model = neural_net.run_model(nn,rand_date=True, interval=interval,ticker=ticker)
-        for i in range(1, neural_net.EPOCHS):
-            train_history = model[i]
-            print(train_history)
+    # path = Path(os.getcwd()).absolute()
+    checkpoint_path = f'{nn.path}/data/checkpoints/{nn.model_name}/'
+    try:
+        # Load weights after callback sets new checkpoint :)
+        print("[INFO] Loading weights from fit.")
+        nn.model.load_weights(f'{checkpoint_path}/cp.ckpt')
+    except:
+        print("[INFO] No prior model has been created, thus, no checkpoint to load.")
+        pass
+    model = neural_net.run_model(nn,rand_date=True, interval=interval,ticker=None)
+    for i in range(1, neural_net.EPOCHS):
+        train_history = model[i]
+        print(train_history)
 
 
 def copy_logs(path: Path = None, dest_folder: str = ""):
@@ -735,10 +736,10 @@ def main():
 
     # # OUT 4
     # # 12
-    # thread_manager.start_worker(threading.Thread(target=run, args=(128, 32, "new_scaled_2layer")))
-    # thread_manager.join_workers()
+    thread_manager.start_worker(threading.Thread(target=run, args=(64, 32, "new_scaled_2layer")))
+    thread_manager.join_workers()
     # # 13
-    thread_manager.start_worker(threading.Thread(target=run, args=(128, 32, "new_scaled_2layer_v2")))
+    thread_manager.start_worker(threading.Thread(target=run, args=(64, 32, "new_scaled_2layer_v2")))
     thread_manager.join_workers()
 
     # run(50,75,'relu_2layer_dropout_l1_l2')

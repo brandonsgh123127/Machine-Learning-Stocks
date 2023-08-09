@@ -557,28 +557,28 @@ class Normalizer():
             for index, row in data.iterrows():
                 try:
                     if index <= 1:
-                        last_3_high = data['High'].iloc[index]
-                        last_3_low = data['Low'].iloc[index]
+                        last_3_high = round(data['High'].iloc[index],2)
+                        last_3_low = round(data['Low'].iloc[index],2)
                     elif index < 3: # If not sufficient amount of days surpassed, do this
-                        last_3_high = data['High'].iloc[:index].mean()
-                        last_3_low = data['Low'].iloc[:index].mean()
+                        last_3_high = round(data['High'].iloc[:index].mean(),2)
+                        last_3_low = round(data['Low'].iloc[:index].mean(),2)
                     else:
-                        last_3_high = data['High'].iloc[index-3:index].mean()
-                        last_3_low = data['Low'].iloc[index-3:index].mean()
-                    self.normalized_data.loc[index, "Upper Kelt"] = self.keltner.at[index, "upper"]
-                    self.normalized_data.loc[index, "Lower Kelt"] = self.keltner.at[index, "lower"]
-                    self.normalized_data.loc[index, "Middle Kelt"] = self.keltner.at[index, "middle"]
-                    self.normalized_data.loc[index, "EMA 14"] = self.studies.at[index, 'ema14']
-                    self.normalized_data.loc[index, "EMA 30"] = self.studies.at[index, 'ema30']
-                    self.normalized_data.loc[index, "Base Fib"] = data.at[index, "Close"] - base_fib1
-                    self.normalized_data.loc[index, "Next1 Fib"] = data.at[index, "Close"] - next1_fib
-                    self.normalized_data.loc[index, "Next2 Fib"] = data.at[index, "Close"] -next2_fib
-                    self.normalized_data.loc[index, "Open"] = data.at[index, "Open"]
-                    self.normalized_data.loc[index, "High"] = data.at[index, "High"]
-                    self.normalized_data.loc[index, "Low"] = data.at[index, "Low"]
-                    self.normalized_data.loc[index, "Close"] = data.at[index, "Close"]
-                    self.normalized_data.loc[index, "Last3High"] = last_3_high
-                    self.normalized_data.loc[index, "Last3Low"] = last_3_low
+                        last_3_high = round(data['High'].iloc[index-3:index].mean(),2)
+                        last_3_low = round(data['Low'].iloc[index-3:index].mean(),2)
+                    self.normalized_data.loc[index, "Upper Kelt"] = round(self.keltner.at[index, "upper"],2)
+                    self.normalized_data.loc[index, "Lower Kelt"] = round(self.keltner.at[index, "lower"],2)
+                    self.normalized_data.loc[index, "Middle Kelt"] = round(self.keltner.at[index, "middle"],2)
+                    self.normalized_data.loc[index, "EMA 14"] = round(self.studies.at[index, 'ema14'],2)
+                    self.normalized_data.loc[index, "EMA 30"] = round(self.studies.at[index, 'ema30'],2)
+                    self.normalized_data.loc[index, "Base Fib"] = round(base_fib1,2)
+                    self.normalized_data.loc[index, "Next1 Fib"] = round(next1_fib,2)
+                    self.normalized_data.loc[index, "Next2 Fib"] = round(next2_fib,2)
+                    self.normalized_data.loc[index, "Open"] = round(data.at[index, "Open"],2)
+                    self.normalized_data.loc[index, "High"] = round(data.at[index, "High"],2)
+                    self.normalized_data.loc[index, "Low"] = round(data.at[index, "Low"],2)
+                    self.normalized_data.loc[index, "Close"] = round(data.at[index, "Close"],2)
+                    self.normalized_data.loc[index, "Last3High"] = round(last_3_high,2)
+                    self.normalized_data.loc[index, "Last3Low"] = round(last_3_low,2)
                     #print(self.normalized_data)
                 except Exception as e:
                     print(f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\r\nException: {e}')
