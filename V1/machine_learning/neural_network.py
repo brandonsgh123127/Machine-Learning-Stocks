@@ -95,14 +95,14 @@ class Network(Neural_Framework):
                     elif 12 <= nn.model_choice <= 15: # 5 days * 14
                         train.append(reshape(self.sampler.normalized_data.iloc[:,:-1].to_numpy(), (14, 5)))
                     # Get percentage for last column instead of direct value :)
-                    tmp = ((self.sampler.unnormalized_data.iloc[:,-2]-self.sampler.unnormalized_data.iloc[:,-1])/self.sampler.unnormalized_data.iloc[:,-1]) * 100
+                    tmp = ((self.sampler.unnormalized_data.iloc[:,-1]-self.sampler.unnormalized_data.iloc[:,-2])/self.sampler.unnormalized_data.iloc[:,-2]) * 100
                     print("[INFO] Adding normalized target data to training data.")
                     if out == 1:
                         tmp = pd.concat([pd.DataFrame([tmp['Close'].to_numpy()])])
                         train_targets.append(reshape(tmp.to_numpy(), (1, 1)))
                     elif 2 <= out <= 4:
-                        tmp = pd.concat([pd.DataFrame([tmp[tmp.index.isin(['Open'])].iloc[0],tmp[tmp.index.isin(['High'])].iloc[0],
-                                                       tmp[tmp.index.isin(['Low'])].iloc[0], tmp[tmp.index.isin(['Close'])].iloc[0]])])
+                        tmp = pd.concat([pd.DataFrame([tmp[tmp.index.isin(['Open'])].iloc[-1],tmp[tmp.index.isin(['High'])].iloc[-1],
+                                                       tmp[tmp.index.isin(['Low'])].iloc[-1], tmp[tmp.index.isin(['Close'])].iloc[-1]])])
                         train_targets.append(reshape(tmp.to_numpy(), (4, 1)))
                 except Exception as e:
                     print(f'[ERROR] Failed to set training data for {self.sampler.ticker}!\r\nException: {e}\r\n',
@@ -123,7 +123,7 @@ class Network(Neural_Framework):
             train_targets = asarray(train_targets).astype(float_)
             # Profile a range of batches, e.g. from 2 to 5.
             tensorboard_callback = callbacks.TensorBoard(
-                log_dir=f'./logs/{nn.model_name}', profile_batch=(2, 5))
+                log_dir=f'./logs/{nn.model_name}', profile_batch=(10, 20))
             # Use fit for generating with ease.  Validation data included for analysis of loss
             x=stack(train)
             y=stack(train_targets)
@@ -617,8 +617,8 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
         print("[INFO] Attempting to convert output to numbers.")
         predicted = predicted.transpose() # out 4 - transpose back to how data was passed into model
         # Inverse algorithm for getting values out of percentage points
-        unnormalized_prediction_df = ((predicted / 100) * sampler.unnormalized_data.iloc[:, -1]) + sampler.unnormalized_data.iloc[:,
-                                                             -1]
+        unnormalized_prediction_df = pd.DataFrame([((predicted.iloc[:,-1] / 100) * sampler.unnormalized_data.iloc[:, -1]) + sampler.unnormalized_data.iloc[:,
+                                                             -1]],columns=sampler.normalized_data.index.tolist())
         # unnormalized_prediction_df = sampler.unnormalize(predicted,out=out).transpose()
     except Exception as e:
         print(f"[ERROR] Failed to unnormalize data!\r\nException: {e}")

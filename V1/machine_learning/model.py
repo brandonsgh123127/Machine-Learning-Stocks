@@ -19,21 +19,21 @@ class NN_Model(ABC):
         self.path = Path(os.getcwd()).absolute()
         self.model_map_names = {
             "relu_multilayer_l2": 1,
-                                "relu_2layer_0regularization": 2,
-                                "relu_2layer_l1l2": 3,
-                                "relu_1layer_l2": 4,
-                                "new_multi_analysis_l2": 5,
-                                "new_multi_analysis_2layer_0regularization": 6,
-                                "new_scaled_l2": 7,
-                                "new_scaled_l2_60m": 7,
-                                "new_scaled_l2_5m": 7,
-                                "new_scaled_2layer_0regularization": 8,
-                                "scaled_2layer": 9,
-                                "test_2layer": 10,
-                                "SPY_relu_multilayer_l2": 11,
-                                "new_scaled_2layer": 12,
-                                "new_scaled_2layer_v2": 13,
-                                }
+            "relu_2layer_0regularization": 2,
+            "relu_2layer_l1l2": 3,
+            "relu_1layer_l2": 4,
+            "new_multi_analysis_l2": 5,
+            "new_multi_analysis_2layer_0regularization": 6,
+            "new_scaled_l2": 7,
+            "new_scaled_l2_60m": 7,
+            "new_scaled_l2_5m": 7,
+            "new_scaled_2layer_0regularization": 8,
+            "scaled_2layer": 9,
+            "test_2layer": 10,
+            "SPY_relu_multilayer_l2": 11,
+            "new_scaled_2layer": 12,
+            "new_scaled_2layer_v2": 13,
+        }
         self.model_name = choice
         self.model_choice: str = self.get_mapping(choice)
         self.model = None
@@ -69,38 +69,39 @@ class NN_Model(ABC):
        """
         if 0 < self.model_choice <= 4 or self.model_choice == 11:
             if self.model_choice == 1:
-                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input, is_training)
                 nn = layers.Dense(64, activation=layers.LeakyReLU(alpha=0.3))(nn)
                 nn2 = layers.Dense(1, activation='linear', activity_regularizer=regularizers.l2(0.01))(
                     nn)
-                nn2 = layers.Dense(1, activation='linear',)(
+                nn2 = layers.Dense(1, activation='linear', )(
                     nn)
 
             elif self.model_choice == 2:
-                nn = layers.Dense(64, activation=layers.LeakyReLU(alpha=0.3),activity_regularizer=regularizers.l1(0.02))(nn_input)
-                nn = custom_layers.TrainableDropout(0.5).call(nn,is_training)
+                nn = layers.Dense(64, activation=layers.LeakyReLU(alpha=0.3),
+                                  activity_regularizer=regularizers.l1(0.02))(nn_input)
+                nn = custom_layers.TrainableDropout(0.5).call(nn, is_training)
                 nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.2))(nn)
                 nn2 = layers.Dense(1, activation='linear', activity_regularizer=regularizers.l2(0.01))(
                     nn)
-                nn2 = layers.Dense(1, activation='linear',)(
+                nn2 = layers.Dense(1, activation='linear', )(
                     nn)
             elif self.model_choice == 3:
-                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input, is_training)
                 nn = layers.Dense(48, activation=layers.LeakyReLU(alpha=0.2))(nn)
-                nn = custom_layers.TrainableDropout(0.25).call(nn,is_training)
+                nn = custom_layers.TrainableDropout(0.25).call(nn, is_training)
                 nn = layers.Dense(12, activation=layers.LeakyReLU(alpha=0.2),
                                   kernel_regularizer=regularizers.l1_l2(0.02, 0.005))(nn)
                 nn2 = layers.Dense(1, activation='linear')(nn)
 
             elif self.model_choice == 4:
-                nn = custom_layers.TrainableDropout(0.25).call(nn_input,is_training)
+                nn = custom_layers.TrainableDropout(0.25).call(nn_input, is_training)
                 nn = layers.Dense(64, activation=layers.LeakyReLU(alpha=0.3))(nn)
                 nn2 = layers.Dense(1, activation='linear')(nn)
             elif self.model_choice == 11:
                 nn = layers.Dense(126, activation=layers.LeakyReLU(alpha=0.3),
                                   )(
                     nn_input)
-                nn = custom_layers.TrainableDropout(0.5).call(nn,is_training)
+                nn = custom_layers.TrainableDropout(0.5).call(nn, is_training)
                 nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.3),
                                   activity_regularizer=regularizers.l2(0.01))(nn)
                 nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.3),
@@ -109,8 +110,9 @@ class NN_Model(ABC):
                     nn)
 
             nn = Model(inputs=nn_input, outputs=[nn2])
-            nn.compile(optimizer=optimizers.Adam(learning_rate=0.01, beta_1=0.90, beta_2=0.997), loss='mean_squared_error',
-                           metrics=['MeanSquaredError'])
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.01, beta_1=0.90, beta_2=0.997),
+                       loss='mean_squared_error',
+                       metrics=['MeanSquaredError'])
 
         elif 5 <= self.model_choice <= 6:
             """
@@ -157,15 +159,17 @@ class NN_Model(ABC):
                     nn)
 
             elif self.model_choice == 6:
-                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
-                nn = layers.Dense(64, activation=layers.LeakyReLU(alpha=0.2),activity_regularizer=regularizers.l1(0.005))(
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input, is_training)
+                nn = layers.Dense(64, activation=layers.LeakyReLU(alpha=0.2),
+                                  activity_regularizer=regularizers.l1(0.005))(
                     nn)
-                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input, is_training)
                 nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.2))(nn)
                 nn2 = layers.Dense(4, activation='linear')(
                     nn)
             nn = Model(inputs=nn_input, outputs=[nn2])
-            nn.compile(optimizer=optimizers.Adam(learning_rate=0.001, beta_1=0.90, beta_2=0.998), loss='mean_squared_error',
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.001, beta_1=0.90, beta_2=0.998),
+                       loss='mean_squared_error',
                        metrics=['MeanSquaredError'])
         elif 7 <= self.model_choice <= 11:
             """
@@ -192,23 +196,24 @@ class NN_Model(ABC):
                 nn = layers.Dense(8, activation=layers.LeakyReLU(alpha=0.35))(nn)
 
             elif self.model_choice == 8:
-                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input, is_training)
                 nn = layers.Dense(32, activation=layers.LeakyReLU(alpha=0.2))(
                     nn)
             elif self.model_choice == 9:
-                nn = layers.Dense(32, activation=layers.LeakyReLU(alpha=0.2),bias_initializer=HeUniform(seed=None))(
+                nn = layers.Dense(32, activation=layers.LeakyReLU(alpha=0.2), bias_initializer=HeUniform(seed=None))(
                     nn_input)
-                nn = custom_layers.TrainableDropout(0.5).call(nn,is_training)
+                nn = custom_layers.TrainableDropout(0.5).call(nn, is_training)
                 nn = layers.Dense(24, activation=layers.LeakyReLU(alpha=0.2))(nn)
             elif self.model_choice == 10:
-                nn = custom_layers.TrainableDropout(0.25).call(nn_input,is_training)
+                nn = custom_layers.TrainableDropout(0.25).call(nn_input, is_training)
                 nn = layers.Dense(16, activation=layers.LeakyReLU(alpha=0.4))(
                     nn)
-                nn = custom_layers.TrainableDropout(0.5).call(nn_input,is_training)
-                nn = layers.Dense(16, activation=layers.LeakyReLU(alpha=0.4))(nn) # change back to 12 for orig model
+                nn = custom_layers.TrainableDropout(0.5).call(nn_input, is_training)
+                nn = layers.Dense(16, activation=layers.LeakyReLU(alpha=0.4))(nn)  # change back to 12 for orig model
             nn2 = layers.Dense(4, activation='linear')(nn)
             nn = Model(inputs=nn_input, outputs=[nn2])
-            nn.compile(optimizer=optimizers.Adam(learning_rate=0.003, beta_1=0.95, beta_2=0.998), loss='mean_squared_error',
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.003, beta_1=0.95, beta_2=0.998),
+                       loss='mean_squared_error',
                        metrics=['MeanSquaredError'])
         elif 12 <= self.model_choice <= 15:
             """
@@ -233,10 +238,10 @@ class NN_Model(ABC):
             """
             if self.model_choice == 12:
                 # nn = custom_layers.TrainableDropout(0.2).call(nn_input, is_training)
-                nn = layers.LSTM(64,input_shape=(5,14),return_sequences=True)(
+                nn = layers.LSTM(64, input_shape=(5, 14), return_sequences=True)(
                     nn_input)
                 # nn = custom_layers.TrainableDropout(0.25).call(nn, is_training)
-                nn = layers.LSTM(8,input_shape=(64,1,1))(
+                nn = layers.LSTM(8, input_shape=(64, 1, 1))(
                     nn)
                 # nn = layers.Dense(8, activation=layers.LeakyReLU(alpha=0.3))(nn_input)
             # if self.model_choice == 12:
@@ -247,22 +252,30 @@ class NN_Model(ABC):
             #         nn)
             #     nn = layers.Dense(8, activation=layers.LeakyReLU(alpha=0.2))(nn)
             elif self.model_choice == 13:
-                nn = layers.LSTM(48,input_shape=(5,14),return_sequences=True)(
+                nn = layers.LSTM(48, input_shape=(5, 14), return_sequences=True)(
                     nn_input)
-                nn = layers.LSTM(6,input_shape=(48,1,1))(
+                nn = layers.LSTM(6, input_shape=(48, 1, 1))(
                     nn)
             nn2 = layers.Dense(4, activation='linear')(nn)
             nn = Model(inputs=nn_input, outputs=[nn2])
-            nn.compile(optimizer=optimizers.Adam(learning_rate=0.003, beta_1=0.9, beta_2=0.998), loss='mean_squared_error',
-                       metrics=['MeanSquaredError'])
+            loss_weights = [3.0,
+                            1.0,
+                            1.0,
+                            5.0]
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.003, beta_1=0.9, beta_2=0.998),
+                       loss="mse",
+                       metrics=['MeanSquaredError'],
+                       loss_weights=loss_weights)
 
             # Convert to a model
         self.model = nn
         return nn
+
     """
     Initialize keras modelcheckpoint, used for saving weights
     """
-    def model_checkpoint_callback(self,ck_path: str):
+
+    def model_checkpoint_callback(self, ck_path: str):
         self.cp_callback = callbacks.ModelCheckpoint(
             filepath=f'{ck_path}/cp.ckpt',
             save_weights_only=True,
@@ -270,6 +283,7 @@ class NN_Model(ABC):
             monitor='mean_squared_error',
             mode='auto',
             save_best_only=True)
+
     def save_model(self):
         # Ensure model is saved without training phase set
         # k.set_learning_phase(0)
@@ -277,7 +291,6 @@ class NN_Model(ABC):
         self.model.save(f'{self.path}/data/{self.model_name}')
         # Resume training phase after saving
         # k.set_learning_phase(1)
-
 
     def choose_random_ticker(self, csv_file: str):
         with open(csv_file) as f:
