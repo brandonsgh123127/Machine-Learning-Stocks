@@ -81,32 +81,20 @@ class Display:
             data_len = len(data.index)
             studies = self.studies.copy()
             keltner_display = self.keltner_display.copy()
-            if has_actuals:
-                fib_display = self.fib_display
-                if not without_fib and not only_fib: # Normal - when fib/studies are active
-                    data = data.iloc[-int(data_len / 1.66):].reset_index().astype(np.float_)
-                    data_len = len(data.index)
-                    fib_display = fib_display.iloc[-data_len:].reset_index()
-                    studies = studies.iloc[-data_len:].reset_index().astype(np.float_)
-                    keltner_display = keltner_display.iloc[-data_len:].reset_index().astype(np.float_)
-                elif not only_fib: # When only studies,no fib
-                    data = data.iloc[-8:].reset_index().astype(np.float_)
-                    data_len = len(data.index)
-                    fib_display = fib_display.iloc[-data_len:].reset_index()
-                    studies = studies.iloc[-data_len:].reset_index().astype(np.float_)
-                    keltner_display = keltner_display.iloc[-data_len:].reset_index().astype(np.float_)
-            else:
-                if not only_fib:
-                    data = data.iloc[int(data_len / 1.33):]
-                    data_len = len(data.index)
-
-                if not without_fib and not only_fib:
-                    fib_display = self.fib_display.reset_index()
-                    if len(fib_display['0.202']) > data_len:
-                        fib_display = fib_display.iloc[-data_len-1:].reset_index()
-                        self.studies = studies.iloc[-data_len:].reset_index().astype(np.float_)
-            # if only_fib, expand the data so it covers the length of the elongated data
-            if only_fib:
+            fib_display = self.fib_display
+            if not without_fib and not only_fib: # Normal - when fib/studies are active
+                data = data.iloc[-int(data_len / 1.66):].reset_index().astype(np.float_)
+                data_len = len(data.index)
+                fib_display = fib_display.iloc[-data_len:].reset_index()
+                studies = studies.iloc[-data_len:].reset_index().astype(np.float_)
+                keltner_display = keltner_display.iloc[-data_len:].reset_index().astype(np.float_)
+            elif not only_fib: # When only studies,no fib
+                data = data.iloc[-8:].reset_index().astype(np.float_)
+                data_len = len(data.index)
+                fib_display = fib_display.iloc[-data_len:].reset_index()
+                studies = studies.iloc[-data_len:].reset_index().astype(np.float_)
+                keltner_display = keltner_display.iloc[-data_len:].reset_index().astype(np.float_)
+            elif only_fib:
                 fib_display = self.fib_display.loc[
                     self.fib_display.index.repeat(int(data_len/len(self.fib_display['0.202']))+1)]
                 fib_display = self.fib_display.reset_index().astype(np.float_)
@@ -223,10 +211,10 @@ class Display:
         plt.bar(down.index, down.Low - down.Close, width2, bottom=down.Close, color=col2)
         # if (row == 0 and col == 0) or (row == 2 and col == 2):
         #     self.axes[row, col].margins(x=0, y=0)
-        color_identifiers = queue.Queue()
-        for i,d in data.iterrows():
-            color_identifiers.put('red' if float(data.iloc[i]['Close']) < float(
-                                         data.iloc[i]['Open']) else 'green')
+        # color_identifiers = queue.Queue()
+        # for i,d in data.iterrows():
+        #     color_identifiers.put('red' if float(data.iloc[i]['Close']) < float(
+        #                                  data.iloc[i]['Open']) else 'green')
 
         # if not without_fib and not only_fib:
         #     keltner_display = keltner_display.iloc[-len(data.index)-1:].reset_index().astype(np.float_)
