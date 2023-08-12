@@ -51,7 +51,9 @@ class NN_Model(ABC):
         elif 7 <= self.model_choice <= 11:
             nn_input = Input(shape=(1, 55))  # 5 * 11 cols
         elif 12 <= self.model_choice <= 15:
-            nn_input = Input(shape=(14, 5))  # 5 * 14 cols
+            # (BATCH_SIZE.TIMESTEP,FEATURES)
+            # (32, 5, 14)
+            nn_input = Input(shape=(5, 14))  # 5 * 14 cols
         """
          These are legacy models... Takes in 14 days worth of data, then attempts to create a model to predict 1 datapoint outwards
         Model Struct:
@@ -238,12 +240,9 @@ class NN_Model(ABC):
             """
             if self.model_choice == 12:
                 # nn = custom_layers.TrainableDropout(0.2).call(nn_input, is_training)
-                nn = layers.LSTM(64, input_shape=(5, 14), return_sequences=True)(
+                nn = layers.LSTM(256, input_shape=(20, 5, 14), activation="relu")(
                     nn_input)
                 # nn = custom_layers.TrainableDropout(0.25).call(nn, is_training)
-                nn = layers.LSTM(8, input_shape=(64, 1, 1))(
-                    nn)
-                # nn = layers.Dense(8, activation=layers.LeakyReLU(alpha=0.3))(nn_input)
             # if self.model_choice == 12:
             #     # ORIGINAL 67 percent accuracy model
             #     # To test, need to revert normalization for out == 4
@@ -252,20 +251,21 @@ class NN_Model(ABC):
             #         nn)
             #     nn = layers.Dense(8, activation=layers.LeakyReLU(alpha=0.2))(nn)
             elif self.model_choice == 13:
-                nn = layers.LSTM(48, input_shape=(5, 14), return_sequences=True)(
+                nn = layers.LSTM(128, input_shape=(20, 5, 14), return_sequences=True)(
                     nn_input)
-                nn = layers.LSTM(6, input_shape=(48, 1, 1))(
+                nn = layers.LSTM(96, input_shape=(128, 1, 1))(
                     nn)
             nn2 = layers.Dense(4, activation='linear')(nn)
             nn = Model(inputs=nn_input, outputs=[nn2])
-            loss_weights = [3.0,
-                            1.0,
-                            1.0,
-                            5.0]
+            # loss_weights = [3.0,
+            #                 1.0,
+            #                 1.0,
+            #                 5.0]
             nn.compile(optimizer=optimizers.Adam(learning_rate=0.003, beta_1=0.9, beta_2=0.998),
                        loss="mse",
                        metrics=['MeanSquaredError'],
-                       loss_weights=loss_weights)
+                       # loss_weights=loss_weights
+                       )
 
             # Convert to a model
         self.model = nn

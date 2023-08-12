@@ -1,9 +1,12 @@
+import random
+
 from V1.data_generator.normalize_data import Normalizer
 import pandas as pd
 import os
 from pathlib import Path
 import sys
 import asyncio
+
 '''
 This class will retrieve any file given, and take a sample of data, and retrieve only a static subset for prediction analysis
 '''
@@ -17,7 +20,7 @@ class Sample(Normalizer):
         self.path = Path(os.getcwd()).absolute()
 
     def generate_sample(self, out=1, _has_actuals=False, rand_date=False, is_divergence=False, skip_db=False,
-                        interval='1d',opt_fib_vals=[]):
+                        interval='1d', opt_fib_vals=[]):
         self.cnx = self.db_con.cursor(buffered=True)
         if not _has_actuals:
             # print("Predict Mode")
@@ -31,7 +34,8 @@ class Sample(Normalizer):
             print(f"[INFO] Generating ticker data for {self.ticker}.")
             # Read the current ticker data
             try:
-                self.read_data(self.ticker, rand_dates=rand_date, out=out,skip_db=skip_db, interval=interval,opt_fib_vals=opt_fib_vals)
+                self.read_data(self.ticker, rand_dates=rand_date, out=out, skip_db=skip_db, interval=interval,
+                               opt_fib_vals=opt_fib_vals)
             except Exception as e:
                 raise Exception(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {e}')
         # Iterate through dataframe and retrieve random sample
@@ -44,7 +48,7 @@ class Sample(Normalizer):
             self.cnx.close()
             raise Exception(e)
         # Minimum amount of days sampled in df
-        self.normalized_data = self.normalized_data.iloc[:,-self.DAYS_SAMPLED:]
+        self.normalized_data = self.normalized_data.iloc[:, -self.DAYS_SAMPLED:]
         # Attempt normalization of data
         try:
             print("[INFO] Attempting to normalize data.")
@@ -55,8 +59,10 @@ class Sample(Normalizer):
         # Attempt to reload data if not enough days are loaded...
         try:
             if len(self.normalized_data) < self.DAYS_SAMPLED:
-                print(f'[INFO] Re-Fetching data since the len of data is {len(self.normalized_data)}, which is  < {self.DAYS_SAMPLED}')
-                self.read_data(self.ticker, rand_dates=rand_date,out=out,opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
+                print(
+                    f'[INFO] Re-Fetching data since the len of data is {len(self.normalized_data)}, which is  < {self.DAYS_SAMPLED}')
+                self.read_data(self.ticker, rand_dates=rand_date, out=out,
+                               opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
                 self.convert_derivatives(out=out)
                 self.normalize(out=out)
         except Exception as e:
@@ -75,7 +81,7 @@ class Sample(Normalizer):
         #     raise Exception(e)
         self.cnx.close()
 
-    def generate_divergence_sample(self, _has_actuals=False, rand_date=False,opt_fib_vals=[]):
+    def generate_divergence_sample(self, _has_actuals=False, rand_date=False, opt_fib_vals=[]):
         self.cnx = self.db_con.cursor(buffered=True)
 
         if not _has_actuals:
@@ -87,7 +93,8 @@ class Sample(Normalizer):
         else:
             # Read the current ticker data
             try:
-                self.read_data(self.ticker, rand_dates=rand_date,opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
+                self.read_data(self.ticker, rand_dates=rand_date,
+                               opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
             except Exception as e:
                 # print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {str(e)}')
                 raise Exception(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {str(e)}')
@@ -99,12 +106,12 @@ class Sample(Normalizer):
         if rc == 1:
             raise Exception("Normalize did not return exit code 1")
         if len(self.normalized_data) < self.DAYS_SAMPLED:
-            self.read_data(self.to_date, self.ticker,opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
+            self.read_data(self.to_date, self.ticker, opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
             self.convert_derivatives()
         self.cnx.close()
         return 0
 
-    def unnormalize(self, data, out: int = 1, has_actuals = False):
+    def unnormalize(self, data, out: int = 1, has_actuals=False):
         return super().unnormalize(data, out, has_actuals)
 
     '''
@@ -122,8 +129,9 @@ class Sample(Normalizer):
         self.studies = studies
         self.fib = fib
         self.keltner = keltner
+
     def reset_data(self):
-        del self.data, self.studies, self.fib,self.keltner, self.normalized_data, self.unnormalized_data
+        del self.data, self.studies, self.fib, self.keltner, self.normalized_data, self.unnormalized_data
         self.data = None
         self.studies = None
         self.fib = None
@@ -131,6 +139,7 @@ class Sample(Normalizer):
         self.normalized_data = None
         self.unnormalized_data = None
         self.studies = None
+
     def trim_data(self, has_actuals: bool = False):
         self.data = self.data.iloc[-30 if has_actuals else -29:]
         self.studies = self.studies.iloc[-30 if has_actuals else -29:]
@@ -138,12 +147,23 @@ class Sample(Normalizer):
         self.keltner = self.keltner.iloc[-30 if has_actuals else -29:]
         self.unnormalized_data = self.unnormalized_data.iloc[-30 if has_actuals else -29:]
         self.normalized_data = self.normalized_data.iloc[-30 if has_actuals else -29:]
-# for i in range(1,21000):
-# sampler = Sample()
-# sampler = Sample()
-# for i in range(1,100000):
-# indicator = sampler.generate_sample()
-# if len(sampler.normalizer.normalized_data) < 15:
-# print(indicator,len(sampler.normalizer.normalized_data))
 
+
+if __name__ == '__main__':
+    ticker_list:list = []
+    path = Path(os.getcwd()).absolute()
+    with open(f'{path}/data/watchlist/default.csv') as f:
+        for i in range(1, 20):
+            ticker = random.choice(f.readlines())
+            ticker = ticker[0:ticker.find(',')]
+            ticker_list.append(ticker)
+            f.seek(0)
+    for i in range(0, len(ticker_list)):
+        sampler = Sample(ticker=ticker_list[i])
+        sampler.generate_sample(out=4,skip_db=True,rand_date=True)
+        print(sampler.fib)
+    # for i in range(1,100000):
+    #     indicator = sampler.generate_sample()
+    #     if len(sampler.normalizer.normalized_data) < 15:
+    #     print(indicator,len(sampler.normalizer.normalized_data))
 # sampler.normalizer.display_line()

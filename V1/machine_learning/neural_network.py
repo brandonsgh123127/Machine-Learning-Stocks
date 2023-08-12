@@ -93,7 +93,7 @@ class Network(Neural_Framework):
                     elif 7 <= nn.model_choice <= 11:  # 5 days * 11
                         train.append(reshape(self.sampler.normalized_data.iloc[:,:-1].to_numpy(), (55, 1)))
                     elif 12 <= nn.model_choice <= 15: # 5 days * 14
-                        train.append(reshape(self.sampler.normalized_data.iloc[:,:-1].to_numpy(), (14, 5)))
+                        train.append(reshape(self.sampler.normalized_data.iloc[:,:-1].transpose().to_numpy(), (5, 14)))
                     # Get percentage for last column instead of direct value :)
                     tmp = ((self.sampler.unnormalized_data.iloc[:,-1]-self.sampler.unnormalized_data.iloc[:,-2])/self.sampler.unnormalized_data.iloc[:,-2]) * 100
                     print("[INFO] Adding normalized target data to training data.")
@@ -129,13 +129,13 @@ class Network(Neural_Framework):
             y=stack(train_targets)
             print("[INFO] Splitting dataset into x/y_train,x/y_val")
             x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.20, shuffle=True)
+            print(len(x_train))
             # self.sampler.feature_selection(x_train,y_train)
             print(f"[INFO] Fitting data into model.")
             try:
                 history = nn.model.fit(x=x_train,
                                 y=y_train,
-                                batch_size=BATCHES,
-                                epochs=1,
+                            # batch_size=int(BATCHES*.8/20),
                           validation_data=(x_val,y_val),
                           callbacks=[tensorboard_callback,nn.cp_callback])
             except Exception as e:
@@ -147,6 +147,7 @@ class Network(Neural_Framework):
                       f"x val size: {len(x_val)}",
                       f"x val size: {len(y_val)}")
                 raise Exception(e)
+                return
             # # Load weights after callback sets new checkpoint :)
             # print("[INFO] Loading weights from fit.")
             # nn.model.load_weights(f'{checkpoint_path}/cp.ckpt')
@@ -736,10 +737,10 @@ def main():
 
     # # OUT 4
     # # 12
-    thread_manager.start_worker(threading.Thread(target=run, args=(64, 32, "new_scaled_2layer")))
+    thread_manager.start_worker(threading.Thread(target=run, args=(64, 100, "new_scaled_2layer")))
     thread_manager.join_workers()
     # # 13
-    thread_manager.start_worker(threading.Thread(target=run, args=(64, 32, "new_scaled_2layer_v2")))
+    thread_manager.start_worker(threading.Thread(target=run, args=(64, 100, "new_scaled_2layer_v2")))
     thread_manager.join_workers()
 
     # run(50,75,'relu_2layer_dropout_l1_l2')

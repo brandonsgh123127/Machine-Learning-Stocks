@@ -218,6 +218,10 @@ class Normalizer():
         except:
             print('[INFO] Couldn\'t convert fibonacci sequence to type <float>')
         try:
+            self.fib = self.fib.drop(['index'],axis=1)
+        except:
+            pass
+        try:
             self.normalized_data = pd.DataFrame((), columns=['Close EMA14 Distance', 'Close EMA30 Distance',
                                                          'Close Fib1 Distance','Close Fib2 Distance', 'Num Consec Candle Dir',
                                                          'Upper Keltner Close Diff', 'Lower Keltner Close Diff',
