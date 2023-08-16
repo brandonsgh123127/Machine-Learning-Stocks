@@ -737,10 +737,10 @@ def main():
 
     # # OUT 4
     # # 12
-    thread_manager.start_worker(threading.Thread(target=run, args=(64, 100, "new_scaled_2layer")))
+    thread_manager.start_worker(threading.Thread(target=run, args=(50, 100, "new_scaled_2layer")))
     thread_manager.join_workers()
     # # 13
-    thread_manager.start_worker(threading.Thread(target=run, args=(64, 100, "new_scaled_2layer_v2")))
+    thread_manager.start_worker(threading.Thread(target=run, args=(50, 100, "new_scaled_2layer_v2")))
     thread_manager.join_workers()
 
     # run(50,75,'relu_2layer_dropout_l1_l2')
