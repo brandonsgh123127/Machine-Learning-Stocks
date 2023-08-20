@@ -2,6 +2,9 @@ from pathlib import Path
 import os
 from typing import Optional
 
+import pandas as pd
+from numpy import array
+
 from V1.data_gather.news_scraper import News_Scraper
 from V1.data_gather.studies import Studies
 import random
@@ -48,16 +51,6 @@ class Generator():
                 print('[ERROR] Runtime Error when generating data!')
                 pass
 
-            # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
-            query_param1 = {"query": "{}".format(self.ticker)}
-            query_param2 = {"maxResults": "500"}
-            query_param3 = {"fromDate": "{}".format(studies.date_set[0].strftime("%Y%m%d%H%M"))}
-            query_param4 = {"toDate": "{}".format(studies.date_set[1].strftime("%Y%m%d%H%M"))}
-            query_params = {}
-            query_params.update(query_param1);
-            query_params.update(query_param2);
-            query_params.update(query_param3);
-            query_params.update(query_param4)
         try:
             try:
                 studies.data = studies.data.drop(['Volume'], axis=1)
@@ -99,95 +92,129 @@ class Generator():
             if end.date().weekday() == 1 and datetime.datetime.utcnow().hour < 14:
                 end = end - datetime.timedelta(days=1)
                 start = start - datetime.timedelta(days=1)
-        print(f'[INFO] Generating data for {ticker} from {start.strftime("%Y%m%d%H%M")} to {end.strftime("%Y%m%d%H%M")}')
+        print(
+            f'[INFO] Generating data for {ticker} from {start.strftime("%Y%m%d%H%M")} to {end.strftime("%Y%m%d%H%M")}')
         self.studies.set_force_generate(force_generation)
         print(f"[INFO] Setting data depending on weekday.  Weekday is currently {end.date().weekday()}")
-        if end.date().weekday() == 5:# Saturday
+        if end.date().weekday() == 5:  # Saturday
             data = await self.studies.set_data_from_range(start - datetime.timedelta(days=1),
-                                             end, _force_generate=force_generation,ticker=ticker,update_self=False)
-        elif end.date().weekday() == 6: # Sunday
+                                                          end, _force_generate=force_generation, ticker=ticker,
+                                                          update_self=False)
+        elif end.date().weekday() == 6:  # Sunday
             data = await self.studies.set_data_from_range(start - datetime.timedelta(days=2),
-                                             end, _force_generate=force_generation,ticker=ticker,update_self=False)
+                                                          end, _force_generate=force_generation, ticker=ticker,
+                                                          update_self=False)
         elif end.date().weekday() == 0:  # monday
             data = await self.studies.set_data_from_range(start - datetime.timedelta(days=3),
-                                             end, _force_generate=force_generation,ticker=ticker,update_self=False)
+                                                          end, _force_generate=force_generation, ticker=ticker,
+                                                          update_self=False)
         else:
             data = await self.studies.set_data_from_range(start,
-                                             end, _force_generate=force_generation,ticker=ticker,update_self=False)
+                                                          end, _force_generate=force_generation, ticker=ticker,
+                                                          update_self=False)
         if data is None:
             print(f"[ERROR] Couldn't generate data for {ticker}.")
             return 'n/a     n/a'
         try:
             return f'{round(data[["Close"]].iloc[-2:].diff().iloc[1].to_list()[0], 3)}     {round(data[["Close"]].iloc[-2:].pct_change().iloc[1].to_list()[0] * 100, 3)}%'
         except Exception as e:
-            print(str(e),f'\n[ERROR] Failed to gather quick data for {ticker}...\n')
+            print(str(e), f'\n[ERROR] Failed to gather quick data for {ticker}...\n')
             return 'n/a     n/a'
 
-    async def generate_data_with_dates(self, date1=None, date2=None, is_not_closed=False, force_generate=False,
-                                 out=1, skip_db=False, interval='1d', ticker: Optional[str] = None, opt_fib_vals: list = []):
-        studies = Studies(self.ticker if not ticker else ticker, force_generate=force_generate)
-        studies.date_set = (date1, date2)
-        # Loop until valid data populates
+    # split a univariate sequence into samples
+    def split_sequence(self, sequence, n_steps):
+        X = list()
+        for i in range(len(sequence)):
+            # find the end of this pattern
+            end_ix = i + n_steps
+            # check if we are beyond the sequence
+            if end_ix > len(sequence) - 1:
+                break
+            # gather input and output parts of the pattern
+            seq_x = sequence[i:end_ix + 1]
+            X.append(seq_x)
+            # y.append(seq_y)
+        return array(X)
+
+    async def generate_data_with_dates(self, date1=None, date2=None, has_actuals=False, force_generate=False,
+                                       out=1, skip_db=False, interval='1d', ticker: Optional[str] = None,
+                                       opt_fib_vals: list = []):
+        split_data: list = []
+        split_studies: list = []
         try:
             print("[INFO] Gathering Stock Data.")
-            ema_task = studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval,ticker=ticker)
+            studies = Studies(self.ticker if not ticker else ticker, force_generate=force_generate)
+            ema_task = studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval,
+                                                   ticker=ticker,has_actuals=has_actuals)
             await ema_task
             # studies.data = studies.data.reset_index()
         except Exception as e:
             print(f'[ERROR] Failed to generate stock data!\r\nException: {e}')
             raise Exception(e)
-        # JSON PARAMETERS NEEDED TO BE PASSED TO TWITTER API
-        query_param1 = {"query": "{}".format(self.ticker if not ticker else ticker)}
-        query_param2 = {"maxResults": "500"}
-        query_param3 = {"fromDate": "{}".format(studies.date_set[0].strftime("%Y%m%d%H%M"))}
-        query_param4 = {"toDate": "{}".format(studies.date_set[1].strftime("%Y%m%d%H%M"))}
-        query_params = {}
-        query_params.update(query_param1);
-        query_params.update(query_param2);
-        query_params.update(query_param3);
-        query_params.update(query_param4)
-        if out == 1 or out == 3 or out == 4:
+        # TODO change this such that external functions pass in this value
+        n_steps = 20
+        data_timesteps_np = self.split_sequence(studies.data.to_numpy(), n_steps=n_steps)
+        # Produced tuple of x,y
+        for n in range(0, n_steps):
+            data_timesteps_df = pd.DataFrame({'Date': data_timesteps_np[n][:, 0],
+                                              'Open': data_timesteps_np[n][:, 1],
+                                              'High': data_timesteps_np[n][:, 2],
+                                              'Low': data_timesteps_np[n][:, 3],
+                                              'Close': data_timesteps_np[n][:, 4],
+                                              })
+            split_data.append(data_timesteps_df)
+            split_studies.append(Studies(self.ticker if not ticker else ticker, force_generate=force_generate))
+        # Loop until valid data populates
+        try:
+            studies.data = studies.data.drop(['Volume'], axis=1)
+        except:
+            pass
+
+        # print(studies.data)
+        # For each split data, gather data
+        tuple_out: list = []
+        for idx, data in enumerate(split_data):
+            split_studies[idx].data = data
             try:
-                studies.data = studies.data.drop(['Volume'], axis=1)
+                split_studies[idx].data = split_studies[idx].data.drop(['Adj Close'], axis=1)
             except:
                 pass
-
-        try:
-            studies.data = studies.data.drop(['Adj Close'], axis=1)
-        except:
-            pass
-        try:
-            studies.data = studies.data.drop(['index'], axis=1)
-        except:
-            pass
-        try:
-            studies.data = studies.data.drop(['level_0'], axis=1)
-        except:
-            pass
-        # print(studies.data)
-        try:
-            date_diff = studies.get_date_difference(studies.date_set[0], studies.date_set[1])
-            await studies.apply_ema("14", date_diff, skip_db=skip_db, interval=interval)
-        except Exception as e:
-            print(f'{str(e)}\n[ERROR] Failed to generate `EMA 14` for {self.ticker if not ticker else ticker}!')
-            raise Exception(e)
-        try:
-            await studies.apply_ema("30", date_diff, skip_db=skip_db, interval=interval)
-        except Exception as e:
-            print(f'{str(e)}\n[ERROR] Failed to generate `EMA 30` for {self.ticker if not ticker else ticker}!')
-            raise Exception(e)
-        try:
-            await studies.apply_fibonacci(skip_db=skip_db, interval=interval,opt_fib_vals=opt_fib_vals)
-        except Exception as e:
-            print(f'{str(e)}\n[ERROR] Failed to generate `Fibonacci Extensions` for {self.ticker if not ticker else ticker}!')
-            raise Exception(e)
-        try:
-            await studies.keltner_channels(20, 2.0, None, skip_db=skip_db, interval=interval)
-            # Final join
-        except Exception as e:
-            print(f'{str(e)}\n[ERROR] Failed to generate `Keltner Channel` for {self.ticker if not ticker else ticker}!')
-            raise Exception(e)
-        return studies.data, studies.applied_studies, studies.fibonacci_extension, studies.keltner
+            try:
+                split_studies[idx].data = split_studies[idx].data.drop(['index'], axis=1)
+            except:
+                pass
+            try:
+                split_studies[idx].data = split_studies[idx].data.drop(['level_0'], axis=1)
+            except:
+                pass
+            # Set data to current split data
+            try:
+                await split_studies[idx].apply_ema("14", skip_db=skip_db, interval=interval)
+            except Exception as e:
+                print(f'{str(e)}\n[ERROR] Failed to generate `EMA 14` for {self.ticker if not ticker else ticker}!')
+                raise Exception(e)
+            try:
+                await split_studies[idx].apply_ema("30", skip_db=skip_db, interval=interval)
+            except Exception as e:
+                print(f'{str(e)}\n[ERROR] Failed to generate `EMA 30` for {self.ticker if not ticker else ticker}!')
+                raise Exception(e)
+            try:
+                await split_studies[idx].apply_fibonacci(skip_db=skip_db, interval=interval, opt_fib_vals=opt_fib_vals)
+            except Exception as e:
+                print(
+                    f'{str(e)}\n[ERROR] Failed to generate `Fibonacci Extensions` for {self.ticker if not ticker else ticker}!')
+                raise Exception(e)
+            try:
+                await split_studies[idx].keltner_channels(20, 2.0, None, skip_db=skip_db, interval=interval)
+                # Final join
+            except Exception as e:
+                print(
+                    f'{str(e)}\n[ERROR] Failed to generate `Keltner Channel` for {self.ticker if not ticker else ticker}!')
+                raise Exception(e)
+            tmp_tuple = (split_studies[idx].data, split_studies[idx].applied_studies,
+                         split_studies[idx].fibonacci_extension, split_studies[idx].keltner)
+            tuple_out.append(tmp_tuple)  # list of tuplle outputs
+        return tuple_out
 
     def get_ticker(self):
         return self.ticker

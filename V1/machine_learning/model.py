@@ -51,8 +51,9 @@ class NN_Model(ABC):
         elif 7 <= self.model_choice <= 11:
             nn_input = Input(shape=(1, 55))  # 5 * 11 cols
         elif 12 <= self.model_choice <= 15:
-            # (BATCH_SIZE.TIMESTEP,FEATURES)
-            # (32, 5, 14)
+            # (SEQUENCESIZE.TIMESTEPS,FEATURES)
+            # HAS TO BE UNIVARIATE
+            # (20, 5, 14)
             nn_input = Input(shape=(5, 14))  # 5 * 14 cols
         """
          These are legacy models... Takes in 14 days worth of data, then attempts to create a model to predict 1 datapoint outwards

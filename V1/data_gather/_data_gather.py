@@ -119,8 +119,17 @@ class Gather:
             # retrieve pandas_datareader object of datetime
 
     async def set_data_from_range(self, start_date: datetime.datetime, end_date: datetime.datetime, _force_generate=False,
-                            skip_db=False, interval: str = '1d',ticker: Optional[str] = "", update_self = True):
+                            skip_db=False, interval: str = '1d',ticker: Optional[str] = "", update_self = True, has_actuals=False):
         # Date range utilized for query...
+        days_map = {'1d': 185,
+                         '1wk': 900,
+                         '1mo': 3600,
+                         '5m': 30,
+                         '15m': 40,
+                         '30m': 50,
+                         '60m': 75}
+        max_data = 20 # TODO: Move this outside to external function call.  Value used to keep certain amount of data split
+        max_days = 5 if not has_actuals else 6 # TODO: Same as above, max days per each sub batch
         date_range = [d.strftime('%Y-%m-%d') for d in pd.date_range(start_date, end_date)]  # start/end date list
         is_utilizing_yfinance: bool = False if '1d' in interval or '1wk' in interval or '1m' in interval or '1y' in interval else True
 
@@ -274,32 +283,16 @@ class Gather:
                     if update_self:
                         try:
                             self.data = ticker_obj.history(interval=interval,
-                                                       start=((start_date - datetime.timedelta(hours=3)).strftime(
-                                                           '%Y-%m-%d') if interval == '5m' else
-                                                               (start_date - datetime.timedelta(hours=18)).strftime(
-                                                                  '%Y-%m-%d') if '15m' in interval else
-                                                                (start_date - datetime.timedelta(days=2)).strftime(
-                                                                  '%Y-%m-%d') if '30m' in interval else (start_date - datetime.timedelta(
-                                                                  days=5)).strftime(
-                                                                  '%Y-%m-%d')),
-                                                       end=(end_date + datetime.timedelta(days=6)).strftime(
-                                                           '%Y-%m-%d'))
+                                                       start=start_date.strftime("%Y-%m-%d"),
+                                                       end=end_date.strftime("%Y-%m-%d"))
                         except Exception as e:
                             print(f"[ERROR] Failed to retrieve Yahoo Finance Stock Data for Self!\r\nException: {str(e)}")
                             raise Exception(str(e))
                     else:
                         try:
                             new_data = ticker_obj.history(interval=interval,
-                                                  start=((start_date - datetime.timedelta(hours=3)).strftime(
-                                                      '%Y-%m-%d') if interval == '5m' else
-                                                         (start_date - datetime.timedelta(hours=18)).strftime(
-                                                             '%Y-%m-%d') if '15m' in interval else
-                                                         (start_date - datetime.timedelta(days=2)).strftime(
-                                                             '%Y-%m-%d') if '30m' in interval else (
-                                                                     start_date - datetime.timedelta(
-                                                                 days=5)).strftime(
-                                                             '%Y-%m-%d')),
-                                                  end=(end_date + datetime.timedelta(days=6)).strftime('%Y-%m-%d'))
+                                                  start=start_date.strftime("%Y-%m-%d"),
+                                                  end=end_date.strftime("%Y-%m-%d"))
                         except Exception as e:
                             # print(f"[ERROR] Failed to retrieve Yahoo Stock Data!\r\nException: {str(e)}")
                             raise Exception(str(e))
@@ -315,7 +308,7 @@ class Gather:
                     else:
                         try:
                             new_data = get_data(self.indicator.upper() if not ticker else ticker.upper(), start_date=start_date.strftime("%Y-%m-%d"),
-                                     end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
+                                     end_date=end_date.strftime("%Y-%m-%d"),
                                      interval=interval)
                         except Exception as e:
                             print(f"[ERROR] Failed to retrieve Yahoo_Fin Stock Data!\r\nException: {str(e)}")
@@ -542,6 +535,12 @@ class Gather:
             self.cnx.close()
         except:
             pass
+        # Explicitly limit data to 100
+        # TODO: 100 days is good for 1d data.  When it comes to other intervals, may not be optimal...
+        if update_self:
+            self.data = self.data[-100:]
+        else:
+            new_data = new_data[-100:]
         return self.data if update_self else new_data
 
     def get_option_data(self, date: datetime.date = None):

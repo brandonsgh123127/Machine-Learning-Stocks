@@ -24,12 +24,15 @@ import xml.etree.ElementTree as ET
 from V1.threading_impl.Thread_Pool import Thread_Pool
 import asyncio
 
+
 class Network(Neural_Framework):
     def __init__(self, epochs: int, batch_size: int):
         super().__init__(epochs, batch_size)
         self.sampler: Sample = None
+
     # Used for generation of data via the start
-    def generate_sample(self, _has_actuals=False, rand_date=False, interval = '1d', out = 1, opt_fib_vals = [], ticker: str = None):
+    def generate_sample(self, _has_actuals=False, rand_date=False, interval='1d', out=1, opt_fib_vals=[],
+                        ticker: str = None):
         path = Path(os.getcwd()).absolute()
         self.sampler.reset_data()
         if ticker is None:
@@ -38,19 +41,22 @@ class Network(Neural_Framework):
         else:
             self.sampler.set_ticker(ticker)
         try:
-            print(f"[INFO[ Generating sample for {self.sampler.ticker}")
-            self.sampler.generate_sample(_has_actuals=_has_actuals, out=out, rand_date=rand_date, skip_db=True,interval=interval,opt_fib_vals=opt_fib_vals)
+            print(f"[INFO] Generating sample for {self.sampler.ticker}")
+            self.sampler.generate_sample(_has_actuals=_has_actuals, out=out, rand_date=rand_date, skip_db=True,
+                                         interval=interval, opt_fib_vals=opt_fib_vals)
         except Exception as e:
             # print(f'[ERROR] Failed to generate sample!\r\nException: {e}')
             raise Exception(f'[ERROR] Failed to generate sample!\r\nException: {e}')
         if out == 1:
             try:
-                self.sampler.data = self.sampler.data.drop(['High', 'Low'], axis=1)
+                data_list = self.data
+                for idx, data in enumerate(data_list):
+                    self.sampler.data[idx] = self.sampler.data[idx].drop(['High', 'Low'], axis=1)
             except:
                 pass
-        self.sampler.data = self.sampler
+        # self.sampler.data = self.sampler # not needed?
 
-    def run_model(self, nn: NN_Model = None, rand_date=False,interval='1d',ticker: str = None):
+    def run_model(self, nn: NN_Model = None, rand_date=False, interval='1d', ticker: str = None):
         self.sampler = Sample(ticker=ticker)
         models = {}
         try:
@@ -74,49 +80,55 @@ class Network(Neural_Framework):
             print(f'\nEPOCH {i}/{self.EPOCHS} -- {nn.model_choice}')
             train = []
             train_targets = []
-            BATCHES = self.BATCHES
             out = 1 if nn.model_choice <= 4 or nn.model_choice == 11 else 2 if 5 <= nn.model_choice <= 6 else 3 if 7 <= nn.model_choice <= 11 else 4 if 12 <= nn.model_choice <= 15 else 0
             j = 1
-            while j <= BATCHES:
-                try:
-                    print(f"[INFO] Generating data sample")
-                    self.generate_sample(True, rand_date, interval, out,ticker=ticker)
-                except Exception as e:
-                    print(f'[ERROR] Failed to generate sample for ticker!\r\nException: {e}')
-                    continue
+            ticker = self.choose_random_ticker(Neural_Framework, csv_file=f'{self.path}/data/watchlist/default.csv')
+            # NEW - REMOVE BATCH LOOP, GENERATE 1 SAMPLE FOR ALL DATA
+            try:
+                print(f"[INFO] Generating data sample")
+                self.generate_sample(True, rand_date, interval, out, ticker=ticker)
+            except Exception as e:
+                print(f'[ERROR] Failed to generate sample for ticker!\r\nException: {e}')
+                continue
+            norm_data_list = self.sampler.normalized_data
+            for idx, data in enumerate(norm_data_list):
                 try:
                     print("[INFO] Appending normalized data to training data.")
                     if nn.model_choice <= 4 or nn.model_choice == 11:
-                        train.append(reshape(self.sampler.normalized_data.iloc[:,:-1].to_numpy(), (126, 1)))
+                        train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].to_numpy(), (126, 1)))
                     elif 5 <= nn.model_choice <= 6:
-                        train.append(reshape(self.sampler.normalized_data.iloc[:,:-1].to_numpy(), (130, 1)))
+                        train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].to_numpy(), (130, 1)))
                     elif 7 <= nn.model_choice <= 11:  # 5 days * 11
-                        train.append(reshape(self.sampler.normalized_data.iloc[:,:-1].to_numpy(), (55, 1)))
-                    elif 12 <= nn.model_choice <= 15: # 5 days * 14
-                        train.append(reshape(self.sampler.normalized_data.iloc[:,:-1].transpose().to_numpy(), (5, 14)))
+                        train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].to_numpy(), (55, 1)))
+                    elif 12 <= nn.model_choice <= 15:  # 5 days * 14
+                        train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].transpose().to_numpy(), (5, 14)))
                     # Get percentage for last column instead of direct value :)
-                    tmp = ((self.sampler.unnormalized_data.iloc[:,-1]-self.sampler.unnormalized_data.iloc[:,-2])/self.sampler.unnormalized_data.iloc[:,-2]) * 100
+                    tmp = ((self.sampler.unnormalized_data[idx].iloc[:, -1] - self.sampler.unnormalized_data[idx].iloc[:,
+                                                                         -2]) / self.sampler.unnormalized_data[idx].iloc[:,
+                                                                                -2]) * 100
                     print("[INFO] Adding normalized target data to training data.")
                     if out == 1:
                         tmp = pd.concat([pd.DataFrame([tmp['Close'].to_numpy()])])
                         train_targets.append(reshape(tmp.to_numpy(), (1, 1)))
                     elif 2 <= out <= 4:
-                        tmp = pd.concat([pd.DataFrame([tmp[tmp.index.isin(['Open'])].iloc[-1],tmp[tmp.index.isin(['High'])].iloc[-1],
-                                                       tmp[tmp.index.isin(['Low'])].iloc[-1], tmp[tmp.index.isin(['Close'])].iloc[-1]])])
+                        tmp = pd.concat(
+                            [pd.DataFrame([tmp[tmp.index.isin(['Open'])].iloc[-1], tmp[tmp.index.isin(['High'])].iloc[-1],
+                                           tmp[tmp.index.isin(['Low'])].iloc[-1],
+                                           tmp[tmp.index.isin(['Close'])].iloc[-1]])])
                         train_targets.append(reshape(tmp.to_numpy(), (4, 1)))
                 except Exception as e:
                     print(f'[ERROR] Failed to set training data for {self.sampler.ticker}!\r\nException: {e}\r\n',
-                          f"Debug Info:\r\nnormalized data size: {self.sampler.normalized_data.iloc[:-1].to_numpy().size}\r\n",
-                          f"normalized data: {self.sampler.normalized_data.iloc[:-1].to_numpy()}")
-                    # Ensure train/train_targets are equivelent in size
-                    if len(train) == len(train_targets):
-                        continue
-                    else:
-                        # Train data is longer than train_targets,
-                        # Reduce size by 1
-                        if len(train) > len(train_targets):
-                            train.pop()
+                          f"Debug Info:\r\nnormalized data size: {self.sampler.normalized_data[idx].to_numpy().size}\r\n",
+                          f"normalized data: {self.sampler.normalized_data[idx].iloc[:-1].to_numpy()}")
+                # Ensure train/train_targets are equivelent in size
+                if len(train) == len(train_targets):
                     continue
+                else:
+                    # Train data is longer than train_targets,
+                    # Reduce size by 1
+                    if len(train) > len(train_targets):
+                        train.pop()
+                continue
                 j = j + 1
             print("[INFO] Ready to train with batches.")
             train = asarray(train).astype(float_)
@@ -125,8 +137,8 @@ class Network(Neural_Framework):
             tensorboard_callback = callbacks.TensorBoard(
                 log_dir=f'./logs/{nn.model_name}', profile_batch=(10, 20))
             # Use fit for generating with ease.  Validation data included for analysis of loss
-            x=stack(train)
-            y=stack(train_targets)
+            x = stack(train)
+            y = stack(train_targets)
             print("[INFO] Splitting dataset into x/y_train,x/y_val")
             x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.20, shuffle=True)
             print(len(x_train))
@@ -134,10 +146,10 @@ class Network(Neural_Framework):
             print(f"[INFO] Fitting data into model.")
             try:
                 history = nn.model.fit(x=x_train,
-                                y=y_train,
-                            # batch_size=int(BATCHES*.8/20),
-                          validation_data=(x_val,y_val),
-                          callbacks=[tensorboard_callback,nn.cp_callback])
+                                       y=y_train,
+                                       # batch_size=int(BATCHES*.8/20),
+                                       validation_data=(x_val, y_val),
+                                       callbacks=[tensorboard_callback, nn.cp_callback])
             except Exception as e:
                 print("[ERROR] Failed to train dataset!\r\nInformation: ",
                       f"x size: {len(x)}",
@@ -151,7 +163,7 @@ class Network(Neural_Framework):
             # # Load weights after callback sets new checkpoint :)
             # print("[INFO] Loading weights from fit.")
             # nn.model.load_weights(f'{checkpoint_path}/cp.ckpt')
-            del train,train_targets, x,y
+            del train, train_targets, x, y
             models[i] = history.history
             nn.save_model()
 
@@ -159,6 +171,8 @@ class Network(Neural_Framework):
 
 
 listLock = threading.Lock()
+
+
 def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_actuals: bool = False,
                    name: str = "relu_1layer", force_generation: bool = False, interval='1d'):
     # Before inserting data, check cached data, verify if there is data there...
@@ -257,22 +271,23 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
     try:
         print("[INFO] Retrieving Data ID / To-Date ID from nn table.")
         retrieve_tdata_result = cnx.execute(check_cache_tdata_db_stmt, {'stock': f'{ticker.upper()}',
-                                                                    'date': valid_datetime.strftime('%Y-%m-%d')},
-                                        multi=True)
+                                                                        'date': valid_datetime.strftime('%Y-%m-%d')},
+                                            multi=True)
     except Exception as e:
         print(f"[ERROR] Failed to check database for existing neural network data!\r\nException: {e}")
         raise Exception(e)
     for retrieve_result in retrieve_tdata_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
-            print(f'[INFO] Couldn\'t retrieve data_id for {ticker} for date {valid_datetime.strftime("%Y-%m-%d")}. Retrieving only stock_id.')
+            print(
+                f'[INFO] Couldn\'t retrieve data_id for {ticker} for date {valid_datetime.strftime("%Y-%m-%d")}. Retrieving only stock_id.')
             check_stockid_db_stmt = """SELECT `stocks`.`stock`.`id` 
              FROM stocks.`stock` USE INDEX (`stockid`) WHERE
                `stocks`.`stock`.`stock` = %(stock)s
                 """
             try:
                 result = cnx.execute(check_stockid_db_stmt, {'stock': f'{ticker.upper()}'
-                                                         }, multi=True)
+                                                             }, multi=True)
             except Exception as e:
                 print(f"[ERROR] Failed to Retrieve stock id during neural network retrieval!\r\nException: {e}")
             for retrieve_result in retrieve_tdata_result:
@@ -336,9 +351,9 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
     try:
         print("[INFO] Checking for stored nn data in db by checking for from-date")
         retrieve_data_result = cnx.execute(check_cache_fdata_db_stmt, {'stock-id': stock_id,
-                                                                   'date': valid_date if not is_utilizing_yfinance else
-                                                                   valid_datetime.strftime("%Y-%m-%d %H:%M:%S")},
-                                       multi=True)
+                                                                       'date': valid_date if not is_utilizing_yfinance else
+                                                                       valid_datetime.strftime("%Y-%m-%d %H:%M:%S")},
+                                           multi=True)
     except Exception as e:
         print(f"[ERROR] Failed to check for to-date for  nn data!\r\nException: {e}")
         raise Exception(e)
@@ -414,7 +429,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
         cnx.close()
         pass
     except Exception as e:
-        print(str(e),'\n[ERROR] Failed to check cached nn-data!\n')
+        print(str(e), '\n[ERROR] Failed to check cached nn-data!\n')
         cnx.close()
         raise mysql.connector.errors.DatabaseError()
     return None
@@ -425,7 +440,8 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 
 def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer",
          force_generation=False,
-         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = (), interval: str = '1d', sampler: Sample = None,
+         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = (), interval: str = '1d',
+         sampler: Sample = None,
          opt_fib_vals: list = []):
     # Check to see if empty data value was passed in.
     # If true, exit out of function
@@ -478,14 +494,15 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
         print("[INFO] Generating nn data.")
         # sampler.__init__(ticker)
         # If data is populated, go ahead and utilize it, skip over data check for normalizer...
-        if isinstance(data,tuple) and len(data) != 0:
+        if isinstance(data, tuple) and len(data) != 0:
             print("[INFO] data has been generated prior.  Setting data.")
             sampler.set_sample_data(data[0], data[1], data[2], data[3])
         # if not type tuple, then this means that no data was passed in...
         train = None
         try:
             print("[INFO] Generating sample given data.")
-            sampler.generate_sample(_has_actuals=has_actuals, out=out, rand_date=rand_date, interval=interval,opt_fib_vals=opt_fib_vals)
+            sampler.generate_sample(_has_actuals=has_actuals, out=out, rand_date=rand_date, interval=interval,
+                                    opt_fib_vals=opt_fib_vals)
             sampler.trim_data(has_actuals)
         except Exception as e:
             print(f'[ERROR] Failed to generate sample for neural_network!\r\nException: {e}')
@@ -505,57 +522,62 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
             # Verify that the data has at least the correct shape needed...
             if out == 1:
                 try:
-                    reshape(sampler.normalized_data.iloc[-14 if not has_actuals else -15:].to_numpy(), (1, 1, 126 if not has_actuals else 135))
+                    reshape(sampler.normalized_data.iloc[-14 if not has_actuals else -15:].to_numpy(),
+                            (1, 1, 126 if not has_actuals else 135))
                 except Exception as e:
-                    raise Exception(f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
+                    raise Exception(
+                        f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
             elif 2 <= out <= 3:
                 try:
-                    reshape(sampler.normalized_data.iloc[-5 if not has_actuals else -6:].to_numpy(), (1, 1, 156 if has_actuals and out == 2 \
-                                                                                                        else 130 if out == 2 \
-                                                                                                    else 66 if has_actuals and (out == 3) \
-                                                                                                    else 55 if out == 3 \
-                                                                                                     else 0))
+                    reshape(sampler.normalized_data.iloc[-5 if not has_actuals else -6:].to_numpy(),
+                            (1, 1, 156 if has_actuals and out == 2 \
+                                else 130 if out == 2 \
+                                else 66 if has_actuals and (out == 3) \
+                                else 55 if out == 3 \
+                                else 0))
                 except Exception as e:
-                    raise Exception(f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
+                    raise Exception(
+                        f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
             elif out == 4:
                 try:
-                    sampler.normalized_data.iloc[:,-5 if not has_actuals else -6:].to_numpy()
+                    sampler.normalized_data.iloc[:, -5 if not has_actuals else -6:].to_numpy()
                 except Exception as e:
                     raise Exception(f'[ERROR] Couldn\'t generate ML output for ticker {ticker}.\n\tException: {e}')
             with device(device_opt):
                 if has_actuals:
                     if out == 4:
-                        train = reshape(sampler.normalized_data.iloc[:,-6:-1].to_numpy(),(14,5))
+                        train = reshape(sampler.normalized_data.iloc[:, -6:-1].to_numpy(), (14, 5))
                     else:
-                        train = (reshape(sampler.normalized_data.iloc[:,-15 if out == 1 \
-                                                                        else -6 if 2 <= out <= 4 \
-                                                                        else 0:-1].to_numpy(), (1, 1,
-                                                                        126 if out ==1 \
-                                                                        else 156 if out == 2 \
-                                                                        else 66 if (out == 3 ) \
-                                                                        else 84 if (out == 4 ) \
-                                                                        else 0)))
+                        train = (reshape(sampler.normalized_data.iloc[:, -15 if out == 1 \
+                                                                             else -6 if 2 <= out <= 4 \
+                            else 0:-1].to_numpy(), (1, 1,
+                                                    126 if out == 1 \
+                                                        else 156 if out == 2 \
+                                                        else 66 if (out == 3) \
+                                                        else 84 if (out == 4) \
+                                                        else 0)))
                 else:
                     if out == 4:
-                        train = reshape(sampler.normalized_data.iloc[:,-5:].to_numpy(),(14,5))
+                        train = reshape(sampler.normalized_data.iloc[:, -5:].to_numpy(), (14, 5))
                     else:
-                        train = (reshape(sampler.normalized_data[:,-14 if out == 1 \
-                                                            else -5 if 2 <= out <= 4 \
-                                                            else 0:].to_numpy(), (1, 1, 126 if out==1 \
-                                                            else 130 if out == 2 \
-                                                            else 55 if out == 3 \
-                                                            else 70 if out == 4 \
-                                                            else 0)))
-                train = reshape(asarray(train).astype(float_),(1,14,5))
-                stacked_train = stack(train) # used for legacy out 1-3
-                prediction = nn.model.predict(train) # swapped to train due to time series (out 4)
+                        train = (reshape(sampler.normalized_data[:, -14 if out == 1 \
+                                                                        else -5 if 2 <= out <= 4 \
+                            else 0:].to_numpy(), (1, 1, 126 if out == 1 \
+                            else 130 if out == 2 \
+                            else 55 if out == 3 \
+                            else 70 if out == 4 \
+                            else 0)))
+                train = reshape(asarray(train).astype(float_), (1, 14, 5))
+                stacked_train = stack(train)  # used for legacy out 1-3
+                prediction = nn.model.predict(train)  # swapped to train due to time series (out 4)
                 del train, stacked_train
         if out == 1:
             predicted = pd.DataFrame((reshape(prediction, (1, 1))), columns=['Close'])  # NORMALIZED
         elif 2 <= out <= 3:
-            predicted = pd.DataFrame((reshape(prediction, (1, 4))), columns=['Open','High','Low','Close'])  # NORMALIZED
+            predicted = pd.DataFrame((reshape(prediction, (1, 4))),
+                                     columns=['Open', 'High', 'Low', 'Close'])  # NORMALIZED
         elif out == 4:
-            predicted = pd.DataFrame([prediction[0]], columns=['Open','High','Low','Close'])  # NORMALIZED
+            predicted = pd.DataFrame([prediction[0]], columns=['Open', 'High', 'Low', 'Close'])  # NORMALIZED
         is_utilizing_yfinance = False
         # Upload data to DB given prediction has finished
         if '1d' in interval:
@@ -616,10 +638,12 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
         cnx.close()
     try:
         print("[INFO] Attempting to convert output to numbers.")
-        predicted = predicted.transpose() # out 4 - transpose back to how data was passed into model
+        predicted = predicted.transpose()  # out 4 - transpose back to how data was passed into model
         # Inverse algorithm for getting values out of percentage points
-        unnormalized_prediction_df = pd.DataFrame([((predicted.iloc[:,-1] / 100) * sampler.unnormalized_data.iloc[:, -1]) + sampler.unnormalized_data.iloc[:,
-                                                             -1]],columns=sampler.normalized_data.index.tolist())
+        unnormalized_prediction_df = pd.DataFrame(
+            [((predicted.iloc[:, -1] / 100) * sampler.unnormalized_data.iloc[:, -1]) + sampler.unnormalized_data.iloc[:,
+                                                                                       -1]],
+            columns=sampler.normalized_data.index.tolist())
         # unnormalized_prediction_df = sampler.unnormalize(predicted,out=out).transpose()
     except Exception as e:
         print(f"[ERROR] Failed to unnormalize data!\r\nException: {e}")
@@ -640,18 +664,20 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
     unnormalized_prediction = unnormalized_prediction_df.to_numpy()
 
     # space = pd.DataFrame([[0,0]],columns=['Open','Close'])
-    if out == 1: # Legacy model
+    if out == 1:  # Legacy model
         print("[INFO] Legacy model, appending predicted values to df")
         unnormalized_predict_values = sampler.data.append(pd.DataFrame([[unnormalized_prediction[0, 1] +
-                                                                     sampler.data['Close'].iloc[-1]]],
-                                                                   columns=['Close']), ignore_index=True)
+                                                                         sampler.data['Close'].iloc[-1]]],
+                                                                       columns=['Close']), ignore_index=True)
     elif 2 <= out <= 4:
         print(f"[INFO] Out is {out}, appending predicted values to df")
         if has_actuals:
             unnormalized_predict_values = sampler.data
         else:
-            unnormalized_predict_values = pd.concat(objs=[sampler.data, pd.DataFrame([[open,high,low,close]],
-                                                                   columns=['Open','High','Low','Close'])], ignore_index=True)
+            unnormalized_predict_values = pd.concat(objs=[sampler.data, pd.DataFrame([[open, high, low, close]],
+                                                                                     columns=['Open', 'High', 'Low',
+                                                                                              'Close'])],
+                                                    ignore_index=True)
     del unnormalized_prediction
     predicted_unnormalized = unnormalized_predict_values
     del unnormalized_predict_values
@@ -665,13 +691,13 @@ Run Specified Model by creating model and running batches/epochs.
 """
 
 
-def run(epochs, batch_size, choice: str = None,interval='1d'):
+def run(epochs, batch_size, choice: str = None, interval='1d'):
     neural_net = Network(epochs, batch_size)
     nn = NN_Model(choice)
     nn.load_model(choice, is_training=True)
     if nn.model is None:
         nn.create_model(is_training=True)
-    intervals=['30m','60m','1d','1wk'] # Eventually create models for different time frames
+    intervals = ['30m', '60m', '1d', '1wk']  # Eventually create models for different time frames
     # random_interval = random.choice(intervals)
     # path = Path(os.getcwd()).absolute()
     checkpoint_path = f'{nn.path}/data/checkpoints/{nn.model_name}/'
@@ -682,7 +708,7 @@ def run(epochs, batch_size, choice: str = None,interval='1d'):
     except:
         print("[INFO] No prior model has been created, thus, no checkpoint to load.")
         pass
-    model = neural_net.run_model(nn,rand_date=True, interval=interval,ticker=None)
+    model = neural_net.run_model(nn, rand_date=True, interval=interval, ticker=None)
     for i in range(1, neural_net.EPOCHS):
         train_history = model[i]
         print(train_history)

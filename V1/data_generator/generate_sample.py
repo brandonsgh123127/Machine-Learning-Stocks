@@ -22,13 +22,10 @@ class Sample(Normalizer):
     def generate_sample(self, out=1, _has_actuals=False, rand_date=False, is_divergence=False, skip_db=False,
                         interval='1d', opt_fib_vals=[]):
         self.cnx = self.db_con.cursor(buffered=True)
-        if not _has_actuals:
-            # print("Predict Mode")
-            self.DAYS_SAMPLED = 14 if out == 1 else 5 if 2 <= out <= 4 else 0
-        else:
-            self.DAYS_SAMPLED = 15 if out == 1 else 6 if 2 <= out <= 4 else 0
+        # 160 days used for multivariate
+        self.DAYS_SAMPLED = self.days_map[interval]
         # If data has been set via neural_network, don't read data
-        if self.data is not None:
+        if self.data:
             pass
         else:
             print(f"[INFO] Generating ticker data for {self.ticker}.")
@@ -48,27 +45,17 @@ class Sample(Normalizer):
             self.cnx.close()
             raise Exception(e)
         # Minimum amount of days sampled in df
-        self.normalized_data = self.normalized_data.iloc[:, -self.DAYS_SAMPLED:]
+        norm_data_list = self.normalized_data
+        max_data = 20 # TODO: Move this outside to external function call.  Value used to keep certain amount of data split
+        max_days = 5 if not _has_actuals else 6 # TODO: Same as above, max days per each sub batch
+        for idx,data in enumerate(norm_data_list):
+            self.normalized_data[idx] = self.normalized_data[idx].iloc[:, -max_days:]
         # Attempt normalization of data
         try:
             print("[INFO] Attempting to normalize data.")
             self.normalize(out=out)
         except Exception as e:
             print(f'[ERROR] Failure calling normalize function!\r\nException: {e}')
-            raise Exception(e)
-        # Attempt to reload data if not enough days are loaded...
-        try:
-            if len(self.normalized_data) < self.DAYS_SAMPLED:
-                print(
-                    f'[INFO] Re-Fetching data since the len of data is {len(self.normalized_data)}, which is  < {self.DAYS_SAMPLED}')
-                self.read_data(self.ticker, rand_dates=rand_date, out=out,
-                               opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
-                self.convert_derivatives(out=out)
-                self.normalize(out=out)
-        except Exception as e:
-            print("[ERROR] Attempted to generate new normalized data after min amount of days has not been met, ",
-                  "but failed to regenerate due to error listed\n", str(e))
-            self.cnx.close()
             raise Exception(e)
         # Now that we normalized, we need to do PCA, then feature extraction
         # Update: 7/29/23, although PCA is good for finding correlation,
@@ -88,7 +75,8 @@ class Sample(Normalizer):
             self.DAYS_SAMPLED = 14
         else:
             self.DAYS_SAMPLED = 15
-        if self.data is not None and self.keltner is not None:
+        # if data and keltner are populated, skip
+        if self.data and self.keltner:
             pass
         else:
             # Read the current ticker data
@@ -132,13 +120,13 @@ class Sample(Normalizer):
 
     def reset_data(self):
         del self.data, self.studies, self.fib, self.keltner, self.normalized_data, self.unnormalized_data
-        self.data = None
-        self.studies = None
-        self.fib = None
-        self.keltner = None
-        self.normalized_data = None
-        self.unnormalized_data = None
-        self.studies = None
+        self.data = []
+        self.studies = []
+        self.fib = []
+        self.keltner = []
+        self.normalized_data = []
+        self.unnormalized_data = []
+        self.studies = []
 
     def trim_data(self, has_actuals: bool = False):
         self.data = self.data.iloc[-30 if has_actuals else -29:]
