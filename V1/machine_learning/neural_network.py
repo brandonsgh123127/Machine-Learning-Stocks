@@ -81,7 +81,6 @@ class Network(Neural_Framework):
             train = []
             train_targets = []
             out = 1 if nn.model_choice <= 4 or nn.model_choice == 11 else 2 if 5 <= nn.model_choice <= 6 else 3 if 7 <= nn.model_choice <= 11 else 4 if 12 <= nn.model_choice <= 15 else 0
-            j = 1
             ticker = self.choose_random_ticker(Neural_Framework, csv_file=f'{self.path}/data/watchlist/default.csv')
             n_steps = 20 # 20 minibatches
             i = 1
