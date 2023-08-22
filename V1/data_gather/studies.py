@@ -486,7 +486,7 @@ class Studies(Gather):
             return val3 - ((val2 - val1) * -fib_val)
 
     def upwards_fib(self, new_set, interval):
-        print("[INFO] Doing upwards fib.")
+        # print("[INFO] Doing upwards fib.")
         try:
             # After this, iterate new list and find which direction stock may go
             val1 = None
@@ -518,56 +518,44 @@ class Studies(Gather):
             #         new_set_dropped_min = new_set_dropped_min.drop(new_set_dropped_min['Low'].idxmin())
             # print(f"[INFO] New set length for fibonacci is {len(new_set)}")
             # If index of low is greater than high and not last element, then it shouldnt be upwards
-            half_set =  new_set.iloc[:int(len(new_set['Low'])/2)]
-            index1 = None
-            if half_set['Low'].idxmin() < new_set['High'].idxmax() > new_set_dropped_min['Low'].idxmin():
-                val1 = half_set['Low'].min()
-                index1 = half_set['Low'].idxmin()
-            # Lower high
-            elif half_set['Low'].idxmin() > new_set['High'].idxmax() > new_set_dropped_min.iloc[:int(len(new_set['Low'])/2)]['Low'].idxmin():
-                val1 = new_set_dropped_min.iloc[:int(len(new_set['Low'])/2)]['Low'].min()
-                index1 = new_set_dropped_min.iloc[:int(len(new_set['Low'])/2)]['Low'].idxmin()
-            elif half_set['Low'].idxmin() > new_set['High'].idxmax() < new_set_dropped_min.iloc[:int(len(new_set['Low'])/2)]['Low'].idxmin():
-                val1 = new_set_dropped_min.iloc[:int(len(new_set['Low'])/2)]['Low'].min()
-                index1 = new_set_dropped_min.iloc[:int(len(new_set['Low'])/2)]['Low'].idxmin()
-            else:
-                print(new_set)
-                raise Exception("[ERROR] Should be downwards fib, as low proceeds high...")
-            # Val 2 found :)
-            index2 = None
-            if new_set['Low'].idxmin() < new_set['High'].idxmax() < new_set_dropped_min['Low'].idxmin() and index1 < new_set_dropped_min['Low'].idxmin():
+            if new_set['Low'].idxmin() < new_set['High'].idxmax() < new_set_dropped_min['Low'].idxmin():
+                val1 = new_set['Low'].min()
+                # Find high, we'll use this for p2
                 val2 = new_set['High'].max()
-                index2 = new_set['High'].idxmax()
-            else:
-                if new_set_dropped_max['High'].idxmax() < new_set_dropped_min['Low'].idxmin() and index1 < new_set_dropped_min['Low'].idxmin():
-                    val2 = new_set_dropped_max['High'].max()
-                    index2 = new_set_dropped_max['High'].idxmax()
-                elif new_set['Low'].idxmin() > new_set['High'].idxmax() < new_set_dropped_min['Low'].idxmin() and index1 < new_set_dropped_min['Low'].idxmin():
-                    val2 = new_set_dropped_min['Low'].min()
-                    index2= new_set_dropped_min['Low'].idxmin()
-                else:
-                    while len(new_set_dropped_min['Low']) > 0 and new_set_dropped_min['Low'].idxmin() < index1:
-                        new_set_dropped_min = new_set_dropped_max.drop(new_set_dropped_max['High'].idxmax())
-                        if new_set_dropped_max['High'].idxmax() < new_set_dropped_min['Low'].idxmin():
-                            val2 = new_set_dropped_max['High'].max()
-                            index2 = new_set_dropped_max['High'].idxmax()
-                            break
-
-            if val2: # Only get val3 if val1/2 have been found
-                while len(new_set_dropped_min['Low'])>0 and new_set_dropped_min['Low'].idxmin() < index2:
+                # use next low for p3
+                val3 = new_set_dropped_min['Low'].min()
+            # Lower high
+            elif new_set['Low'].idxmin() > new_set['High'].idxmax() > new_set_dropped_min['Low'].idxmin():
+                val1 = new_set_dropped_min['Low'].min()
+                # Set p2 to high
+                val2 = new_set['High'].max()
+                # Set p3 to 2nd min
+                val3 = new_set['Low'].min()
+            # If higher low before high, remove until we get something else
+            elif new_set['Low'].idxmin() < new_set['High'].idxmax() > new_set_dropped_min['Low'].idxmin():
+                val1 = new_set['Low'].min()
+                # Set p2 to high
+                val2 = new_set['High'].max()
+                while new_set_dropped_min['Low'].idxmin() < new_set['High'].idxmax(): # Ensure that we get a high
+                    # prior to low
                     new_set_dropped_min = new_set_dropped_min.drop(new_set_dropped_min['Low'].idxmin())
-                if new_set['Low'].idxmin() < new_set['High'].idxmax() < new_set_dropped_min['Low'].idxmin():
-                    val3 = new_set_dropped_min['Low'].min()
-                elif new_set_dropped_max['High'].idxmax() < new_set_dropped_min['Low'].idxmin() > new_set['High'].idxmax() :
-                    val3 = new_set_dropped_min['Low'].min()
-                else:
-                    while new_set_dropped_min['Low'].idxmin() < new_set['High'].idxmax():
-                        new_set_dropped_min = new_set_dropped_min.drop(new_set_dropped_min['Low'].idxmin())
-                    if len(new_set_dropped_min) == 0:
-                        raise Exception("[ERROR] New set for upwards fib has a size of 0.  Couldn't find val 3.")
-                    else:
-                        val3 = new_set_dropped_min['Low'].min()
-            if val2 and val3:
+                # Set p3 to 2nd min
+                val3 = new_set_dropped_min['Low'].min()
+
+            # when low and next low are after high, make it such that dropped max is used instead
+            elif new_set['Low'].idxmin() > new_set['High'].idxmax() < new_set_dropped_min['Low'].idxmin():
+                val1 = new_set_dropped_min['Low'].min()
+                while new_set_dropped_max['High'].idxmax() > new_set_dropped_min['Low'].idxmin(): # Ensure that we get a high prior to low
+                    new_set_dropped_max = new_set_dropped_max.drop(new_set_dropped_max['High'].idxmax())
+                # Set p2 to
+                val2 = new_set_dropped_max['High'].max()
+                # Set p3 to low after max
+                val3 = new_set['Low'].min()
+            else:
+                print(new_set['Low'].idxmin(), new_set['High'].idxmax(), new_set_dropped_min['Low'].idxmin(),new_set_dropped_max['High'].idxmax())
+                raise Exception("[ERROR] Should be downwards fib, as low proceeds high...")
+
+            if val3: # Only get val3 if val 1/2/3 have been found
                 return val1, val2, val3
             else: # Legacy method
                 print(new_set)
@@ -626,10 +614,10 @@ class Studies(Gather):
         except:
             exc_type, exc_obj, exc_tb = sys.exc_info()
             fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-            print(exc_type, fname, exc_tb.tb_lineno)
+            raise Exception(f'{exc_type}, {fname}, {exc_tb.tb_lineno}')
 
     def downwards_fib(self, new_set, interval):
-        print("[INFO] Doing downwards fib.")
+        # print("[INFO] Doing downwards fib.")
         try:
             # After this, iterate new list and find which direction stock may go
             val1 = None
@@ -655,38 +643,35 @@ class Studies(Gather):
                 return val1, val2, val3
             new_set_dropped_max = new_set.drop(new_set['High'].idxmax())
             new_set_dropped_min = new_set.drop(new_set['Low'].idxmin())
-            half_set =  new_set.iloc[:int(len(new_set['Low'])/2)]
-            if half_set['High'].idxmax() > new_set['Low'].idxmin() > new_set_dropped_max.iloc[:int(len(new_set['Low'])/2)]['High'].idxmax():
-                val1 = new_set_dropped_max.iloc[:int(len(new_set['Low'])/2)]['High'].max()
-            elif half_set['High'].idxmax() < new_set['Low'].idxmin():
-                val1 = half_set['High'].max()
-            else:
-                raise Exception("[ERROR] Should be upwards fib, as high proceeds low...")
-            # Val 2 found :)
-            if new_set_dropped_max['High'].idxmax() > new_set['Low'].idxmin():
+            # Traditional, high, low, next high
+            if new_set['High'].idxmax() < new_set['Low'].idxmin() < new_set_dropped_max['High'].idxmax():
+                val1 = new_set['High'].max()
+                # Find high, we'll use this for p2
                 val2 = new_set['Low'].min()
-            elif new_set['High'].idxmax() < new_set_dropped_min['Low'].idxmin() < new_set_dropped_max['High'].idxmax():
-                val2 = new_set_dropped_min['Low'].min()
-            else:
-                while len(new_set_dropped_max['High']) > 0 and new_set_dropped_max['High'].idxmax() > new_set_dropped_min['Low'].idxmin():
+                # use next low for p3
+                val3 = new_set_dropped_max['High'].max()
+            # In the case when it goes high - next high - low, fix
+            elif new_set['High'].idxmax() < new_set['Low'].idxmin() > new_set_dropped_max['High'].idxmax():
+                val1 = new_set['High'].max()
+                # Set p2 to low
+                val2 = new_set_dropped_max['High'].max()
+                # Set p3 to 2nd high
+                while new_set_dropped_max['High'].idxmax() < new_set['Low'].idxmin(): # Ensure that we get a high after low
                     new_set_dropped_max = new_set_dropped_max.drop(new_set_dropped_max['High'].idxmax())
-                    # Confirm that there is a higher low
-                    if new_set_dropped_min['Low'].idxmin() < new_set_dropped_max['High'].idxmax():
-                        val2 = new_set_dropped_min['Low'].min()
-                        break
-            # elif #if val1/3 were swapped from above
+                val3 = new_set_dropped_max['High'].max()
+            elif new_set['Low'].idxmin() < new_set['High'].idxmax() < new_set_dropped_min['Low'].idxmin():
+                val1 = new_set['High'].max()
+                while new_set_dropped_max['High'].idxmax() < new_set_dropped_min['Low'].idxmin(): # Ensure that we get a high prior to low
+                    new_set_dropped_max = new_set_dropped_max.drop(new_set_dropped_max['High'].idxmax())
+                # Set p2 to
+                val2 = new_set_dropped_min['Low'].min()
+                # Set p3 to new low after max
+                val3 = new_set_dropped_max['High'].max()
+            else:
+                print(new_set['Low'].idxmin(), new_set['High'].idxmax(), new_set_dropped_min['Low'].idxmin(),new_set_dropped_max['High'].idxmax())
+                raise Exception("[ERROR] Should be downwards fib, as low proceeds high...")
 
-            if val2: # Only get val3 if val1/2 have been found
-                if new_set_dropped_min['Low'].idxmin() < new_set_dropped_max['High'].idxmax():
-                    val3 = new_set_dropped_max['High'].max()
-                else:
-                    while new_set_dropped_max['High'].idxmax() < new_set_dropped_min['Low'].idxmin():
-                        new_set_dropped_max = new_set_dropped_max.drop(new_set_dropped_max['High'].idxmax())
-                    if len(new_set_dropped_max) == 0:
-                        print("[INFO] New set for upwards fib has a size of 0.  Couldn't find val 3.")
-                    else:
-                        val3 = new_set_dropped_max['High'].max()
-            if val2 and val3:
+            if val3: # Only if val1,2,3 are found
                 return val1, val2, val3
             else: # Legacy method
                 for i, row in new_set.iterrows():  # reverse order iteration
@@ -1433,36 +1418,36 @@ val1    val3_________________________          vall2
                     # new_set.columns = ['Index', 'Vals']
                     # pd.set_option('display.max_columns', None)
                     # attempt upwards fib
-                new_set = new_set.iloc[0 if '1d' in interval else \
-                                           8 if '1wk' in interval else \
-                                               0 if '1mo' in interval else \
-                                                   15 if interval == '5m' else \
-                                                       0 if '15m' in interval else \
-                                                           0 if '30m' in interval else \
-                                                               0 if '60m' in interval else 0:]
+                # new_set = new_set.iloc[0 if '1d' in interval else \
+                #                            8 if '1wk' in interval else \
+                #                                0 if '1mo' in interval else \
+                #                                    15 if interval == '5m' else \
+                #                                        0 if '15m' in interval else \
+                #                                            0 if '30m' in interval else \
+                #                                                0 if '60m' in interval else 0:]
                 try:
                     new_set = new_set.drop(columns=['index'])
                 except:
                     pass
 
                 # Test to make sure that upwards fib is the move
-                tmp_new_set = new_set
+                tmp_new_set = new_set.copy()
                 fib_direction = ''
                 # If low comes before high, we will most likely have an upwards fib
                 # Additionally, if data does not cutoff with a low
                 if tmp_new_set['Low'].idxmin() < \
-                        tmp_new_set['High'].idxmax() and data['Low'].iloc[-1] > tmp_new_set['Low'].iloc[0]:
+                        tmp_new_set['High'].idxmax() or data['Low'].iloc[-1] > tmp_new_set['Low'].iloc[0]:
                     fib_direction = 'up'
                 else:  # Downwards
                     fib_direction = 'down'
                 tmp_data = data.copy()
                 # If either low/high are at beginning/end, remove it
-                while (tmp_data['Low'].idxmin() == 0 or tmp_data['Low'].idxmin() == len(tmp_data['Low']) - 1):
-                    tmp_new_set = tmp_new_set.drop(tmp_new_set['Low'].idxmin())
-                    tmp_data = tmp_data.drop(tmp_data['Low'].idxmin())
-                while tmp_data['High'].idxmax() == 0 or tmp_data['High'].idxmax() == len(tmp_data['High']) - 1:
-                    tmp_new_set = tmp_new_set.drop(tmp_new_set['High'].idxmax())
-                    tmp_data = tmp_data.drop(tmp_data['High'].idxmax())
+                # while tmp_data['Low'].idxmin() == 0 or tmp_data['Low'].idxmin() == len(tmp_data['Low']) - 1:
+                #     tmp_new_set = tmp_new_set.drop(tmp_new_set['Low'].idxmin())
+                #     tmp_data = tmp_data.drop(tmp_data['Low'].idxmin())
+                # while tmp_data['High'].idxmax() == 0 or tmp_data['High'].idxmax() == len(tmp_data['High']) - 1:
+                #     tmp_new_set = tmp_new_set.drop(tmp_new_set['High'].idxmax())
+                #     tmp_data = tmp_data.drop(tmp_data['High'].idxmax())
 
                 new_set = tmp_new_set
                 if fib_direction == 'up':
@@ -1505,15 +1490,12 @@ val1    val3_________________________          vall2
                         self.insert_fib_vals(skip_db=skip_db, interval=interval, opt_fib_vals=opt_fib_vals, val1=val1,
                                              val2=val2, val3=val3)  # insert to db
                     except Exception as e:
-                        exc_type, exc_obj, exc_tb = sys.exc_info()
-                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                        print(fname, exc_type, exc_obj, exc_tb.tb_lineno)
+                        raise Exception(f'[ERROR] Failed to generate upwards fib!\r\nException: {e}')
                 else:
                     # if new_set['High'].idxmax() == 0 or new_set['High'].idxmax() == len(new_set['High']) - 1:
                     #     new_set = new_set.drop(new_set['High'].idxmax())
                     try:
                         val1, val2, val3 = self.downwards_fib(new_set, interval)
-                        print(val1,val2,val3)
                         if self.fibonacci_extension.empty:  # If upwards fails, initialize here
                             # calculate values  -- 14 vals
                             self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
@@ -1587,10 +1569,7 @@ val1    val3_________________________          vall2
                                       '16.32': [self.fib_help(val1, val2, val3, 16.32)]
                                       })])
                     except Exception as e:
-                        exc_type, exc_obj, exc_tb = sys.exc_info()
-                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                        print(exc_type, fname, exc_tb.tb_lineno)
-                        val1, val2, val3 = self.upwards_fib(new_set, interval)
+                        raise Exception(f'[ERROR] Failed to generate downwards fib!\r\nException: {e}')
             len_df = len(self.data.index + 2)
             for index in range(0, len_df):
                 self.fibonacci_extension = pd.concat(

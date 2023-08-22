@@ -83,53 +83,55 @@ class Network(Neural_Framework):
             out = 1 if nn.model_choice <= 4 or nn.model_choice == 11 else 2 if 5 <= nn.model_choice <= 6 else 3 if 7 <= nn.model_choice <= 11 else 4 if 12 <= nn.model_choice <= 15 else 0
             j = 1
             ticker = self.choose_random_ticker(Neural_Framework, csv_file=f'{self.path}/data/watchlist/default.csv')
-            # NEW - REMOVE BATCH LOOP, GENERATE 1 SAMPLE FOR ALL DATA
-            try:
-                print(f"[INFO] Generating data sample")
-                self.generate_sample(True, rand_date, interval, out, ticker=ticker)
-            except Exception as e:
-                print(f'[ERROR] Failed to generate sample for ticker!\r\nException: {e}')
-                continue
-            norm_data_list = self.sampler.normalized_data
-            for idx, data in enumerate(norm_data_list):
+            n_steps = 20 # 20 minibatches
+            for batch in range(0, int(self.BATCHES/ n_steps)):
                 try:
-                    print("[INFO] Appending normalized data to training data.")
-                    if nn.model_choice <= 4 or nn.model_choice == 11:
-                        train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].to_numpy(), (126, 1)))
-                    elif 5 <= nn.model_choice <= 6:
-                        train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].to_numpy(), (130, 1)))
-                    elif 7 <= nn.model_choice <= 11:  # 5 days * 11
-                        train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].to_numpy(), (55, 1)))
-                    elif 12 <= nn.model_choice <= 15:  # 5 days * 14
-                        train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].transpose().to_numpy(), (5, 14)))
-                    # Get percentage for last column instead of direct value :)
-                    tmp = ((self.sampler.unnormalized_data[idx].iloc[:, -1] - self.sampler.unnormalized_data[idx].iloc[:,
-                                                                         -2]) / self.sampler.unnormalized_data[idx].iloc[:,
-                                                                                -2]) * 100
-                    print("[INFO] Adding normalized target data to training data.")
-                    if out == 1:
-                        tmp = pd.concat([pd.DataFrame([tmp['Close'].to_numpy()])])
-                        train_targets.append(reshape(tmp.to_numpy(), (1, 1)))
-                    elif 2 <= out <= 4:
-                        tmp = pd.concat(
-                            [pd.DataFrame([tmp[tmp.index.isin(['Open'])].iloc[-1], tmp[tmp.index.isin(['High'])].iloc[-1],
-                                           tmp[tmp.index.isin(['Low'])].iloc[-1],
-                                           tmp[tmp.index.isin(['Close'])].iloc[-1]])])
-                        train_targets.append(reshape(tmp.to_numpy(), (4, 1)))
+                    print(f"[INFO] Generating data sample")
+                    self.generate_sample(True, rand_date, interval, out, ticker=ticker)
                 except Exception as e:
-                    print(f'[ERROR] Failed to set training data for {self.sampler.ticker}!\r\nException: {e}\r\n',
-                          f"Debug Info:\r\nnormalized data size: {self.sampler.normalized_data[idx].to_numpy().size}\r\n",
-                          f"normalized data: {self.sampler.normalized_data[idx].iloc[:-1].to_numpy()}")
-                # Ensure train/train_targets are equivelent in size
-                if len(train) == len(train_targets):
+                    print(f'[ERROR] Failed to generate sample for ticker!\r\nException: {e}')
+                    batch = batch - 1
                     continue
-                else:
-                    # Train data is longer than train_targets,
-                    # Reduce size by 1
-                    if len(train) > len(train_targets):
-                        train.pop()
-                continue
-                j = j + 1
+                norm_data_list = self.sampler.normalized_data
+                print("[INFO] Appending normalized data to training/target data.")
+                for idx, data in enumerate(norm_data_list):
+                    try:
+                        if nn.model_choice <= 4 or nn.model_choice == 11:
+                            train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].to_numpy(), (126, 1)))
+                        elif 5 <= nn.model_choice <= 6:
+                            train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].to_numpy(), (130, 1)))
+                        elif 7 <= nn.model_choice <= 11:  # 5 days * 11
+                            train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].to_numpy(), (55, 1)))
+                        elif 12 <= nn.model_choice <= 15:  # 5 days * 14
+                            train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].transpose().to_numpy(), (5, 14)))
+                        # Get percentage for last column instead of direct value :)
+                        tmp = ((self.sampler.unnormalized_data[idx].iloc[:, -1] - self.sampler.unnormalized_data[idx].iloc[:,
+                                                                             -2]) / self.sampler.unnormalized_data[idx].iloc[:,
+                                                                                    -2]) * 100
+                        if out == 1:
+                            tmp = pd.concat([pd.DataFrame([tmp['Close'].to_numpy()])])
+                            train_targets.append(reshape(tmp.to_numpy(), (1, 1)))
+                        elif 2 <= out <= 4:
+                            tmp = pd.concat(
+                                [pd.DataFrame([tmp[tmp.index.isin(['Open'])].iloc[-1], tmp[tmp.index.isin(['High'])].iloc[-1],
+                                               tmp[tmp.index.isin(['Low'])].iloc[-1],
+                                               tmp[tmp.index.isin(['Close'])].iloc[-1]])])
+                            train_targets.append(reshape(tmp.to_numpy(), (4, 1)))
+                    except Exception as e:
+                        print(f'[ERROR] Failed to set training data for {self.sampler.ticker}!\r\nException: {e}\r\n',
+                              f"Debug Info:\r\nnormalized data size: {self.sampler.normalized_data[idx].to_numpy().size}\r\n",
+                              f"normalized data: {self.sampler.normalized_data[idx].iloc[:-1].to_numpy()}")
+                        batch = batch - 1
+                        continue
+                    # Ensure train/train_targets are equivelent in size
+                    if len(train) == len(train_targets):
+                        continue
+                    else:
+                        # Train data is longer than train_targets,
+                        # Reduce size by 1
+                        if len(train) > len(train_targets):
+                            train.pop()
+                    continue
             print("[INFO] Ready to train with batches.")
             train = asarray(train).astype(float_)
             train_targets = asarray(train_targets).astype(float_)
@@ -147,7 +149,7 @@ class Network(Neural_Framework):
             try:
                 history = nn.model.fit(x=x_train,
                                        y=y_train,
-                                       # batch_size=int(BATCHES*.8/20),
+                                       batch_size=int((self.BATCHES*.8)/20),
                                        validation_data=(x_val, y_val),
                                        callbacks=[tensorboard_callback, nn.cp_callback])
             except Exception as e:

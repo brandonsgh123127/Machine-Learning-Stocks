@@ -244,7 +244,7 @@ class Normalizer():
             except:
                 pass
             try:
-                self.normalized_data.append(pd.DataFrame((), columns=['Close EMA14 Distance', 'Close EMA30 Distance',
+                self.unnormalized_data.append(pd.DataFrame((), columns=['Close EMA14 Distance', 'Close EMA30 Distance',
                                                                       'Close Fib1 Distance', 'Close Fib2 Distance',
                                                                       'Num Consec Candle Dir',
                                                                       'Upper Keltner Close Diff',
@@ -313,12 +313,12 @@ class Normalizer():
                 for index, row in data.iterrows():
                     try:
                         if index == 0:
-                            self.normalized_data[idx].loc[index, "Open"] = 0
-                            self.normalized_data[idx].loc[index, "Close"] = 0
-                            self.normalized_data[idx].loc[index, "Close EMA14 Distance"] = data.at[index, "Close"] - \
+                            self.unnormalized_data[idx].loc[index, "Open"] = 0
+                            self.unnormalized_data[idx].loc[index, "Close"] = 0
+                            self.unnormalized_data[idx].loc[index, "Close EMA14 Distance"] = data.at[index, "Close"] - \
                                                                                            self.studies[idx].at[
                                                                                                index, 'ema14']
-                            self.normalized_data[idx].loc[index, "Close EMA30 Distance"] = data.at[index, "Close"] - \
+                            self.unnormalized_data[idx].loc[index, "Close EMA30 Distance"] = data.at[index, "Close"] - \
                                                                                            self.studies[idx].at[
                                                                                                index, 'ema30']
                             # get upwards/downwards dir for for-loop
@@ -332,20 +332,20 @@ class Normalizer():
                             else:
                                 if row['Open'] < row['Close']:  # Red day
                                     count_consec_candles = count_consec_candles + 1
-                            self.normalized_data[idx].loc[
+                            self.unnormalized_data[idx].loc[
                                 0, "Num Consec Candle Dir"] = count_consec_candles  # Idea is that the more consecutive, more confident
-                            self.normalized_data[idx].loc[index, "Close Fib1 Distance"] = data.at[
+                            self.unnormalized_data[idx].loc[index, "Close Fib1 Distance"] = data.at[
                                                                                          index, "Close"] - target_fib1
-                            self.normalized_data[idx].loc[index, "Close Fib2 Distance"] = data.at[
+                            self.unnormalized_data[idx].loc[index, "Close Fib2 Distance"] = data.at[
                                                                                          index, "Close"] - target_fib2
-                            self.normalized_data[idx].loc[index, "Upper Keltner Close Diff"] = (
+                            self.unnormalized_data[idx].loc[index, "Upper Keltner Close Diff"] = (
                                     data.at[index, 'Close'] - self.keltner[idx].at[index, "upper"])
-                            self.normalized_data[idx].loc[index, "Lower Keltner Close Diff"] = (
+                            self.unnormalized_data[idx].loc[index, "Lower Keltner Close Diff"] = (
                                     data.at[index, 'Close'] - self.keltner[idx].at[index, "lower"])
                         else:
-                            self.normalized_data[idx].loc[index, "Close"] = ((data.at[index, "Close"] - data.at[
+                            self.unnormalized_data[idx].loc[index, "Close"] = ((data.at[index, "Close"] - data.at[
                                 index - 1, "Close"]))
-                            self.normalized_data[idx].loc[index, "Open"] = ((data.at[index, "Open"] - data.at[
+                            self.unnormalized_data[idx].loc[index, "Open"] = ((data.at[index, "Open"] - data.at[
                                 index - 1, "Open"]))
                             if dir == '-':
                                 if row['Open'] > row['Close']:  # Green day
@@ -361,19 +361,19 @@ class Normalizer():
                             dir = '-'
                             if row['Open'] < row['Close']:  # If green day
                                 dir = '+'
-                            self.normalized_data[idx].loc[
+                            self.unnormalized_data[idx].loc[
                                 index, "Num Consec Candle Dir"] = count_consec_candles  # Idea is that the more consecutive, more confident
-                            self.normalized_data[idx].loc[index, "Close Fib1 Distance"] = data.at[
+                            self.unnormalized_data[idx].loc[index, "Close Fib1 Distance"] = data.at[
                                                                                          index, "Close"] - target_fib1
-                            self.normalized_data[idx].loc[index, "Close Fib2 Distance"] = data.at[
+                            self.unnormalized_data[idx].loc[index, "Close Fib2 Distance"] = data.at[
                                                                                          index, "Close"] - target_fib2
-                            self.normalized_data[idx].loc[index, "Upper Keltner Close Diff"] = (
+                            self.unnormalized_data[idx].loc[index, "Upper Keltner Close Diff"] = (
                                     self.keltner[idx].at[index, "upper"] - data.at[index, 'Close'])
-                            self.normalized_data[idx].loc[index, "Lower Keltner Close Diff"] = (
+                            self.unnormalized_data[idx].loc[index, "Lower Keltner Close Diff"] = (
                                     self.keltner[idx].at[index, "lower"] - data.at[index, 'Close'])
-                            self.normalized_data[idx].loc[index, "Close EMA14 Distance"] = data.at[index, "Close"] - \
+                            self.unnormalized_data[idx].loc[index, "Close EMA14 Distance"] = data.at[index, "Close"] - \
                                                                                       self.studies[idx].at[index, 'ema14']
-                            self.normalized_data[idx].loc[index, "Close EMA30 Distance"] = data.at[index, "Close"] - \
+                            self.unnormalized_data[idx].loc[index, "Close EMA30 Distance"] = data.at[index, "Close"] - \
                                                                                       self.studies[idx].at[index, 'ema30']
                     except Exception as e:
                         print(f"[ERROR] Failed to calculate data for last 14 days!\r\nException: {e}")
@@ -435,62 +435,62 @@ class Normalizer():
                             last_3_high = data['High'].iloc[index]
                             last_3_low = data['Low'].iloc[index]
                             last_2_volume = data['Volume'].iloc[index]
-                            self.normalized_data[idx].loc[index, "Last2Volume Cur Volume Diff"] = last_2_volume
+                            self.unnormalized_data[idx].loc[index, "Last2Volume Cur Volume Diff"] = last_2_volume
                         elif index < 3:  # If not sufficient amount of days surpassed, do this
                             last_3_high = data['High'].iloc[:index].mean()
                             last_3_low = data['Low'].iloc[:index].mean()
                             last_2_volume = data['Volume'].iloc[:index].mean()
-                            self.normalized_data[idx].loc[index, "Last2Volume Cur Volume Diff"] = last_2_volume
+                            self.unnormalized_data[idx].loc[index, "Last2Volume Cur Volume Diff"] = last_2_volume
                         else:
                             last_3_high = data['High'].iloc[index - 3:index].mean()
                             last_3_low = data['Low'].iloc[index - 3:index].mean()
                             last_2_volume = data['Volume'].iloc[index - 3:index].mean()
-                        self.normalized_data[idx].loc[index, "Last2Volume Cur Volume Diff"] = last_2_volume
-                        self.normalized_data[idx].loc[index, "Open Upper Kelt Diff"] = data.at[index, "Open"] - \
+                        self.unnormalized_data[idx].loc[index, "Last2Volume Cur Volume Diff"] = last_2_volume
+                        self.unnormalized_data[idx].loc[index, "Open Upper Kelt Diff"] = data.at[index, "Open"] - \
                                                                                   self.keltner[idx].at[index, "upper"]
-                        self.normalized_data[idx].loc[index, "Open Lower Kelt Diff"] = data.at[index, "Open"] - \
+                        self.unnormalized_data[idx].loc[index, "Open Lower Kelt Diff"] = data.at[index, "Open"] - \
                                                                                   self.keltner[idx].at[index, "lower"]
-                        self.normalized_data[idx].loc[index, "High Upper Kelt Diff"] = data.at[index, "High"] - \
+                        self.unnormalized_data[idx].loc[index, "High Upper Kelt Diff"] = data.at[index, "High"] - \
                                                                                   self.keltner[idx].at[index, "upper"]
-                        self.normalized_data[idx].loc[index, "High Lower Kelt Diff"] = data.at[index, "High"] - \
+                        self.unnormalized_data[idx].loc[index, "High Lower Kelt Diff"] = data.at[index, "High"] - \
                                                                                   self.keltner[idx].at[index, "lower"]
-                        self.normalized_data[idx].loc[index, "Low Upper Kelt Diff"] = data.at[index, "Low"] - \
+                        self.unnormalized_data[idx].loc[index, "Low Upper Kelt Diff"] = data.at[index, "Low"] - \
                                                                                  self.keltner[idx].at[index, "upper"]
-                        self.normalized_data[idx].loc[index, "Low Lower Kelt Diff"] = data.at[index, "Low"] - \
+                        self.unnormalized_data[idx].loc[index, "Low Lower Kelt Diff"] = data.at[index, "Low"] - \
                                                                                  self.keltner[idx].at[index, "lower"]
-                        self.normalized_data[idx].loc[index, "Close Upper Kelt Diff"] = data.at[index, "Close"] - \
+                        self.unnormalized_data[idx].loc[index, "Close Upper Kelt Diff"] = data.at[index, "Close"] - \
                                                                                    self.keltner[idx].at[index, "upper"]
-                        self.normalized_data[idx].loc[index, "Close Lower Kelt Diff"] = data.at[index, "Close"] - \
+                        self.unnormalized_data[idx].loc[index, "Close Lower Kelt Diff"] = data.at[index, "Close"] - \
                                                                                    self.keltner[idx].at[index, "lower"]
-                        self.normalized_data[idx].loc[index, "EMA 14 30 Diff"] = self.studies[idx].at[index, 'ema14'] - \
+                        self.unnormalized_data[idx].loc[index, "EMA 14 30 Diff"] = self.studies[idx].at[index, 'ema14'] - \
                                                                             self.studies[idx].at[index, 'ema30']
-                        self.normalized_data[idx].loc[index, "Base Fib High Diff"] = base_fib1 - data.at[
+                        self.unnormalized_data[idx].loc[index, "Base Fib High Diff"] = base_fib1 - data.at[
                             index, "High"] if direction == "-" else data.at[index, "High"] - base_fib1
-                        self.normalized_data[idx].loc[index, "Base Fib Low Diff"] = base_fib1 - data.at[
+                        self.unnormalized_data[idx].loc[index, "Base Fib Low Diff"] = base_fib1 - data.at[
                             index, "Low"] if direction == "-" else data.at[index, "Low"] - base_fib1
-                        self.normalized_data[idx].loc[index, "Next1 Fib High Diff"] = next1_fib - data.at[
+                        self.unnormalized_data[idx].loc[index, "Next1 Fib High Diff"] = next1_fib - data.at[
                             index, "High"] if direction == "+" else data.at[index, "High"] - next1_fib
-                        self.normalized_data[idx].loc[index, "Next1 Fib Low Diff"] = next1_fib - data.at[
+                        self.unnormalized_data[idx].loc[index, "Next1 Fib Low Diff"] = next1_fib - data.at[
                             index, "Low"] if direction == "+" else data.at[index, "Low"] - next1_fib
-                        self.normalized_data[idx].loc[index, "Next2 Fib High Diff"] = next2_fib - data.at[
+                        self.unnormalized_data[idx].loc[index, "Next2 Fib High Diff"] = next2_fib - data.at[
                             index, "High"] if direction == "+" else data.at[index, "High"] - next2_fib
-                        self.normalized_data[idx].loc[index, "Next2 Fib Low Diff"] = next2_fib - data.at[
+                        self.unnormalized_data[idx].loc[index, "Next2 Fib Low Diff"] = next2_fib - data.at[
                             index, "Low"] if direction == "+" else data.at[index, "Low"] - next2_fib
-                        self.normalized_data[idx].loc[index, "Open"] = data.at[index, "Open"]
-                        self.normalized_data[idx].loc[index, "High"] = data.at[index, "High"]
-                        self.normalized_data[idx].loc[index, "Low"] = data.at[index, "Low"]
-                        self.normalized_data[idx].loc[index, "Close"] = data.at[index, "Close"]
-                        self.normalized_data[idx].loc[index, "Last3High Base Fib"] = last_3_high - base_fib1
-                        self.normalized_data[idx].loc[index, "Last3Low Base Fib"] = last_3_low - next1_fib
-                        self.normalized_data[idx].loc[index, "Last3High Next1 Fib"] = last_3_high - next1_fib
-                        self.normalized_data[idx].loc[index, "Last3Low Next1 Fib"] = last_3_low - next1_fib
-                        self.normalized_data[idx].loc[index, "Last3High Next2 Fib"] = last_3_high - next2_fib
-                        self.normalized_data[idx].loc[index, "Last3Low Next2 Fib"] = last_3_low - next2_fib
+                        self.unnormalized_data[idx].loc[index, "Open"] = data.at[index, "Open"]
+                        self.unnormalized_data[idx].loc[index, "High"] = data.at[index, "High"]
+                        self.unnormalized_data[idx].loc[index, "Low"] = data.at[index, "Low"]
+                        self.unnormalized_data[idx].loc[index, "Close"] = data.at[index, "Close"]
+                        self.unnormalized_data[idx].loc[index, "Last3High Base Fib"] = last_3_high - base_fib1
+                        self.unnormalized_data[idx].loc[index, "Last3Low Base Fib"] = last_3_low - next1_fib
+                        self.unnormalized_data[idx].loc[index, "Last3High Next1 Fib"] = last_3_high - next1_fib
+                        self.unnormalized_data[idx].loc[index, "Last3Low Next1 Fib"] = last_3_low - next1_fib
+                        self.unnormalized_data[idx].loc[index, "Last3High Next2 Fib"] = last_3_high - next2_fib
+                        self.unnormalized_data[idx].loc[index, "Last3Low Next2 Fib"] = last_3_low - next2_fib
                     except Exception as e:
                         print(
-                            f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\r\nException{e}')
+                            f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.unnormalized_data}\r\nException{e}')
                         raise AssertionError(
-                            f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\nException: {str(e)}')
+                            f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.unnormalized_data}\nException: {str(e)}')
             elif out == 3:
                 print("[INFO] Calculating data for last n days")
                 third_last = data.iloc[-1]
@@ -552,26 +552,25 @@ class Normalizer():
                         else:
                             last_3_high = data['High'].iloc[index - 3:index].mean()
                             last_3_low = data['Low'].iloc[index - 3:index].mean()
-                        self.normalized_data[idx].loc[index, "Open"] = data.at[index, "Open"]
-                        self.normalized_data[idx].loc[index, "High"] = data.at[index, "High"]
-                        self.normalized_data[idx].loc[index, "Low"] = data.at[index, "Low"]
-                        self.normalized_data[idx].loc[index, "Close"] = data.at[index, "Close"]
-                        self.normalized_data[idx].loc[index, "Upper Kelt"] = self.keltner[idx].at[index, "upper"]
-                        self.normalized_data[idx].loc[index, "Lower Kelt"] = self.keltner[idx].at[index, "lower"]
-                        self.normalized_data[idx].loc[index, "Middle Kelt"] = self.keltner[idx].at[index, "middle"]
-                        self.normalized_data[idx].loc[index, "EMA 14"] = self.studies[idx].at[index, 'ema14']
-                        self.normalized_data[idx].loc[index, "EMA 30"] = self.studies[idx].at[index, 'ema30']
-                        self.normalized_data[idx].loc[index, "Last3High"] = last_3_high
-                        self.normalized_data[idx].loc[index, "Last3Low"] = last_3_low
-                        # print(self.normalized_data)
+                        self.unnormalized_data[idx].loc[index, "Open"] = data.at[index, "Open"]
+                        self.unnormalized_data[idx].loc[index, "High"] = data.at[index, "High"]
+                        self.unnormalized_data[idx].loc[index, "Low"] = data.at[index, "Low"]
+                        self.unnormalized_data[idx].loc[index, "Close"] = data.at[index, "Close"]
+                        self.unnormalized_data[idx].loc[index, "Upper Kelt"] = self.keltner[idx].at[index, "upper"]
+                        self.unnormalized_data[idx].loc[index, "Lower Kelt"] = self.keltner[idx].at[index, "lower"]
+                        self.unnormalized_data[idx].loc[index, "Middle Kelt"] = self.keltner[idx].at[index, "middle"]
+                        self.unnormalized_data[idx].loc[index, "EMA 14"] = self.studies[idx].at[index, 'ema14']
+                        self.unnormalized_data[idx].loc[index, "EMA 30"] = self.studies[idx].at[index, 'ema30']
+                        self.unnormalized_data[idx].loc[index, "Last3High"] = last_3_high
+                        self.unnormalized_data[idx].loc[index, "Last3Low"] = last_3_low
+                        # print(self.unnormalized_data)
                     except Exception as e:
                         print(
-                            f'{str(e)}\n[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\n')
+                            f'{str(e)}\n[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.unnormalized_data}\n')
                         raise AssertionError(
-                            f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\nException: {str(e)}')
+                            f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.unnormalized_data}\nException: {str(e)}')
             elif out == 4:
-                print("[INFO] Calculating for the last n days.")
-                third_last = data.iloc[-3:].mean()
+                last_close = data['Close'].iloc[-1]
                 last_3_high = data['High'].iloc[-3:].mean()
                 last_3_low = data['Low'].iloc[-3:].mean()
                 i = 0
@@ -589,33 +588,11 @@ class Normalizer():
                         direction = "-"
                 try:
                     save_point = 0
-                    for index, item in self.fib[idx].items():
-                        if direction == "+":  # Check if avg is greater than fib val, record
-                            if third_last['Close'] > item.iloc[
-                                -1]:  # we want to signify a base when the close is above fib val
-                                i = item.iloc[-1]
-                            else:
-                                if j != 0:  # If j is populated, set k
-                                    k = item.iloc[-1]
-                                    break
-                                elif last_3_high < item.iloc[
-                                    -1]:  # First indication of this will set j - after will set k then break
-                                    j = item.iloc[-1]
-                                else:
-                                    save_point = item.iloc[-1]
-                        else:  # Negative direction
-                            if third_last['Close'] < item.iloc[
-                                -1]:  # we want to signify a base when the close is above fib val
-                                i = item.iloc[-1]
-                            else:
-                                if j != 0:  # If j is populated, set k
-                                    k = item.iloc[-1]
-                                    break
-                                elif last_3_low > item.iloc[
-                                    -1]:  # First indication of this will set j - after will set k then break
-                                    j = item.iloc[-1]
-                                else:
-                                    save_point = item.iloc[-1]
+                    sole_fib_col = self.fib[idx].transpose().iloc[:,-1]
+                    i = self.fib[idx].transpose().iloc[(sole_fib_col - last_close).abs().argsort()[1],-1]
+                    j = self.fib[idx].transpose().iloc[(sole_fib_col - last_close).abs().argsort()[2],-1]
+                    k = self.fib[idx].transpose().iloc[(sole_fib_col - last_close).abs().argsort()[3],-1]
+
                 except Exception as e:
                     print(f'[ERROR] Failed to iterate through fibonacci to find key fib points.\r\nException: {e}')
                     raise Exception(e)
@@ -636,27 +613,27 @@ class Normalizer():
                         else:
                             last_3_high = round(data['High'].iloc[index - 3:index].mean(), 2)
                             last_3_low = round(data['Low'].iloc[index - 3:index].mean(), 2)
-                        self.normalized_data[idx].loc[index, "Upper Kelt"] = round(self.keltner[idx].at[index, "upper"], 2)
-                        self.normalized_data[idx].loc[index, "Lower Kelt"] = round(self.keltner[idx].at[index, "lower"], 2)
-                        self.normalized_data[idx].loc[index, "Middle Kelt"] = round(self.keltner[idx].at[index, "middle"], 2)
-                        self.normalized_data[idx].loc[index, "EMA 14"] = round(self.studies[idx].at[index, 'ema14'], 2)
-                        self.normalized_data[idx].loc[index, "EMA 30"] = round(self.studies[idx].at[index, 'ema30'], 2)
-                        self.normalized_data[idx].loc[index, "Base Fib"] = round(base_fib1, 2)
-                        self.normalized_data[idx].loc[index, "Next1 Fib"] = round(next1_fib, 2)
-                        self.normalized_data[idx].loc[index, "Next2 Fib"] = round(next2_fib, 2)
-                        self.normalized_data[idx].loc[index, "Open"] = round(data.at[index, "Open"], 2)
-                        self.normalized_data[idx].loc[index, "High"] = round(data.at[index, "High"], 2)
-                        self.normalized_data[idx].loc[index, "Low"] = round(data.at[index, "Low"], 2)
-                        self.normalized_data[idx].loc[index, "Close"] = round(data.at[index, "Close"], 2)
-                        self.normalized_data[idx].loc[index, "Last3High"] = round(last_3_high, 2)
-                        self.normalized_data[idx].loc[index, "Last3Low"] = round(last_3_low, 2)
-                        # print(self.normalized_data)
+                        self.unnormalized_data[idx].loc[index, "Upper Kelt"] = round(self.keltner[idx].at[index, "upper"], 2)
+                        self.unnormalized_data[idx].loc[index, "Lower Kelt"] = round(self.keltner[idx].at[index, "lower"], 2)
+                        self.unnormalized_data[idx].loc[index, "Middle Kelt"] = round(self.keltner[idx].at[index, "middle"], 2)
+                        self.unnormalized_data[idx].loc[index, "EMA 14"] = round(self.studies[idx].at[index, 'ema14'], 2)
+                        self.unnormalized_data[idx].loc[index, "EMA 30"] = round(self.studies[idx].at[index, 'ema30'], 2)
+                        self.unnormalized_data[idx].loc[index, "Base Fib"] = round(base_fib1, 2)
+                        self.unnormalized_data[idx].loc[index, "Next1 Fib"] = round(next1_fib, 2)
+                        self.unnormalized_data[idx].loc[index, "Next2 Fib"] = round(next2_fib, 2)
+                        self.unnormalized_data[idx].loc[index, "Open"] = round(data.at[index, "Open"], 2)
+                        self.unnormalized_data[idx].loc[index, "High"] = round(data.at[index, "High"], 2)
+                        self.unnormalized_data[idx].loc[index, "Low"] = round(data.at[index, "Low"], 2)
+                        self.unnormalized_data[idx].loc[index, "Close"] = round(data.at[index, "Close"], 2)
+                        self.unnormalized_data[idx].loc[index, "Last3High"] = round(last_3_high, 2)
+                        self.unnormalized_data[idx].loc[index, "Last3Low"] = round(last_3_low, 2)
+                        # print(self.unnormalized_data)
                     except Exception as e:
                         print(
-                            f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\r\nException: {e}')
+                            f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.unnormalized_data}\r\nException: {e}')
                         raise AssertionError(
-                            f'{str(e)}\n[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.normalized_data}\n')
-            self.normalized_data[idx] = self.normalized_data[idx].transpose()
+                            f'{str(e)}\n[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.unnormalized_data}\n')
+            self.unnormalized_data[idx] = self.unnormalized_data[idx].transpose()
         return 0
 
     '''
@@ -664,15 +641,14 @@ class Normalizer():
     '''
 
     def normalize(self, out: int = 1):
-        norm_data_list = self.normalized_data.copy()
-        for idx, data in enumerate(norm_data_list):
-            self.unnormalized_data.append(self.normalized_data[idx])
+        unnorm_data_list = self.unnormalized_data.copy()
+        for idx, data in enumerate(unnorm_data_list):
             try:
                 if 3 <= out <= 4:
-                    print(f"[INFO] Out is set to {out}.  Standard scaler fit_transform in progress.")
+                    # print(f"[INFO] Out is set to {out}.  Standard scaler fit_transform in progress.")
                     self.scaler_list.append(self.standard_scaler.fit_transform(self.unnormalized_data[idx]))
                 else:
-                    print(f"[INFO] Out is {out}.  MinMax scaler fit_transform in progress.")
+                    # print(f"[INFO] Out is {out}.  MinMax scaler fit_transform in progress.")
                     self.scaler_list.append(self.min_max.fit_transform(self.unnormalized_data[idx]))
                 self.normalized_data.append(pd.DataFrame(self.scaler_list[idx],
                                                     index=['Close EMA14 Distance',
