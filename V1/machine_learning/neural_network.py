@@ -76,21 +76,21 @@ class Network(Neural_Framework):
         except:
             pass
         # Retrieve all necessary data into training data
-        for i in range(1, self.EPOCHS):
-            print(f'\nEPOCH {i}/{self.EPOCHS} -- {nn.model_choice}')
+        for epoch in range(1, self.EPOCHS):
+            print(f'\nEPOCH {epoch}/{self.EPOCHS} -- {nn.model_choice}')
             train = []
             train_targets = []
             out = 1 if nn.model_choice <= 4 or nn.model_choice == 11 else 2 if 5 <= nn.model_choice <= 6 else 3 if 7 <= nn.model_choice <= 11 else 4 if 12 <= nn.model_choice <= 15 else 0
             j = 1
             ticker = self.choose_random_ticker(Neural_Framework, csv_file=f'{self.path}/data/watchlist/default.csv')
             n_steps = 20 # 20 minibatches
-            for batch in range(0, int(self.BATCHES/ n_steps)):
+            i = 1
+            while i <= int(self.BATCHES/ n_steps):
                 try:
                     print(f"[INFO] Generating data sample")
                     self.generate_sample(True, rand_date, interval, out, ticker=ticker)
                 except Exception as e:
                     print(f'[ERROR] Failed to generate sample for ticker!\r\nException: {e}')
-                    batch = batch - 1
                     continue
                 norm_data_list = self.sampler.normalized_data
                 print("[INFO] Appending normalized data to training/target data.")
@@ -121,7 +121,6 @@ class Network(Neural_Framework):
                         print(f'[ERROR] Failed to set training data for {self.sampler.ticker}!\r\nException: {e}\r\n',
                               f"Debug Info:\r\nnormalized data size: {self.sampler.normalized_data[idx].to_numpy().size}\r\n",
                               f"normalized data: {self.sampler.normalized_data[idx].iloc[:-1].to_numpy()}")
-                        batch = batch - 1
                         continue
                     # Ensure train/train_targets are equivelent in size
                     if len(train) == len(train_targets):
@@ -132,6 +131,7 @@ class Network(Neural_Framework):
                         if len(train) > len(train_targets):
                             train.pop()
                     continue
+                i = i+1
             print("[INFO] Ready to train with batches.")
             train = asarray(train).astype(float_)
             train_targets = asarray(train_targets).astype(float_)
