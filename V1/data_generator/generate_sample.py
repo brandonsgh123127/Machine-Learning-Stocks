@@ -19,7 +19,7 @@ class Sample(Normalizer):
         self.ticker = ticker
         self.path = Path(os.getcwd()).absolute()
 
-    async def generate_sample(self, out=1, _has_actuals=False, rand_date=False, skip_db=False,
+    async def generate_sample(self, out=1, _has_actuals=False, force_generate=False, rand_date=False, skip_db=False,
                         interval='1d', opt_fib_vals=[]):
         self.cnx = self.db_con.cursor(buffered=True)
         # 160 days used for multivariate
@@ -31,7 +31,7 @@ class Sample(Normalizer):
             print(f"[INFO] Generating ticker data for {self.ticker}.")
             # Read the current ticker data
             try:
-                await self.read_data(self.ticker, rand_dates=rand_date, out=out, skip_db=skip_db, interval=interval,
+                await self.read_data(self.ticker, rand_dates=rand_date,force_generate=force_generate, out=out, skip_db=skip_db, interval=interval,
                                opt_fib_vals=opt_fib_vals)
             except Exception as e:
                 raise Exception(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {e}')

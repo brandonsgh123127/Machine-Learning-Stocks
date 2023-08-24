@@ -385,7 +385,6 @@ class GUI(Thread_Pool):
         self.force_refresh.grid(column=1, row=2)
         self.auto_refresh_checkbutton = tk.Checkbutton(self.content, text="AutoRefresh", variable=self.auto_refresh)
         self.auto_refresh_checkbutton.grid(column=6, row=2)
-
         self.has_actuals = tk.Checkbutton(self.content, text="Compare Predicted", variable=self.boolean1)
         self.has_actuals.grid(column=6, row=1)
         self.generate_button = ttk.Button(self.content, text="Generate",
@@ -422,7 +421,7 @@ class GUI(Thread_Pool):
         loop.run_until_complete(self.auto_refresh_loop())
 
     async def jobtask_loop(self):
-        loop = asyncio.get_running_loop()
+        loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         _executor = ThreadPoolExecutor(8)
         loop.set_default_executor(_executor)
@@ -466,7 +465,7 @@ class GUI(Thread_Pool):
                 pass
 
     async def cachetask_loop(self):
-        loop = asyncio.get_running_loop()
+        loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         _executor = ThreadPoolExecutor(8)
         loop.set_default_executor(_executor)
@@ -517,7 +516,7 @@ class GUI(Thread_Pool):
                 pass
 
     async def auto_refresh_loop(self):
-        loop = asyncio.get_running_loop()
+        loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         while True:
             if self.exited:
@@ -530,9 +529,10 @@ class GUI(Thread_Pool):
 
 
 if __name__ == '__main__':
-    loop = asyncio.get_running_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     ui = GUI(loop)
-    task1 = asyncio.Task(ui.run())
+    task1 = loop.create_task(ui.run())
     loop.run_forever()
     run_task = loop.run_until_complete(task1)
     ui.auto_refresh_in_thread(loop)

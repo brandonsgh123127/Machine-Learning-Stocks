@@ -95,7 +95,6 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY",
                interval='Daily',opt_fib_vals:list=[],
                dis: Optional[Display] = None,skip_display: bool = False, output: int = 4):
     listLock = threading.Lock()
-    loop = get_running_loop()
     launch = launcher(force_generate)
     if ticker is not None:
         ticker = ticker
@@ -172,7 +171,7 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY",
     # Generate Data for usage in display_model
     print('[INFO] Generating data used for sampler.')
     launch.sampler.set_ticker(ticker)
-    data_task = launch.sampler.generate_sample(_has_actuals=has_actuals, out=out, rand_date=False, interval=interval,
+    data_task = launch.sampler.generate_sample(_has_actuals=has_actuals, force_generate=force_generate, out=out, rand_date=False, interval=n_interval,
                                         opt_fib_vals=opt_fib_vals)
     data = await gather(data_task)
     del data_task

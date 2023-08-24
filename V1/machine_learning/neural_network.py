@@ -567,7 +567,7 @@ async def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = Fals
                             else 55 if out == 3 \
                             else 70 if out == 4 \
                             else 0)))
-                    train[idx] = reshape(asarray(train[idx]).astype(float_), (1, 5, 14))
+                train[idx] = reshape(asarray(train[idx]).astype(float_), (1, 5, 14))
             prediction = nn.model.predict(train[-1],
                                           batch_size=1,
                                           )  # swapped to train due to time series (out 4)
