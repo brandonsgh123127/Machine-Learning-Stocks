@@ -234,50 +234,40 @@ class Display:
             studies['ema30'] = studies['ema30'].reset_index(drop=True)
             # studies['ema20'] = studies['ema20'].iloc[-data_len:].reset_index(drop=True)
 
-    def display_divergence(self, color=None, has_actuals=False, row=1, col=1):
-        self.axes[row,col].clear()
-        self.fig.set_size_inches(self.pixel_width / float(self.req_dpi),
-                               self.pixel_height / float(self.req_dpi))
-        data = self.data_predict_display.reset_index()
-        data.transpose().plot(ax=self.axes[row, col], kind='line', color=color)
-
-    def display_line(self, color='g', row=0, col=1, is_divergence=False, out = 1):
+    def display_line(self, color='g', row=0, col=1, out = 1):
         self.axes[row,col].clear()
         self.fig.set_size_inches(self.pixel_width / float(self.req_dpi),
                                self.pixel_height / float(self.req_dpi))
 
-        if is_divergence:
-            indices_dict = {0: 'Close'}
-        else:
-            if out == 1:
-                indices_dict = {0: 'Close EMA14 Distance', 1: 'Close EMA30 Distance',
-                            2: 'Close Fib1 Distance',3: 'Close Fib2 Distance',
-                            4: 'Num Consec Candle Dir', 5: 'Upper Keltner Close Diff',
-                            6: 'Lower Keltner Close Diff', 7: 'Open', 8: 'Close'}
-            elif out == 2:
-                indices_dict = {0:'Last2Volume Cur Volume Diff', 1:'Open Upper Kelt Diff',
-                2:'Open Lower Kelt Diff', 3:'High Upper Kelt Diff',
-                4:'High Lower Kelt Diff', 5:'Low Upper Kelt Diff',
-                6:'Low Lower Kelt Diff', 7:'Close Upper Kelt Diff',
-                8:'Close Lower Kelt Diff', 9:'EMA 14 30 Diff',
-                10:'Base Fib High Diff', 11:'Base Fib Low Diff',
-                12:'Next1 Fib High Diff', 13:'Next1 Fib Low Diff',
-                14:'Next2 Fib High Diff', 15:'Next2 Fib Low Diff',
-                16:'Open', 17:'High', 18:'Low', 19:'Close',
-                20:'Last3High Base Fib', 21:'Last3Low Base Fib',
-                22:'Last3High Next1 Fib', 23:'Last3Low Next1 Fib',
-                24:'Last3High Next2 Fib', 25:'Last3Low Next2 Fib'}
-            elif out == 3:
-                indices_dict = {0:'Upper Kelt',
-                1: 'Lower Kelt', 2:'Middle Kelt', 3:'EMA 14', 4:'EMA 30',
-                5:'Open', 6:'High', 7:'Low', 8:'Close',
-                9:'Last3High', 10:'Last3Low'}
-            elif out == 4:
-                indices_dict = {0: 'Upper Kelt',
-                                1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
-                                5: 'Open', 6: 'High', 7: 'Low', 8: 'Close', 9: 'Base Fib',
-                                10: 'Next1 Fib', 11: 'Next2 Fib',
-                                12: 'Last3High', 13: 'Last3Low'}
+        if out == 1:
+            indices_dict = {0: 'Close EMA14 Distance', 1: 'Close EMA30 Distance',
+                        2: 'Close Fib1 Distance',3: 'Close Fib2 Distance',
+                        4: 'Num Consec Candle Dir', 5: 'Upper Keltner Close Diff',
+                        6: 'Lower Keltner Close Diff', 7: 'Open', 8: 'Close'}
+        elif out == 2:
+            indices_dict = {0:'Last2Volume Cur Volume Diff', 1:'Open Upper Kelt Diff',
+            2:'Open Lower Kelt Diff', 3:'High Upper Kelt Diff',
+            4:'High Lower Kelt Diff', 5:'Low Upper Kelt Diff',
+            6:'Low Lower Kelt Diff', 7:'Close Upper Kelt Diff',
+            8:'Close Lower Kelt Diff', 9:'EMA 14 30 Diff',
+            10:'Base Fib High Diff', 11:'Base Fib Low Diff',
+            12:'Next1 Fib High Diff', 13:'Next1 Fib Low Diff',
+            14:'Next2 Fib High Diff', 15:'Next2 Fib Low Diff',
+            16:'Open', 17:'High', 18:'Low', 19:'Close',
+            20:'Last3High Base Fib', 21:'Last3Low Base Fib',
+            22:'Last3High Next1 Fib', 23:'Last3Low Next1 Fib',
+            24:'Last3High Next2 Fib', 25:'Last3Low Next2 Fib'}
+        elif out == 3:
+            indices_dict = {0:'Upper Kelt',
+            1: 'Lower Kelt', 2:'Middle Kelt', 3:'EMA 14', 4:'EMA 30',
+            5:'Open', 6:'High', 7:'Low', 8:'Close',
+            9:'Last3High', 10:'Last3Low'}
+        elif out == 4:
+            indices_dict = {0: 'Upper Kelt',
+                            1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
+                            5: 'Open', 6: 'High', 7: 'Low', 8: 'Close', 9: 'Base Fib',
+                            10: 'Next1 Fib', 11: 'Next2 Fib',
+                            12: 'Last3High', 13: 'Last3Low'}
 
         self.data_display2 = pd.concat([self.data_display.reset_index(), self.data_predict_display.reset_index()],
                                        ignore_index=False).set_flags(allows_duplicate_labels=True)
@@ -302,101 +292,78 @@ class Display:
             self.axes[row,col].set_xticklabels([])
             self.data_display2['Close'].plot(x='Close', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
 
-        # if divergence, add open label
-        try:
-            if is_divergence:
-                self.data_display2['index'] = [1, 1]
-                self.data_display2 = self.data_display2.set_index('index')
-                self.data_display2['Open'].plot(x='index', y='Open', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
-        except Exception as e:
-            raise Exception(
-                f'[INFO] Failed to draw "Range" column!\n{len(self.data_predict_display2.columns)}\n{self.data_predict_display2.columns}\n{str(e)}')
         for i, row2 in enumerate(self.data_display2.index):
             for j, col2 in enumerate(self.data_display2.columns):
-                if not is_divergence:
-                    if out == 1: #legacy output
-                        if i == 0:
-                            if j == 8:  # Bottom Left
-                                y = round(self.data_display2.iloc[i][j], 2)
-                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
-                        else:
-                            if j == 8:  # Top right
-                                y = round(self.data_display2.iloc[i][j], 2)
-                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
-                    elif out == 2:
-                        if i == 0:
-                            if 16 <= j <= 19:  # Bottom Left
-                                y = round(self.data_display2.iloc[i][j], 2)
-                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
-                        else:
-                            if 16 <= j <= 19:  # Top right
-                                y = round(self.data_display2.iloc[i][j], 2)
-                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
-                    elif out == 3:
-                        if i == 0:
-                            if 5 <= j <= 8:  # Bottom Left
-                                y = round(self.data_display2.iloc[i][j], 2)
-                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
-                        else:
-                            if 5 <= j <= 8:  # Top right
-                                y = round(self.data_display2.iloc[i][j], 2)
-                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
-                    elif out == 4:
-                        if i == 0:
-                            if 5 <= j <= 8:  # Bottom Left
-                                y = round(self.data_display2.iloc[i][j], 2)
-                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
-                        else:
-                            if 5 <= j <= 8:  # Top right
-                                y = round(self.data_display2.iloc[i][j], 2)
-                                self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
-
-                else:  # divergence
+                if out == 1: #legacy output
                     if i == 0:
-                        if j == 0 or j == 1 or j == 2:
+                        if j == 8:  # Bottom Left
                             y = round(self.data_display2.iloc[i][j], 2)
                             self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
                     else:
-                        if j == 0 or j == 1 or j == 2:
+                        if j == 8:  # Top right
+                            y = round(self.data_display2.iloc[i][j], 2)
+                            self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                elif out == 2:
+                    if i == 0:
+                        if 16 <= j <= 19:  # Bottom Left
+                            y = round(self.data_display2.iloc[i][j], 2)
+                            self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
+                    else:
+                        if 16 <= j <= 19:  # Top right
+                            y = round(self.data_display2.iloc[i][j], 2)
+                            self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                elif out == 3:
+                    if i == 0:
+                        if 5 <= j <= 8:  # Bottom Left
+                            y = round(self.data_display2.iloc[i][j], 2)
+                            self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
+                    else:
+                        if 5 <= j <= 8:  # Top right
+                            y = round(self.data_display2.iloc[i][j], 2)
+                            self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                elif out == 4:
+                    if i == 0:
+                        if 5 <= j <= 8:  # Bottom Left
+                            y = round(self.data_display2.iloc[i][j], 2)
+                            self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - A {y}', size='x-small')
+                    else:
+                        if 5 <= j <= 8:  # Top right
                             y = round(self.data_display2.iloc[i][j], 2)
                             self.axes[row, col].text(i, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
 
-    def display_predict_only(self, color=None, row=0, col=1, is_divergence=False, out = 2 ):
+    def display_predict_only(self, color=None, row=0, col=1, out = 2 ):
         self.axes[row,col].clear()
         self.fig.set_size_inches(self.pixel_width / float(self.req_dpi),
                                self.pixel_height / float(self.req_dpi))
-        if is_divergence:
-            indices_dict = {0: 'Close'}
-        else:
-            if out == 1:
-                indices_dict = {0: 'Close EMA14 Distance', 1: 'Close EMA30 Distance',
-                            2: 'Close Fib1 Distance',3: 'Close Fib2 Distance',
-                            4: 'Num Consec Candle Dir', 5: 'Upper Keltner Close Diff',
-                            6: 'Lower Keltner Close Diff', 7: 'Open', 8: 'Close'}
-            elif out == 2:
-                indices_dict = {0:'Last2Volume Cur Volume Diff', 1:'Open Upper Kelt Diff',
-                2:'Open Lower Kelt Diff', 3:'High Upper Kelt Diff',
-                4:'High Lower Kelt Diff', 5:'Low Upper Kelt Diff',
-                6:'Low Lower Kelt Diff', 7:'Close Upper Kelt Diff',
-                8:'Close Lower Kelt Diff', 9:'EMA 14 30 Diff',
-                10:'Base Fib High Diff', 11:'Base Fib Low Diff',
-                12:'Next1 Fib High Diff', 13:'Next1 Fib Low Diff',
-                14:'Next2 Fib High Diff', 15:'Next2 Fib Low Diff',
-                16:'Open', 17:'High', 18:'Low', 19:'Close',
-                20:'Last3High Base Fib', 21:'Last3Low Base Fib',
-                22:'Last3High Next1 Fib', 23:'Last3Low Next1 Fib',
-                24:'Last3High Next2 Fib', 25:'Last3Low Next2 Fib'}
-            elif out == 3:
-                indices_dict = {0: 'Upper Kelt',
-                                1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
-                                5: 'Open', 6: 'High', 7: 'Low', 8: 'Close',
-                                9: 'Last3High', 10: 'Last3Low'}
-            elif out == 4:
-                indices_dict = {0: 'Upper Kelt',
-                                1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
-                                5: 'Open', 6: 'High', 7: 'Low', 8: 'Close', 9: 'Base Fib',
-                                10: 'Next1 Fib', 11: 'Next2 Fib',
-                                12: 'Last3High', 13: 'Last3Low'}
+        if out == 1:
+            indices_dict = {0: 'Close EMA14 Distance', 1: 'Close EMA30 Distance',
+                        2: 'Close Fib1 Distance',3: 'Close Fib2 Distance',
+                        4: 'Num Consec Candle Dir', 5: 'Upper Keltner Close Diff',
+                        6: 'Lower Keltner Close Diff', 7: 'Open', 8: 'Close'}
+        elif out == 2:
+            indices_dict = {0:'Last2Volume Cur Volume Diff', 1:'Open Upper Kelt Diff',
+            2:'Open Lower Kelt Diff', 3:'High Upper Kelt Diff',
+            4:'High Lower Kelt Diff', 5:'Low Upper Kelt Diff',
+            6:'Low Lower Kelt Diff', 7:'Close Upper Kelt Diff',
+            8:'Close Lower Kelt Diff', 9:'EMA 14 30 Diff',
+            10:'Base Fib High Diff', 11:'Base Fib Low Diff',
+            12:'Next1 Fib High Diff', 13:'Next1 Fib Low Diff',
+            14:'Next2 Fib High Diff', 15:'Next2 Fib Low Diff',
+            16:'Open', 17:'High', 18:'Low', 19:'Close',
+            20:'Last3High Base Fib', 21:'Last3Low Base Fib',
+            22:'Last3High Next1 Fib', 23:'Last3Low Next1 Fib',
+            24:'Last3High Next2 Fib', 25:'Last3Low Next2 Fib'}
+        elif out == 3:
+            indices_dict = {0: 'Upper Kelt',
+                            1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
+                            5: 'Open', 6: 'High', 7: 'Low', 8: 'Close',
+                            9: 'Last3High', 10: 'Last3Low'}
+        elif out == 4:
+            indices_dict = {0: 'Upper Kelt',
+                            1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
+                            5: 'Open', 6: 'High', 7: 'Low', 8: 'Close', 9: 'Base Fib',
+                            10: 'Next1 Fib', 11: 'Next2 Fib',
+                            12: 'Last3High', 13: 'Last3Low'}
         self.data_predict_display2 = self.data_predict_display
         if out == 1:
             self.data_predict_display2['index'] = [0]
@@ -421,41 +388,24 @@ class Display:
             self.axes[row,col].set_xticklabels([])
             data['Close'].plot(x='index', y='Close', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
 
-        # Under divergence print range label
-        try:
-            if is_divergence:
-                self.data_predict_display2['index'] = [2]
-                data = self.data_predict_display2.set_index('index')
-                data['Open'].plot(x='index', y='Open', style=f'{self.color_map.get(color)}o', ax=self.axes[row, col])
-                data['index'] = [3]
-        except Exception as e:
-            raise Exception(
-                f'[INFO] Failed to draw "Open" column!\n{len(self.data_predict_display2.columns)}\n{self.data_predict_display2.columns}\n{str(e)}')
-
         for i, row2 in enumerate(self.data_predict_display2.index):
             for j, col2 in enumerate(self.data_predict_display2.columns):
-                if is_divergence:
-                    if j == 0 or j == 1 or j == 2:
+                if out == 1:
+                    if j == 7 or j == 8:
                         y = round(data.iloc[i][j], 2)
                         self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
-                else:
-                    if out == 1:
-                        if j == 7 or j == 8:
-                            y = round(data.iloc[i][j], 2)
-                            self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
-                    elif out == 2:
-                        if 16 <= j <= 19:
-                            y = round(data.iloc[i][j], 2)
-                            self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
-                    elif 3 <= out <= 4:
-                        if 5 <= j <= 8:
-                            y = round(data.iloc[i][j], 2)
-                            self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                elif out == 2:
+                    if 16 <= j <= 19:
+                        y = round(data.iloc[i][j], 2)
+                        self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
+                elif 3 <= out <= 4:
+                    if 5 <= j <= 8:
+                        y = round(data.iloc[i][j], 2)
+                        self.axes[row, col].text(j, y, f'{indices_dict.get(j)} - P {y}', size='x-small')
 
 
 # dis = Display()
 # dis.read_studies("2021-06-22--2021-08-12","SPY")
-# dis.display_divergence(ticker='SPY', dates=None, color='green')
 # locs, labels = plt.xticks()
 # dis.display_box()
 # # plt.xticks(locs)

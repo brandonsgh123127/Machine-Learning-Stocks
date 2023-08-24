@@ -280,8 +280,8 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
     for retrieve_result in retrieve_tdata_result:
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
-            print(
-                f'[INFO] Couldn\'t retrieve data_id for {ticker} for date {valid_datetime.strftime("%Y-%m-%d")}. Retrieving only stock_id.')
+            raise Exception(
+                f'[INFO] Couldn\'t retrieve data_id for {ticker} for date {valid_datetime.strftime("%Y-%m-%d")}.')
             check_stockid_db_stmt = """SELECT `stocks`.`stock`.`id` 
              FROM stocks.`stock` USE INDEX (`stockid`) WHERE
                `stocks`.`stock`.`stock` = %(stock)s
@@ -290,7 +290,7 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
                 result = cnx.execute(check_stockid_db_stmt, {'stock': f'{ticker.upper()}'
                                                              }, multi=True)
             except Exception as e:
-                print(f"[ERROR] Failed to Retrieve stock id during neural network retrieval!\r\nException: {e}")
+                raise Exception(f"[ERROR] Failed to Retrieve stock id during neural network retrieval!\r\nException: {e}")
             for retrieve_result in retrieve_tdata_result:
                 id_res = retrieve_result.fetchall()
                 if len(id_res) == 0:
@@ -362,9 +362,8 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
         id_res = retrieve_result.fetchall()
         if len(id_res) == 0:
             if not force_generation:
-                print(
+                raise Exception(
                     f'[INFO] Failed to locate a from data-id  for {ticker} on {valid_datetime.strftime("%Y-%m-%d")} with has_actuals: {has_actuals}')
-            break
         else:
             from_date_id = id_res[0][0].decode('latin1')
 
@@ -439,18 +438,16 @@ def check_db_cache(cnx: mysql.connector.connect = None, ticker: str = None, has_
 """Load Specified Model"""
 
 
-def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer",
+async def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, name: str = "relu_1layer",
          force_generation=False,
-         device_opt: str = '/device:GPU:0', rand_date=False, data: tuple = (), interval: str = '1d',
+         device_opt: str = '/device:GPU:0', rand_date=False, data: list = [], interval: str = '1d',
          sampler: Sample = None,
          opt_fib_vals: list = []):
     # Check to see if empty data value was passed in.
     # If true, exit out of function
     # 4 Output types as of 7/28
+    train = []
     out = 1 if nn.model_choice <= 4 or nn.model_choice == 11 else 2 if 4 < nn.model_choice <= 6 else 3 if 7 <= nn.model_choice <= 10 else 4 if 12 <= nn.model_choice <= 15 else -1
-    if data is None:
-        return None, None, None, None, None, None
-
     # Connect to local DB
     path = Path(os.getcwd()).absolute()
     tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(path))
@@ -478,36 +475,36 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
     to_date_id = None
     stock_id = None
 
-    try:
-        print("[INFO] Checking Database Cache for Model.")
-        vals = check_db_cache(cnx, ticker, has_actuals, name, force_generation, interval=interval)
-        predicted = vals[0]
-        stock_id = vals[1]
-        from_date_id = vals[2]
-        to_date_id = vals[3]
-        del vals
-    except Exception as e:
-        print(f"[ERROR] Failed to check DB cache for nn data\r\nException: {e}")
-        pass
+    # try:
+    #     print("[INFO] Checking Database Cache for Model.")
+    #     vals = check_db_cache(cnx, ticker, has_actuals, name, force_generation, interval=interval)
+    #     predicted = vals[0]
+    #     stock_id = vals[1]
+    #     from_date_id = vals[2]
+    #     to_date_id = vals[3]
+    #     del vals
+    # except Exception as e:
+    #     print(f"[ERROR] Failed to check DB cache for nn data\r\nException: {e}")
+    #     pass
 
     # Start ML calculations
     if predicted is None or force_generation:
         print("[INFO] Generating nn data.")
         # sampler.__init__(ticker)
         # If data is populated, go ahead and utilize it, skip over data check for normalizer...
-        if isinstance(data, tuple) and len(data) != 0:
-            print("[INFO] data has been generated prior.  Setting data.")
-            sampler.set_sample_data(data[0], data[1], data[2], data[3])
-        # if not type tuple, then this means that no data was passed in...
-        train = None
-        try:
-            print("[INFO] Generating sample given data.")
-            sampler.generate_sample(_has_actuals=has_actuals, out=out, rand_date=rand_date, interval=interval,
-                                    opt_fib_vals=opt_fib_vals)
-            sampler.trim_data(has_actuals)
-        except Exception as e:
-            print(f'[ERROR] Failed to generate sample for neural_network!\r\nException: {e}')
-            raise Exception(e)
+        if not data:
+            print('[INFO] Data has not been passed into neural load function.')
+            try:
+                print("[INFO] Generating sample given data.")
+                sampler.generate_sample(_has_actuals=has_actuals, out=out, rand_date=rand_date, interval=interval,
+                                        opt_fib_vals=opt_fib_vals)
+                sampler.trim_data(has_actuals)
+            except Exception as e:
+                print(f'[ERROR] Failed to generate sample for neural_network!\r\nException: {e}')
+                raise Exception(e)
+        else:
+            print("[INFO] Data  has been generated prior.  Setting data.")
+            sampler.set_sample_data(data[0], data[1], data[2], data[3],data[4],data[5])
         try:  # verify there is no extra 'index' column
             sampler.data = sampler.data.drop(['index'], axis=1)
         except Exception as e:
@@ -520,36 +517,37 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
         if not force_generation:
             print(f'[INFO] Did not query all specified dates within range for nn-data retrieval!')
         with listLock:
-            # Verify that the data has at least the correct shape needed...
-            if out == 1:
-                try:
-                    reshape(sampler.normalized_data.iloc[-14 if not has_actuals else -15:].to_numpy(),
-                            (1, 1, 126 if not has_actuals else 135))
-                except Exception as e:
-                    raise Exception(
-                        f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
-            elif 2 <= out <= 3:
-                try:
-                    reshape(sampler.normalized_data.iloc[-5 if not has_actuals else -6:].to_numpy(),
-                            (1, 1, 156 if has_actuals and out == 2 \
-                                else 130 if out == 2 \
-                                else 66 if has_actuals and (out == 3) \
-                                else 55 if out == 3 \
-                                else 0))
-                except Exception as e:
-                    raise Exception(
-                        f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
-            elif out == 4:
-                try:
-                    sampler.normalized_data.iloc[:, -5 if not has_actuals else -6:].to_numpy()
-                except Exception as e:
-                    raise Exception(f'[ERROR] Couldn\'t generate ML output for ticker {ticker}.\n\tException: {e}')
-            with device(device_opt):
+            for idx in range(0,len(sampler.normalized_data)):
+                # Verify that the data has at least the correct shape needed...
+                if out == 1:
+                    try:
+                        reshape(sampler.normalized_data[idx].iloc[-14 if not has_actuals else -15:].to_numpy(),
+                                (1, 1, 126 if not has_actuals else 135))
+                    except Exception as e:
+                        raise Exception(
+                            f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
+                elif 2 <= out <= 3:
+                    try:
+                        reshape(sampler.normalized_data[idx].iloc[-5 if not has_actuals else -6:].to_numpy(),
+                                (1, 1, 156 if has_actuals and out == 2 \
+                                    else 130 if out == 2 \
+                                    else 66 if has_actuals and (out == 3) \
+                                    else 55 if out == 3 \
+                                    else 0))
+                    except Exception as e:
+                        raise Exception(
+                            f'[ERROR] Couldn\'t generate ML output for ticker {ticker} for date id range {from_date_id} to {to_date_id}.\n\tException: {e}')
+                elif out == 4:
+                    try:
+                        sampler.normalized_data[idx].iloc[:, -5 if not has_actuals else -6:].transpose().to_numpy()
+                    except Exception as e:
+                        raise Exception(f'[ERROR] Couldn\'t generate ML output for ticker {ticker}.\n\tException: {e}')
                 if has_actuals:
                     if out == 4:
-                        train = reshape(sampler.normalized_data.iloc[:, -6:-1].to_numpy(), (14, 5))
+                        train.append(reshape(sampler.normalized_data[idx].iloc[:, -6:-1].transpose().to_numpy(),
+                                             (5, 14)))
                     else:
-                        train = (reshape(sampler.normalized_data.iloc[:, -15 if out == 1 \
+                        train.append(reshape(sampler.normalized_data[idx].iloc[:, -15 if out == 1 \
                                                                              else -6 if 2 <= out <= 4 \
                             else 0:-1].to_numpy(), (1, 1,
                                                     126 if out == 1 \
@@ -559,19 +557,21 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
                                                         else 0)))
                 else:
                     if out == 4:
-                        train = reshape(sampler.normalized_data.iloc[:, -5:].to_numpy(), (14, 5))
+                        train.append(reshape(sampler.normalized_data[idx].iloc[:, -5:].transpose().to_numpy(),
+                                             (5, 14)))
                     else:
-                        train = (reshape(sampler.normalized_data[:, -14 if out == 1 \
+                        train.append(reshape(sampler.normalized_data[idx].iloc[:, -14 if out == 1 \
                                                                         else -5 if 2 <= out <= 4 \
                             else 0:].to_numpy(), (1, 1, 126 if out == 1 \
                             else 130 if out == 2 \
                             else 55 if out == 3 \
                             else 70 if out == 4 \
                             else 0)))
-                train = reshape(asarray(train).astype(float_), (1, 14, 5))
-                stacked_train = stack(train)  # used for legacy out 1-3
-                prediction = nn.model.predict(train)  # swapped to train due to time series (out 4)
-                del train, stacked_train
+                    train[idx] = reshape(asarray(train[idx]).astype(float_), (1, 5, 14))
+            prediction = nn.model.predict(train[-1],
+                                          batch_size=1,
+                                          )  # swapped to train due to time series (out 4)
+            del train
         if out == 1:
             predicted = pd.DataFrame((reshape(prediction, (1, 1))), columns=['Close'])  # NORMALIZED
         elif 2 <= out <= 3:
@@ -642,9 +642,9 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
         predicted = predicted.transpose()  # out 4 - transpose back to how data was passed into model
         # Inverse algorithm for getting values out of percentage points
         unnormalized_prediction_df = pd.DataFrame(
-            [((predicted.iloc[:, -1] / 100) * sampler.unnormalized_data.iloc[:, -1]) + sampler.unnormalized_data.iloc[:,
+            [((predicted.iloc[:, -1] / 100) * sampler.unnormalized_data[-1].iloc[:, -1]) + sampler.unnormalized_data[-1].iloc[:,
                                                                                        -1]],
-            columns=sampler.normalized_data.index.tolist())
+            columns=sampler.normalized_data[-1].index.tolist())
         # unnormalized_prediction_df = sampler.unnormalize(predicted,out=out).transpose()
     except Exception as e:
         print(f"[ERROR] Failed to unnormalize data!\r\nException: {e}")
@@ -673,17 +673,17 @@ def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = False, nam
     elif 2 <= out <= 4:
         print(f"[INFO] Out is {out}, appending predicted values to df")
         if has_actuals:
-            unnormalized_predict_values = sampler.data
+            unnormalized_predict_values = sampler.data[-1]
         else:
-            unnormalized_predict_values = pd.concat(objs=[sampler.data, pd.DataFrame([[open, high, low, close]],
+            unnormalized_predict_values = pd.concat(objs=[sampler.data[-1], pd.DataFrame([[open, high, low, close]],
                                                                                      columns=['Open', 'High', 'Low',
                                                                                               'Close'])],
                                                     ignore_index=True)
     del unnormalized_prediction
     predicted_unnormalized = unnormalized_predict_values
     del unnormalized_predict_values
-    return unnormalized_prediction_df, sampler.unnormalized_data.transpose().tail(
-        1), predicted_unnormalized, sampler.keltner, sampler.fib, sampler.studies
+    return unnormalized_prediction_df, sampler.unnormalized_data[-1].transpose().tail(
+        1), predicted_unnormalized, sampler.keltner[-1], sampler.fib[-1], sampler.studies[-1]
 
 
 """

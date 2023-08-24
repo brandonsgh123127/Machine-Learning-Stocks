@@ -113,7 +113,6 @@ class Studies(Gather):
                             else:
                                 # Get study_id
                                 self.study_id = study_id_res[0][0].decode('latin1')
-
                     holidays = USFederalHolidayCalendar().holidays(start=f'{datetime.datetime.now().year}-01-01',
                                                                    end=f'{datetime.datetime.now().year}-12-31').to_pydatetime()
                     # For each date, verify data is in the specified range by removing any unnecessary dates first
@@ -264,6 +263,7 @@ class Studies(Gather):
                         self.ema_cnx.close()
                         raise mysql.connector.errors.DatabaseError()
             if len(date_range) == 0 and not self._force_generate and not skip_db:  # continue loop if found cached data
+                print('[INFO] Cached study data found, skipping generation.')
                 self.applied_studies = pd.concat(objs=[self.applied_studies, study_data], axis=1)
             # Insert data into db if query above is not met
             else:

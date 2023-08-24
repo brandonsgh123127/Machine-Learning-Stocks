@@ -1,7 +1,7 @@
 import cProfile
 import inspect
 import queue
-from asyncio import get_event_loop, gather, new_event_loop
+from asyncio import get_running_loop, gather, new_event_loop
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -14,7 +14,6 @@ import os
 from V1.machine_learning.model import NN_Model
 # import matplotlib.pyplot as plt
 from V1.machine_learning.neural_network import load, Network
-from V1.machine_learning.neural_network_divergence import load as load_divergence
 from V1.data_generator.display_data import Display
 import threading
 import sys
@@ -35,7 +34,7 @@ class launcher:
 
     async def display_model(self, nn: NN_Model = None, name: str = "relu_multilayer_l2", _has_actuals: bool = False, ticker: str = "spy",
                       color: str = "blue", force_generation=False, unnormalized_data=False, row=0, col=1,
-                      data=None, is_divergence=False,
+                      data=None,
                       skip_threshold: float = 0.05,
                       interval: str = '1d',
                       opt_fib_vals: list = [],
@@ -43,17 +42,12 @@ class launcher:
                       out: int = 1):
         # Call machine learning model
         self.sampler.set_ticker(ticker)
-        self.sampler.reset_data()
+        # self.sampler.reset_data()
         print(f"[INFO] Utilizing `{name}` model to predict data.")
         try:
-            if not is_divergence:
-                ldata = load(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
-                             force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False, data=data,
-                             interval=interval, sampler=self.sampler,opt_fib_vals=opt_fib_vals)
-            else:
-                ldata = load_divergence(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
-                                        force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False,
-                                        data=data, interval=interval)
+            ldata = await load(nn,f'{ticker.upper()}', has_actuals=_has_actuals, name=f'{name}',
+                         force_generation=force_generation, device_opt='/device:GPU:0', rand_date=False, data=data,
+                         interval=interval, sampler=self.sampler,opt_fib_vals=opt_fib_vals)
         except Exception as e:
             print(f"[ERROR] Failed to generate NN data for {ticker.upper()}!\r\nException: {e}")
             raise Exception(e)
@@ -77,10 +71,7 @@ class launcher:
         if not _has_actuals:  # if prediction, proceed
             if not unnormalized_data:
                 with self.listLock:
-                    if not is_divergence:
-                        dis.display_predict_only(color=f'{color}', row=row, col=col,out=out)
-                    else:
-                        dis.display_predict_only(color=f'{color}', row=row, col=col, is_divergence=is_divergence)
+                    dis.display_predict_only(color=f'{color}', row=row, col=col,out=out)
             else: # Boxplot
                 with self.listLock:
                     dis.display_box(ldata[2].copy(), has_actuals=_has_actuals,without_fib=False,only_fib=False,opt_fib_vals=opt_fib_vals) # Display with fib
@@ -94,10 +85,7 @@ class launcher:
                     dis.display_box(ldata[2].copy(), row=1, col=1, has_actuals=_has_actuals, without_fib=False,only_fib=True)#Display only fib
             else:
                 with self.listLock:
-                    if not is_divergence:
-                        dis.display_line(color=f'{color}', row=row, col=col, out=out)
-                    else:
-                        dis.display_line(color=f'{color}', row=row, col=col, is_divergence=is_divergence)
+                    dis.display_line(color=f'{color}', row=row, col=col, out=out)
         return ticker, ldata[0], ldata[1]
 
 
@@ -107,7 +95,7 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY",
                interval='Daily',opt_fib_vals:list=[],
                dis: Optional[Display] = None,skip_display: bool = False, output: int = 4):
     listLock = threading.Lock()
-    loop = get_event_loop()
+    loop = get_running_loop()
     launch = launcher(force_generate)
     if ticker is not None:
         ticker = ticker
@@ -182,7 +170,10 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY",
     _has_actuals = has_actuals
     out = output
     # Generate Data for usage in display_model
-    data_task = await loop.run_in_executor(launch._executor,launch.gen.generate_data_with_dates,dates[0], dates[1], False, force_generate, out, False, n_interval,ticker,opt_fib_vals)
+    print('[INFO] Generating data used for sampler.')
+    launch.sampler.set_ticker(ticker)
+    data_task = launch.sampler.generate_sample(_has_actuals=has_actuals, out=out, rand_date=False, interval=interval,
+                                        opt_fib_vals=opt_fib_vals)
     data = await gather(data_task)
     del data_task
     data = data[0]
@@ -192,19 +183,15 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY",
     dis.clear_subplots()
 
     # BOX PLOT CALL
-    box_plot_task = await loop.run_in_executor(launch._executor,launch.display_model,nn_dict["new_scaled_2layer"],"new_scaled_2layer", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, False, 0.05,
+    box_plot_task = launch.display_model(nn_dict["new_scaled_2layer"],"new_scaled_2layer", has_actuals, ticker, 'green', force_generate, True, 0, 0, data, 0.05,
                          n_interval,opt_fib_vals,dis,skip_display,out)
 
     #
     # Model_Out_2 LABEL
-    if _has_actuals:
-        task1 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else nn_dict["scaled_2layer"] if out == 3 else nn_dict["new_scaled_2layer_v2"] if out == 4 else "","relu_multilayer_l2" if out==1 else "new_multi_analysis_l2" if out == 2 else "scaled_2layer" if out == 3 else "new_scaled_2layer_v2" if out == 4 else "", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval,[],dis,skip_display,out)
-    else:
-        task1 = await loop.run_in_executor(launch._executor,launch.display_model,
-                    nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else nn_dict["scaled_2layer"] if out == 3 else nn_dict["new_scaled_2layer_v2"] if out == 4 else "","relu_multilayer_l2" if out==1 else "new_multi_analysis_l2" if out == 2 else "scaled_2layer" if out == 3 else "new_scaled_2layer_v2" if out == 4 else "", _has_actuals, ticker, 'green', force_generate, False, 0, 1, data, False,
-                    0.05, n_interval,[],dis,skip_display,out)
+    task1 = launch.display_model(
+                nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else nn_dict["scaled_2layer"] if out == 3 else nn_dict["new_scaled_2layer_v2"] if out == 4 else "","relu_multilayer_l2" if out==1 else "new_multi_analysis_l2" if out == 2 else "scaled_2layer" if out == 3 else "new_scaled_2layer_v2" if out == 4 else "",
+        _has_actuals, ticker, 'green', force_generate, False, 0, 1, data,
+                0.05, n_interval,[],dis,skip_display,out)
     gc.collect()
     await gather(box_plot_task, task1)
     del box_plot_task, task1
@@ -314,9 +301,9 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
 
 
 if __name__ == "__main__":
-    _type = sys.argv[1]
-    _has_actuals = sys.argv[3] == 'True'
-    _force_generate = sys.argv[4] == 'True'
+    ticker = sys.argv[1]
+    _has_actuals = sys.argv[2] == 'True'
+    _force_generate = sys.argv[3] == 'True'
     loop = new_event_loop()
     neural_net = Network(0, 0)
     model_choices: list = [
@@ -342,6 +329,6 @@ if __name__ == "__main__":
                     'new_scaled_2layer_v2': nn_models[1]
     }
     dis = Display()
-    loop.run_until_complete(main(nn_dict=nn_dict,ticker=sys.argv[2],
+    loop.run_until_complete(main(nn_dict=nn_dict,ticker=ticker,
                                  has_actuals=_has_actuals, force_generate=_force_generate,
                                  interval='1d',dis=dis,skip_display=False,output=4))

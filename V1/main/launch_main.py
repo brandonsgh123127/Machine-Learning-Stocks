@@ -422,7 +422,7 @@ class GUI(Thread_Pool):
         loop.run_until_complete(self.auto_refresh_loop())
 
     async def jobtask_loop(self):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         asyncio.set_event_loop(loop)
         _executor = ThreadPoolExecutor(8)
         loop.set_default_executor(_executor)
@@ -466,7 +466,7 @@ class GUI(Thread_Pool):
                 pass
 
     async def cachetask_loop(self):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         asyncio.set_event_loop(loop)
         _executor = ThreadPoolExecutor(8)
         loop.set_default_executor(_executor)
@@ -517,7 +517,7 @@ class GUI(Thread_Pool):
                 pass
 
     async def auto_refresh_loop(self):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         asyncio.set_event_loop(loop)
         while True:
             if self.exited:
@@ -530,7 +530,7 @@ class GUI(Thread_Pool):
 
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     ui = GUI(loop)
     task1 = asyncio.Task(ui.run())
     loop.run_forever()

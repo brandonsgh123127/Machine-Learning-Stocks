@@ -118,6 +118,76 @@ class Gather:
             return self.indicator
             # retrieve pandas_datareader object of datetime
 
+    async def push_data_to_db(self, skip_db=False, interval: str = '1d',ticker: Optional[str] = "",
+                              data: pd.DataFrame = None):
+        if skip_db:
+            return
+        else:
+            is_utilizing_yfinance: bool = False if '1d' in interval or '1wk' in interval or '1m' in interval or '1y' in interval else True
+            # Append dates to database
+            for index, row in data.iterrows():
+                if '1d' in interval:
+                    insert_date_stmt = """REPLACE INTO `stocks`.`dailydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                                VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
+                                DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                elif '1wk' in interval:
+                    insert_date_stmt = """REPLACE INTO `stocks`.`weeklydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                                VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
+                                DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                elif '1m' in interval:
+                    insert_date_stmt = """REPLACE INTO `stocks`.`monthlydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                                VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
+                                DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                elif '1y' in interval:
+                    insert_date_stmt = """REPLACE INTO `stocks`.`yearlydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                                VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
+                                DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                else:
+                    insert_date_stmt = f"""REPLACE INTO `stocks`.`{interval}data` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
+                                VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
+                                %(Date)s,%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
+                try:
+                    # print(row.name)
+                    if is_utilizing_yfinance:
+                        insert_date_resultado = self.cnx.execute(insert_date_stmt, {
+                            'data_id': f'{self.indicator if not ticker else ticker.upper()}{row["Date"].strftime("%Y-%m-%d %H:%M:%S")}',
+                            'stock': f'{self.indicator.upper() if not ticker else ticker.upper()}',
+                            'Date': row['Date'].strftime("%Y-%m-%d %H:%M:%S"),
+                            'Open': row['Open'],
+                            'High': row['High'],
+                            'Low': row['Low'],
+                            'Close': row['Close'],
+                            'Adj Close': row['Adj Close']}, multi=True)
+                    else:
+                        insert_date_resultado = self.cnx.execute(insert_date_stmt, {
+                            'data_id': f'{self.indicator if not ticker else ticker.upper()}{row["Date"].strftime("%Y-%m-%d")}',
+                            'stock': f'{self.indicator.upper() if not ticker else ticker.upper()}',
+                            'Date': row['Date'].strftime("%Y-%m-%d"),
+                            'Open': row['Open'],
+                            'High': row['High'],
+                            'Low': row['Low'],
+                            'Close': row['Close'],
+                            'Adj Close': row['Adj Close']}, multi=True)
+
+                except mysql.connector.errors.IntegrityError as e:
+                    print('[ERROR] Integrity error while appending stock data to database! ')
+                    pass
+                except Exception as e:
+                    # print(self.data)
+                    print(
+                        f'[ERROR] Failed to insert date for {self.indicator if not ticker else ticker.upper()} into database!\nDebug Info:{row}\n',
+                        str(e))
+                    exc_type, exc_obj, exc_tb = sys.exc_info()
+                    fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                    print(exc_type, fname, exc_tb.tb_lineno)
+                try:
+                    self.db_con.commit()
+                except Exception as e:
+                    print(str(e), '\n[Error] Could not commit changes for insert day data!\n')
+        try:
+            self.cnx.close()
+        except:
+            pass
     async def set_data_from_range(self, start_date: datetime.datetime, end_date: datetime.datetime, _force_generate=False,
                             skip_db=False, interval: str = '1d',ticker: Optional[str] = "", update_self = True, has_actuals=False):
         # Date range utilized for query...
@@ -469,72 +539,6 @@ class Gather:
                             new_data = new_data.drop(['Stock Splits'],axis=1)
                         except:
                             pass
-                if not skip_db:
-                    print("[INFO] Appending stock data to database.")
-                    # Append dates to database
-                    for index, row in self.data.iterrows() if update_self else new_data.iterrows():
-                        if '1d' in interval:
-                            insert_date_stmt = """REPLACE INTO `stocks`.`dailydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
-                            VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
-                            DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
-                        elif '1wk' in interval:
-                            insert_date_stmt = """REPLACE INTO `stocks`.`weeklydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
-                            VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
-                            DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
-                        elif '1m' in interval:
-                            insert_date_stmt = """REPLACE INTO `stocks`.`monthlydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
-                            VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
-                            DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
-                        elif '1y' in interval:
-                            insert_date_stmt = """REPLACE INTO `stocks`.`yearlydata` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
-                            VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
-                            DATE(%(Date)s),%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
-                        else:
-                            insert_date_stmt = f"""REPLACE INTO `stocks`.`{interval}data` (`data-id`, `stock-id`, `date`,`open`,high,low,`close`,`adj-close`) 
-                            VALUES (AES_ENCRYPT(%(data_id)s, %(stock)s), AES_ENCRYPT(%(stock)s, %(stock)s),
-                            %(Date)s,%(Open)s,%(High)s,%(Low)s,%(Close)s,%(Adj Close)s)"""
-                        try:
-                            # print(row.name)
-                            if is_utilizing_yfinance:
-                                insert_date_resultado = self.cnx.execute(insert_date_stmt, {
-                                    'data_id': f'{self.indicator if not ticker else ticker.upper()}{row["Date"].strftime("%Y-%m-%d %H:%M:%S")}',
-                                    'stock': f'{self.indicator.upper() if not ticker else ticker.upper()}',
-                                    'Date': row['Date'].strftime("%Y-%m-%d %H:%M:%S"),
-                                    'Open': row['Open'],
-                                    'High': row['High'],
-                                    'Low': row['Low'],
-                                    'Close': row['Close'],
-                                    'Adj Close': row['Adj Close']}, multi=True)
-                            else:
-                                insert_date_resultado = self.cnx.execute(insert_date_stmt, {
-                                    'data_id': f'{self.indicator if not ticker else ticker.upper()}{row["Date"].strftime("%Y-%m-%d")}',
-                                    'stock': f'{self.indicator.upper() if not ticker else ticker.upper()}',
-                                    'Date': row['Date'].strftime("%Y-%m-%d"),
-                                    'Open': row['Open'],
-                                    'High': row['High'],
-                                    'Low': row['Low'],
-                                    'Close': row['Close'],
-                                    'Adj Close': row['Adj Close']}, multi=True)
-
-                        except mysql.connector.errors.IntegrityError as e:
-                            print('[ERROR] Integrity error while appending stock data to database! ')
-                            pass
-                        except Exception as e:
-                            # print(self.data)
-                            print(
-                                f'[ERROR] Failed to insert date for {self.indicator if not ticker else ticker.upper()} into database!\nDebug Info:{row}\n',
-                                str(e))
-                            exc_type, exc_obj, exc_tb = sys.exc_info()
-                            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-                            print(exc_type, fname, exc_tb.tb_lineno)
-                        try:
-                            self.db_con.commit()
-                        except Exception as e:
-                            print(str(e),'\n[Error] Could not commit changes for insert day data!\n')
-        try:
-            self.cnx.close()
-        except:
-            pass
         # Explicitly limit data to 100
         # TODO: 100 days is good for 1d data.  When it comes to other intervals, may not be optimal...
         if update_self:
@@ -621,7 +625,7 @@ class Gather:
             raise Exception(response.status_code, response.text)
         return response.json()
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     d = Gather()
     loop.run_until_complete(d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=3),end_date=datetime.datetime.utcnow().date(),_force_generate=False,interval='15m',ticker='spy'))
     print(d.data)

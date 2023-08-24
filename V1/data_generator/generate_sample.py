@@ -19,7 +19,7 @@ class Sample(Normalizer):
         self.ticker = ticker
         self.path = Path(os.getcwd()).absolute()
 
-    def generate_sample(self, out=1, _has_actuals=False, rand_date=False, is_divergence=False, skip_db=False,
+    async def generate_sample(self, out=1, _has_actuals=False, rand_date=False, skip_db=False,
                         interval='1d', opt_fib_vals=[]):
         self.cnx = self.db_con.cursor(buffered=True)
         # 160 days used for multivariate
@@ -31,7 +31,7 @@ class Sample(Normalizer):
             print(f"[INFO] Generating ticker data for {self.ticker}.")
             # Read the current ticker data
             try:
-                self.read_data(self.ticker, rand_dates=rand_date, out=out, skip_db=skip_db, interval=interval,
+                await self.read_data(self.ticker, rand_dates=rand_date, out=out, skip_db=skip_db, interval=interval,
                                opt_fib_vals=opt_fib_vals)
             except Exception as e:
                 raise Exception(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {e}')
@@ -67,37 +67,7 @@ class Sample(Normalizer):
         #     print(f"[ERROR] Failed to execute PCA\r\nException: {e}")
         #     raise Exception(e)
         self.cnx.close()
-
-    def generate_divergence_sample(self, _has_actuals=False, rand_date=False, opt_fib_vals=[]):
-        self.cnx = self.db_con.cursor(buffered=True)
-
-        if not _has_actuals:
-            self.DAYS_SAMPLED = 14
-        else:
-            self.DAYS_SAMPLED = 15
-        # if data and keltner are populated, skip
-        if self.data and self.keltner:
-            pass
-        else:
-            # Read the current ticker data
-            try:
-                self.read_data(self.ticker, rand_dates=rand_date,
-                               opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
-            except Exception as e:
-                # print(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {str(e)}')
-                raise Exception(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {str(e)}')
-        # Iterate through dataframe and retrieve random sample
-        self.convert_divergence()
-        self.normalized_data = self.normalized_data.iloc[-(self.DAYS_SAMPLED):]
-
-        rc = self.normalize_divergence()
-        if rc == 1:
-            raise Exception("Normalize did not return exit code 1")
-        if len(self.normalized_data) < self.DAYS_SAMPLED:
-            self.read_data(self.to_date, self.ticker, opt_fib_vals=opt_fib_vals)  # Get ticker and date from path
-            self.convert_derivatives()
-        self.cnx.close()
-        return 0
+        return self.data,self.studies,self.fib,self.keltner,self.unnormalized_data,self.normalized_data
 
     def unnormalize(self, data, out: int = 1, has_actuals=False):
         return super().unnormalize(data, out, has_actuals)
@@ -112,12 +82,14 @@ class Sample(Normalizer):
     def get_ticker(self):
         return self.ticker
 
-    def set_sample_data(self, data: pd.DataFrame, studies: pd.DataFrame, fib: pd.DataFrame, keltner: pd.DataFrame):
+    def set_sample_data(self, data: pd.DataFrame, studies: pd.DataFrame, fib: pd.DataFrame, keltner: pd.DataFrame,
+                        unnormalized_data: pd.DataFrame, normalized_data:pd.DataFrame):
         self.data = data
         self.studies = studies
         self.fib = fib
         self.keltner = keltner
-
+        self.unnormalized_data = unnormalized_data
+        self.normalized_data = normalized_data
     def reset_data(self):
         del self.data, self.studies, self.fib, self.keltner, self.normalized_data, self.unnormalized_data
         self.data = []

@@ -1,3 +1,4 @@
+import queue
 from pathlib import Path
 import os
 from typing import Optional
@@ -28,6 +29,7 @@ class Generator():
         self.news = News_Scraper(ticker)
         self.thread_pool = Thread_Pool(amount_of_threads=2)
         self.ticker = None
+        self.tasks = queue.Queue()
         if ticker is not None:
             self.ticker = ticker
         if path is not None:
@@ -144,9 +146,13 @@ class Generator():
         try:
             print("[INFO] Gathering Stock Data.")
             studies = Studies(self.ticker if not ticker else ticker, force_generate=force_generate)
-            ema_task = studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval,
+            data_task = studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval,
                                                    ticker=ticker,has_actuals=has_actuals)
-            await ema_task
+            await data_task
+            push_data_to_db_task = studies.push_data_to_db(skip_db=skip_db, interval=interval,
+                                                           ticker=ticker, data=studies.data)
+            self.tasks.put(push_data_to_db_task) # Push to queue so we can await in the background
+            await self.tasks.get()
             # studies.data = studies.data.reset_index()
         except Exception as e:
             print(f'[ERROR] Failed to generate stock data!\r\nException: {e}')
@@ -175,18 +181,6 @@ class Generator():
         tuple_out: list = []
         for idx, data in enumerate(split_data):
             split_studies[idx].data = data
-            try:
-                split_studies[idx].data = split_studies[idx].data.drop(['Adj Close'], axis=1)
-            except:
-                pass
-            try:
-                split_studies[idx].data = split_studies[idx].data.drop(['index'], axis=1)
-            except:
-                pass
-            try:
-                split_studies[idx].data = split_studies[idx].data.drop(['level_0'], axis=1)
-            except:
-                pass
             # Set data to current split data
             try:
                 await split_studies[idx].apply_ema("14", skip_db=skip_db, interval=interval)
