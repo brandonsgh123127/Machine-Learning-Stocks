@@ -1442,12 +1442,12 @@ val1    val3_________________________          vall2
                     fib_direction = 'down'
                 tmp_data = data.copy()
                 # If either low/high are at beginning/end, remove it
-                # while tmp_data['Low'].idxmin() == 0 or tmp_data['Low'].idxmin() == len(tmp_data['Low']) - 1:
-                #     tmp_new_set = tmp_new_set.drop(tmp_new_set['Low'].idxmin())
-                #     tmp_data = tmp_data.drop(tmp_data['Low'].idxmin())
-                # while tmp_data['High'].idxmax() == 0 or tmp_data['High'].idxmax() == len(tmp_data['High']) - 1:
-                #     tmp_new_set = tmp_new_set.drop(tmp_new_set['High'].idxmax())
-                #     tmp_data = tmp_data.drop(tmp_data['High'].idxmax())
+                while tmp_data['Low'].idxmin() == 0 or tmp_data['Low'].idxmin() == len(tmp_data['Low']) - 1:
+                    tmp_new_set = tmp_new_set.drop(tmp_new_set['Low'].idxmin())
+                    tmp_data = tmp_data.drop(tmp_data['Low'].idxmin())
+                while tmp_data['High'].idxmax() == 0 or tmp_data['High'].idxmax() == len(tmp_data['High']) - 1:
+                    tmp_new_set = tmp_new_set.drop(tmp_new_set['High'].idxmax())
+                    tmp_data = tmp_data.drop(tmp_data['High'].idxmax())
 
                 new_set = tmp_new_set
                 if fib_direction == 'up':

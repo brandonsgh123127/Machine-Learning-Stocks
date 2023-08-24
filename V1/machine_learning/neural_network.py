@@ -31,7 +31,7 @@ class Network(Neural_Framework):
         self.sampler: Sample = None
 
     # Used for generation of data via the start
-    def generate_sample(self, _has_actuals=False, rand_date=False, interval='1d', out=1, opt_fib_vals=[],
+    async def generate_sample(self, _has_actuals=False, rand_date=False, interval='1d', out=1, opt_fib_vals=[],
                         ticker: str = None):
         path = Path(os.getcwd()).absolute()
         self.sampler.reset_data()
@@ -42,7 +42,7 @@ class Network(Neural_Framework):
             self.sampler.set_ticker(ticker)
         try:
             print(f"[INFO] Generating sample for {self.sampler.ticker}")
-            self.sampler.generate_sample(_has_actuals=_has_actuals, out=out, rand_date=rand_date, skip_db=True,
+            await self.sampler.generate_sample(_has_actuals=_has_actuals, out=out, rand_date=rand_date, skip_db=True,
                                          interval=interval, opt_fib_vals=opt_fib_vals)
         except Exception as e:
             # print(f'[ERROR] Failed to generate sample!\r\nException: {e}')
@@ -56,7 +56,7 @@ class Network(Neural_Framework):
                 pass
         # self.sampler.data = self.sampler # not needed?
 
-    def run_model(self, nn: NN_Model = None, rand_date=False, interval='1d', ticker: str = None):
+    async def run_model(self, nn: NN_Model = None, rand_date=False, interval='1d', ticker: str = None):
         self.sampler = Sample(ticker=ticker)
         models = {}
         try:
@@ -87,7 +87,7 @@ class Network(Neural_Framework):
             while i <= int(self.BATCHES/ n_steps):
                 try:
                     print(f"[INFO] Generating data sample")
-                    self.generate_sample(True, rand_date, interval, out, ticker=ticker)
+                    await self.generate_sample(True, rand_date, interval, out, ticker=ticker)
                 except Exception as e:
                     print(f'[ERROR] Failed to generate sample for ticker!\r\nException: {e}')
                     continue
@@ -709,7 +709,8 @@ def run(epochs, batch_size, choice: str = None, interval='1d'):
     except:
         print("[INFO] No prior model has been created, thus, no checkpoint to load.")
         pass
-    model = neural_net.run_model(nn, rand_date=True, interval=interval, ticker=None)
+    loop = asyncio.new_event_loop()
+    model = loop.run_until_complete(neural_net.run_model(nn, rand_date=True, interval=interval, ticker=None))
     for i in range(1, neural_net.EPOCHS):
         train_history = model[i]
         print(train_history)
