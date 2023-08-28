@@ -217,14 +217,15 @@ class Normalizer():
                 pass
 
     def convert_derivatives(self, out: int = 1):
-        data_list = self.data
+        data_list = self.data.copy()
         for idx, data in enumerate(data_list):
+            data = data.iloc[:5]
             try:
-                data = data.drop(columns={'Date'})
+                data = data.drop(columns={'Date'},axis=1)
             except:
                 pass
             try:
-                data = data.drop(columns={'index'})
+                data = data.drop(columns={'index'},axis=1)
             except:
                 pass
             data = data.astype(np.float_)
@@ -644,6 +645,7 @@ class Normalizer():
     def normalize(self, out: int = 1):
         unnorm_data_list = self.unnormalized_data.copy()
         for idx, data in enumerate(unnorm_data_list):
+            data = data.iloc[:5]
             try:
                 if 3 <= out <= 4:
                     # print(f"[INFO] Out is set to {out}.  Standard scaler fit_transform in progress.")

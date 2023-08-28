@@ -121,24 +121,28 @@ class Generator():
             return 'n/a     n/a'
 
     # split a univariate sequence into samples
-    def split_sequence(self, sequence, n_steps):
+    def split_sequence(self, sequence, n_days):
         X = list()
+        y = list()
         for i in range(len(sequence)):
             # find the end of this pattern
-            end_ix = i + n_steps
+            end_ix = i + n_days
             # check if we are beyond the sequence
             if end_ix > len(sequence) - 1:
                 break
             # gather input and output parts of the pattern
-            seq_x = sequence[i:end_ix + 1]
+            seq_x = sequence[i:end_ix]
+            seq_y = sequence[end_ix: end_ix + 1]
             X.append(seq_x)
-            # y.append(seq_y)
-        return array(X)
+            i = end_ix
+            y.append(seq_y)
+        return array(X),array(y)
 
     async def generate_data_with_dates(self, date1=None, date2=None, has_actuals=False, force_generate=False,
                                        out=1, skip_db=False, interval='1d', n_steps=20, ticker: Optional[str] = None,
                                        opt_fib_vals: list = []):
-        split_data: list = []
+        X_split_data: list = []
+        y_split_data: list = []
         split_studies: list = []
         try:
             print("[INFO] Gathering Stock Data.")
@@ -159,23 +163,29 @@ class Generator():
         try:
             studies.data = studies.data.drop(['Adj Close'], axis=1)
         except Exception as e:
-            print(e)
             pass
         try:
             studies.data = studies.data.drop(['Volume'], axis=1)
         except:
             pass
         # Split data based off of n_steps
-        data_timesteps_np = self.split_sequence(studies.data.copy().to_numpy(), n_steps=n_steps)
+        X_data_timesteps_np,y_data_timesteps_np = self.split_sequence(studies.data.copy().iloc[-100:].to_numpy(), n_days=5)
         # Produced tuple of x,y
         for n in range(0, n_steps):
-            data_timesteps_df = pd.DataFrame({'Date': data_timesteps_np[n][:, -1],
-                                              'Open': data_timesteps_np[n][:, 0],
-                                              'High': data_timesteps_np[n][:, 1],
-                                              'Low': data_timesteps_np[n][:, 2],
-                                              'Close': data_timesteps_np[n][:, 3],
+            X_data_timesteps_df = pd.DataFrame({'Date': X_data_timesteps_np[n][:, -1],
+                                              'Open': X_data_timesteps_np[n][:, 0],
+                                              'High': X_data_timesteps_np[n][:, 1],
+                                              'Low': X_data_timesteps_np[n][:, 2],
+                                              'Close': X_data_timesteps_np[n][:, 3],
                                               })
-            split_data.append(data_timesteps_df)
+            X_split_data.append(X_data_timesteps_df)
+            y_data_timesteps_df = pd.DataFrame({'Date': y_data_timesteps_np[n][:, -1],
+                                              'Open': y_data_timesteps_np[n][:, 0],
+                                              'High': y_data_timesteps_np[n][:, 1],
+                                              'Low': y_data_timesteps_np[n][:, 2],
+                                              'Close': y_data_timesteps_np[n][:, 3],
+                                              })
+            y_split_data.append(y_data_timesteps_df)
             split_studies.append(Studies(self.ticker if not ticker else ticker, force_generate=force_generate))
         # Loop until valid data populates
         try:
@@ -208,23 +218,31 @@ class Generator():
             print(
                 f'{str(e)}\n[ERROR] Failed to generate `Keltner Channel` for {self.ticker if not ticker else ticker}!')
             raise Exception(e)
+        try:
+            await studies.apply_fibonacci(skip_db=skip_db, interval=interval, opt_fib_vals=opt_fib_vals)
+        except Exception as e:
+            print(
+                f'{str(e)}\n[ERROR] Failed to generate `Fibonacci Extensions` for {self.ticker if not ticker else ticker}!')
+            raise Exception(e)
         # For each split data, gather data
         tuple_out: list = []
-        for idx, data in enumerate(split_data):
+        print(studies.applied_studies)
+        for idx, data in enumerate(X_split_data):
             if idx == 0:
                 pass
             split_studies[idx].data = data
             # Set data to current split data
             iloc_idx = idx * n_steps
-            max_days = 5  # TODO: Make value as a function variable
+            max_days = 5 if not has_actuals else 6  # TODO: Make value as a function variable
             split_studies[idx].applied_studies = studies.applied_studies.iloc[iloc_idx:iloc_idx + max_days]
             split_studies[idx].keltner = studies.keltner.iloc[iloc_idx:iloc_idx + max_days]
-            try:
-                await split_studies[idx].apply_fibonacci(skip_db=skip_db, interval=interval, opt_fib_vals=opt_fib_vals)
-            except Exception as e:
-                print(
-                    f'{str(e)}\n[ERROR] Failed to generate `Fibonacci Extensions` for {self.ticker if not ticker else ticker}!')
-                raise Exception(e)
+            split_studies[idx].fibonacci_extension = studies.fibonacci_extension.iloc[iloc_idx:iloc_idx + max_days]
+            # try:
+            #     await split_studies[idx].apply_fibonacci(skip_db=skip_db, interval=interval, opt_fib_vals=opt_fib_vals)
+            # except Exception as e:
+            #     print(
+            #         f'{str(e)}\n[ERROR] Failed to generate `Fibonacci Extensions` for {self.ticker if not ticker else ticker}!')
+            #     raise Exception(e)
             tmp_tuple = (split_studies[idx].data, split_studies[idx].applied_studies,
                          split_studies[idx].fibonacci_extension, split_studies[idx].keltner)
             tuple_out.append(tmp_tuple)  # list of tuplle outputs

@@ -289,7 +289,11 @@ class Studies(Gather):
                     data = data.rename(columns={'Close': f'ema{length}'}).ewm(span=int(length),
                                                                               adjust=True).mean().reset_index() if not simple else \
                         data.rename(columns={'Close': f'ema{length}'}).rolling(int(length)).mean().fillna(
-                            0).reset_index()
+                            0)
+                    try:
+                        data = data.drop(['index'],axis=1)
+                    except:
+                        pass
                     self.applied_studies = pd.concat(objs=[self.applied_studies, data], axis=1)
                     del data
                     gc.collect()
@@ -483,6 +487,10 @@ class Studies(Gather):
                         self.db_con.commit()
                     except Exception as e:
                         print(f'[ERROR] Failed to execute queries to DB for EMA.\r\n{e}')
+            try:
+                self.applied_studies = self.applied_studies.drop(columns={'index'},axis=1)
+            except:
+                pass
 
         self.ema_cnx.close()
         return 0
