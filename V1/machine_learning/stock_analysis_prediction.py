@@ -277,7 +277,7 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
             out = 4 # Change if needed
             await launch.gen.set_ticker(ticker)
             print("[INFO] Generating necessary data (stock data/ema/fib/keltner).")
-            data = await launch.gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, out, True, n_interval)
+            data = await launch.gen.generate_data_with_dates(dates[0], dates[1], False, force_generation, out, True, '1d', n_interval)
             # print(data,flush=True)
             print("[INFO] Preparing to generate & display model.")
             task_list.append(launch.display_model(

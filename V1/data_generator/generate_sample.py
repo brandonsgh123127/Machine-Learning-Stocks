@@ -20,7 +20,7 @@ class Sample(Normalizer):
         self.path = Path(os.getcwd()).absolute()
 
     async def generate_sample(self, out=1, _has_actuals=False, force_generate=False, rand_date=False, skip_db=False,
-                        interval='1d', opt_fib_vals=[]):
+                        interval='1d', opt_fib_vals=[],n_steps=20):
         self.cnx = self.db_con.cursor(buffered=True)
         # 160 days used for multivariate
         self.DAYS_SAMPLED = self.days_map[interval]
@@ -32,7 +32,7 @@ class Sample(Normalizer):
             # Read the current ticker data
             try:
                 await self.read_data(self.ticker, rand_dates=rand_date,force_generate=force_generate, out=out, skip_db=skip_db, interval=interval,
-                               opt_fib_vals=opt_fib_vals)
+                               opt_fib_vals=opt_fib_vals,n_steps=n_steps)
             except Exception as e:
                 raise Exception(f'[ERROR] Failed to read sample data for ticker {self.ticker}\r\nException: {e}')
         # Iterate through dataframe and retrieve random sample
@@ -46,7 +46,6 @@ class Sample(Normalizer):
             raise Exception(e)
         # Minimum amount of days sampled in df
         norm_data_list = self.unnormalized_data
-        max_data = 20 # TODO: Move this outside to external function call.  Value used to keep certain amount of data split
         max_days = 5 if not _has_actuals else 6 # TODO: Same as above, max days per each sub batch
         for idx,data in enumerate(norm_data_list):
             self.unnormalized_data[idx] = self.unnormalized_data[idx].iloc[:, -max_days:]
@@ -101,12 +100,13 @@ class Sample(Normalizer):
         self.studies = []
 
     def trim_data(self, has_actuals: bool = False):
-        self.data = self.data.iloc[-30 if has_actuals else -29:]
-        self.studies = self.studies.iloc[-30 if has_actuals else -29:]
-        self.fib = self.fib.iloc[-30 if has_actuals else -29:]
-        self.keltner = self.keltner.iloc[-30 if has_actuals else -29:]
-        self.unnormalized_data = self.unnormalized_data.iloc[-30 if has_actuals else -29:]
-        self.normalized_data = self.normalized_data.iloc[-30 if has_actuals else -29:]
+        for idx in range(0,len(self.data)):
+            self.data[idx] = self.data[idx].iloc[-30 if has_actuals else -29:]
+            self.studies[idx] = self.studies[idx].iloc[-30 if has_actuals else -29:]
+            self.fib[idx] = self.fib[idx].iloc[-30 if has_actuals else -29:]
+            self.keltner[idx] = self.keltner[idx].iloc[-30 if has_actuals else -29:]
+            self.unnormalized_data[idx] = self.unnormalized_data[idx].iloc[-30 if has_actuals else -29:]
+            self.normalized_data[idx] = self.normalized_data[idx].iloc[-30 if has_actuals else -29:]
 
 
 if __name__ == '__main__':

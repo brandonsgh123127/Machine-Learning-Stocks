@@ -1351,6 +1351,6 @@ select stocks.`study-data`.val1, stocks.`study`.study from stocks.`study` INNER 
                 AND stocks.`study`.`study` like 'ema%' 
              INNER JOIN stocks.stock ON stocks.stock.`id` = stocks.`data`.`stock-id` AND stocks.stock.stock = 'DOCU';
 INSERT INTO stocks.stock (id, stock) VALUES (AES_ENCRYPT('test', 'test'),'test');
-
+SELECT `stocks`.`dailydata`.`data-id`,`stocks`.`dailydata`.`date` FROM `stocks`.`dailydata` USE INDEX (`id-and-date`) INNER JOIN `stocks`.`stock` USE INDEX (`stockid`) ON `stocks`.stock.stock = 'SPY' AND `stocks`.`stock`.`id` = `stocks`.`dailydata`.`stock-id` AND `stocks`.`dailydata`.`date`>= DATE('2012-11-02') AND `stocks`.`dailydata`.`date`<= DATE('2013-03-28') ORDER BY stocks.`dailydata`.`date` ASC;
 SELECT `stocks`.`stock`.`id` FROM stocks.`stock` USE INDEX (`stockid`) WHERE `stocks`.`stock`.`stock` = 'SPY';
 SELECT `stocks`.`weeklydata`.`data-id`,`stocks`.`weeklydata`.`date` FROM stocks.`weeklydata` USE INDEX (`stockid-and-date`) WHERE stocks.`weeklydata`.`stock-id` = (SELECT `stocks`.`stock`.`id` FROM stocks.`stock` USE INDEX (`stockid`) WHERE `stocks`.`stock`.`stock` = 'SPY') AND stocks.`weeklydata`.`date` >= DATE('2022-01-21');

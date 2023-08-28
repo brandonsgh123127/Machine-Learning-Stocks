@@ -66,6 +66,7 @@ class Studies(Gather):
 
         # Retrieve query from database, confirm that stock is in database, else make new query
         select_stmt = "SELECT stock FROM stocks.stock WHERE stock like %(stock)s"
+        print('[INFO] Before starting study calculation, verify stock id is here.')
         with threading.Lock():
             if not skip_db:
                 self.ema_cnx.autocommit = True
@@ -127,6 +128,7 @@ class Studies(Gather):
                             date_range.remove(d)
 
                     # iterate through each data row and verify data is in place before continuing...
+                    print('[INFO] Iterate through each data row to verify study data is in db.')
                     study_data = pd.DataFrame(columns=[f'ema{length}'])
                     # Before inserting data, check cached data, verify if there is data there...
                     try:  # Try connection to db_con, if not, connect to
@@ -263,7 +265,7 @@ class Studies(Gather):
                         self.ema_cnx.close()
                         raise mysql.connector.errors.DatabaseError()
             if len(date_range) == 0 and not self._force_generate and not skip_db:  # continue loop if found cached data
-                print('[INFO] Cached study data found, skipping generation.')
+                print(f'[INFO] Cached study data found from {self.data["Date"].iloc[0].strftime("%Y-%m-%d") if isinstance(self.data["Date"].iloc[0],datetime.datetime) else self.data["Date"].iloc[0]} to {self.data["Date"].iloc[-1].strftime("%Y-%m-%d") if isinstance(self.data["Date"].iloc[-1],datetime.datetime) else self.data["Date"].iloc[-1]}, skipping generation.')
                 self.applied_studies = pd.concat(objs=[self.applied_studies, study_data], axis=1)
             # Insert data into db if query above is not met
             else:
@@ -360,13 +362,12 @@ class Studies(Gather):
                                                                          self.data["Date"].iloc[-1],
                                                                          datetime.datetime) else
                                                                      self.data["Date"].iloc[-1]}, multi=True)
-                        # Since we couldn't query a single range, we need to another another query to get the range
+                        # Since we couldn't query a single range, we need to another query to get the range
                         self.data_ids = []
                         self.stock_ids = []
 
                         stock_id = ''
                         data_id = ''
-
                         for retrieve_result in retrieve_data_result:
                             id_res = retrieve_result.fetchall()
                             for res in id_res:
@@ -390,6 +391,17 @@ class Studies(Gather):
                         self.data_ids.append(data_id)
 
                     else:
+                        # print({'stock': f'{self.indicator.upper()}',
+                        #                                              'bdate': self.data["Date"].iloc[0].strftime(
+                        #                                                  '%Y-%m-%d') if isinstance(
+                        #                                                  self.data["Date"].iloc[0],
+                        #                                                  datetime.datetime) else
+                        #                                              self.data["Date"].iloc[0],
+                        #                                              'edate': self.data["Date"].iloc[-1].strftime(
+                        #                                                  '%Y-%m-%d') if isinstance(
+                        #                                                  self.data["Date"].iloc[-1],
+                        #                                                  datetime.datetime) else
+                        #                                              self.data["Date"].iloc[-1]})
                         retrieve_data_result = self.ema_cnx.execute(retrieve_data_stmt,
                                                                     {'stock': f'{self.indicator.upper()}',
                                                                      'bdate': self.data["Date"].iloc[0].strftime(
@@ -438,38 +450,40 @@ class Studies(Gather):
                     insert_list = []
                     for index, id in self.data.iterrows():
                         emastr = f'ema{length}'
-                        if is_utilizing_yfinance:
-                            insert_tuple = (
-                                f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator.upper()}{length}",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator.upper()}{length}",512)))',
-                                f'{self.stock_ids[index]}',
-                                f'{self.data_ids[index]}',
-                                f'{self.study_id}',
-                                self.applied_studies[emastr].iloc[index])
-                        else:
-                            insert_tuple = (
-                                f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",512)))',
-                                f'{self.stock_ids[index]}',
-                                f'{self.data_ids[index]}',
-                                f'{self.study_id}',
-                                self.applied_studies[emastr].iloc[index])
-                        insert_list.append(insert_tuple)  # add tuple to list
-                    # Call execution statement to insert data in one shot
+                        try:
+                            if is_utilizing_yfinance:
+                                insert_tuple = (
+                                    f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator.upper()}{length}",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator.upper()}{length}",512)))',
+                                    f'{self.stock_ids[index]}',
+                                    f'{self.data_ids[index]}',
+                                    f'{self.study_id}',
+                                    self.applied_studies[emastr].iloc[index])
+                            else:
+                                insert_tuple = (
+                                    f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}{length}",512)))',
+                                    f'{self.stock_ids[index]}',
+                                    f'{self.data_ids[index]}',
+                                    f'{self.study_id}',
+                                    self.applied_studies[emastr].iloc[index])
+                            insert_list.append(insert_tuple)  # add tuple to list
+                        except mysql.connector.errors.IntegrityError:
+                            print('[ERROR] Integrity Error')
+                            self.ema_cnx.close()
+                            pass
+                        except TypeError as e:
+                            print(f'[ERROR] TypeError!\n{str(e)}')
+                        except ValueError as e:
+                            print(f'[ERROR] ValueError!\n{str(e)}')
+                        except Exception as e:
+                            print('[ERROR] Failed to insert ema-data element!')
+                            pass
                     try:
-                        # print(insert_studies_db_stmt)
+                        # Call execution statement to insert data in one shot
                         insert_studies_db_result = self.ema_cnx.executemany(insert_studies_db_stmt, insert_list)
                         self.db_con.commit()
-                    except mysql.connector.errors.IntegrityError:
-                        print('[ERROR] Integrity Error')
-                        self.ema_cnx.close()
-                        pass
-                    except TypeError as e:
-                        print(f'[ERROR] TypeError!\n{str(e)}')
-                    except ValueError as e:
-                        print(f'[ERROR] ValueError!\n{str(e)}')
                     except Exception as e:
-                        print(str(e), '\n[ERROR] Failed to insert ema-data element!\n')
-                        self.ema_cnx.close()
-                        pass
+                        print(f'[ERROR] Failed to execute queries to DB for EMA.\r\n{e}')
+
         self.ema_cnx.close()
         return 0
 
@@ -785,86 +799,90 @@ class Studies(Gather):
             except:
                 pass
             for index, row in self.data.iterrows():
-                if is_utilizing_yfinance:
-                    insert_tuple = (
-                        f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator.upper()}fibonacci",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator.upper()}fibonacci",512)))',
-                        f'{self.stock_ids[index]}',
-                        f'{self.data_ids[index]}',
-                        f'{self.study_id}',
-                        self.fibonacci_extension.at[0, "0.202"],
-                        self.fibonacci_extension.at[0, "0.236"],
-                        self.fibonacci_extension.at[0, "0.241"],
-                        self.fibonacci_extension.at[0, "0.273"],
-                        self.fibonacci_extension.at[0, "0.283"],
-                        self.fibonacci_extension.at[0, "0.316"],
-                        self.fibonacci_extension.at[0, "0.382"],
-                        self.fibonacci_extension.at[0, "0.5"],
-                        self.fibonacci_extension.at[0, "0.523"],
-                        self.fibonacci_extension.at[0, "0.618"],
-                        self.fibonacci_extension.at[0, "0.796"],
-                        self.fibonacci_extension.at[0, "0.923"],
-                        self.fibonacci_extension.at[0, "1.556"],
-                        self.fibonacci_extension.at[0, "2.17"],
-                        self.fibonacci_extension.at[0, "2.493"],
-                        self.fibonacci_extension.at[0, "2.86"],
-                        self.fibonacci_extension.at[0, "3.43"],
-                        self.fibonacci_extension.at[0, "3.83"],
-                        self.fibonacci_extension.at[0, "4.32"],
-                        self.fibonacci_extension.at[0, "5.01"],
-                        self.fibonacci_extension.at[0, "5.63"],
-                        self.fibonacci_extension.at[0, "5.96"],
-                        self.fibonacci_extension.at[0, "7.17"],
-                        self.fibonacci_extension.at[0, "8.23"],
-                        self.fibonacci_extension.at[0, "9.33"],
-                        self.fibonacci_extension.at[0, "10.13"],
-                        self.fibonacci_extension.at[0, "11.13"],
-                        self.fibonacci_extension.at[0, "12.54"],
-                        self.fibonacci_extension.at[0, "13.17"],
-                        self.fibonacci_extension.at[0, "14.17"],
-                        self.fibonacci_extension.at[0, "15.55"],
-                        self.fibonacci_extension.at[0, "16.32"],
-                    )
+                try:
+                    if is_utilizing_yfinance:
+                        insert_tuple = (
+                            f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator.upper()}fibonacci",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d %H:%M:%S")}{self.indicator.upper()}fibonacci",512)))',
+                            f'{self.stock_ids[index]}',
+                            f'{self.data_ids[index]}',
+                            f'{self.study_id}',
+                            self.fibonacci_extension.at[0, "0.202"],
+                            self.fibonacci_extension.at[0, "0.236"],
+                            self.fibonacci_extension.at[0, "0.241"],
+                            self.fibonacci_extension.at[0, "0.273"],
+                            self.fibonacci_extension.at[0, "0.283"],
+                            self.fibonacci_extension.at[0, "0.316"],
+                            self.fibonacci_extension.at[0, "0.382"],
+                            self.fibonacci_extension.at[0, "0.5"],
+                            self.fibonacci_extension.at[0, "0.523"],
+                            self.fibonacci_extension.at[0, "0.618"],
+                            self.fibonacci_extension.at[0, "0.796"],
+                            self.fibonacci_extension.at[0, "0.923"],
+                            self.fibonacci_extension.at[0, "1.556"],
+                            self.fibonacci_extension.at[0, "2.17"],
+                            self.fibonacci_extension.at[0, "2.493"],
+                            self.fibonacci_extension.at[0, "2.86"],
+                            self.fibonacci_extension.at[0, "3.43"],
+                            self.fibonacci_extension.at[0, "3.83"],
+                            self.fibonacci_extension.at[0, "4.32"],
+                            self.fibonacci_extension.at[0, "5.01"],
+                            self.fibonacci_extension.at[0, "5.63"],
+                            self.fibonacci_extension.at[0, "5.96"],
+                            self.fibonacci_extension.at[0, "7.17"],
+                            self.fibonacci_extension.at[0, "8.23"],
+                            self.fibonacci_extension.at[0, "9.33"],
+                            self.fibonacci_extension.at[0, "10.13"],
+                            self.fibonacci_extension.at[0, "11.13"],
+                            self.fibonacci_extension.at[0, "12.54"],
+                            self.fibonacci_extension.at[0, "13.17"],
+                            self.fibonacci_extension.at[0, "14.17"],
+                            self.fibonacci_extension.at[0, "15.55"],
+                            self.fibonacci_extension.at[0, "16.32"],
+                        )
 
-                else:
-                    insert_tuple = (
-                        f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",512)))',
-                        f'{self.stock_ids[index]}',
-                        f'{self.data_ids[index]}',
-                        f'{self.study_id}',
-                        self.fibonacci_extension.at[0, "0.202"],
-                        self.fibonacci_extension.at[0, "0.236"],
-                        self.fibonacci_extension.at[0, "0.241"],
-                        self.fibonacci_extension.at[0, "0.273"],
-                        self.fibonacci_extension.at[0, "0.283"],
-                        self.fibonacci_extension.at[0, "0.316"],
-                        self.fibonacci_extension.at[0, "0.382"],
-                        self.fibonacci_extension.at[0, "0.5"],
-                        self.fibonacci_extension.at[0, "0.523"],
-                        self.fibonacci_extension.at[0, "0.618"],
-                        self.fibonacci_extension.at[0, "0.796"],
-                        self.fibonacci_extension.at[0, "0.923"],
-                        self.fibonacci_extension.at[0, "1.556"],
-                        self.fibonacci_extension.at[0, "2.17"],
-                        self.fibonacci_extension.at[0, "2.493"],
-                        self.fibonacci_extension.at[0, "2.86"],
-                        self.fibonacci_extension.at[0, "3.43"],
-                        self.fibonacci_extension.at[0, "3.83"],
-                        self.fibonacci_extension.at[0, "4.32"],
-                        self.fibonacci_extension.at[0, "5.01"],
-                        self.fibonacci_extension.at[0, "5.63"],
-                        self.fibonacci_extension.at[0, "5.96"],
-                        self.fibonacci_extension.at[0, "7.17"],
-                        self.fibonacci_extension.at[0, "8.23"],
-                        self.fibonacci_extension.at[0, "9.33"],
-                        self.fibonacci_extension.at[0, "10.13"],
-                        self.fibonacci_extension.at[0, "11.13"],
-                        self.fibonacci_extension.at[0, "12.54"],
-                        self.fibonacci_extension.at[0, "13.17"],
-                        self.fibonacci_extension.at[0, "14.17"],
-                        self.fibonacci_extension.at[0, "15.55"],
-                        self.fibonacci_extension.at[0, "16.32"],
-                    )
-                insert_list.append(insert_tuple)  # add tuple to list
+                    else:
+                        insert_tuple = (
+                            f'AES_ENCRYPT("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",UNHEX(SHA2("{self.data["Date"].iloc[index].strftime("%Y-%m-%d")}{self.indicator.upper()}fibonacci",512)))',
+                            f'{self.stock_ids[index]}',
+                            f'{self.data_ids[index]}',
+                            f'{self.study_id}',
+                            self.fibonacci_extension.at[0, "0.202"],
+                            self.fibonacci_extension.at[0, "0.236"],
+                            self.fibonacci_extension.at[0, "0.241"],
+                            self.fibonacci_extension.at[0, "0.273"],
+                            self.fibonacci_extension.at[0, "0.283"],
+                            self.fibonacci_extension.at[0, "0.316"],
+                            self.fibonacci_extension.at[0, "0.382"],
+                            self.fibonacci_extension.at[0, "0.5"],
+                            self.fibonacci_extension.at[0, "0.523"],
+                            self.fibonacci_extension.at[0, "0.618"],
+                            self.fibonacci_extension.at[0, "0.796"],
+                            self.fibonacci_extension.at[0, "0.923"],
+                            self.fibonacci_extension.at[0, "1.556"],
+                            self.fibonacci_extension.at[0, "2.17"],
+                            self.fibonacci_extension.at[0, "2.493"],
+                            self.fibonacci_extension.at[0, "2.86"],
+                            self.fibonacci_extension.at[0, "3.43"],
+                            self.fibonacci_extension.at[0, "3.83"],
+                            self.fibonacci_extension.at[0, "4.32"],
+                            self.fibonacci_extension.at[0, "5.01"],
+                            self.fibonacci_extension.at[0, "5.63"],
+                            self.fibonacci_extension.at[0, "5.96"],
+                            self.fibonacci_extension.at[0, "7.17"],
+                            self.fibonacci_extension.at[0, "8.23"],
+                            self.fibonacci_extension.at[0, "9.33"],
+                            self.fibonacci_extension.at[0, "10.13"],
+                            self.fibonacci_extension.at[0, "11.13"],
+                            self.fibonacci_extension.at[0, "12.54"],
+                            self.fibonacci_extension.at[0, "13.17"],
+                            self.fibonacci_extension.at[0, "14.17"],
+                            self.fibonacci_extension.at[0, "15.55"],
+                            self.fibonacci_extension.at[0, "16.32"],
+                        )
+                    insert_list.append(insert_tuple)  # add tuple to list
+                except Exception as e:
+                    print('[ERROR] Failed to insert fib value.')
+                    pass
             try:
                 insert_studies_db_result = self.fib_cnx.executemany(insert_studies_db_stmt, insert_list)
             except mysql.connector.errors.IntegrityError:
@@ -872,7 +890,6 @@ class Studies(Gather):
                 pass
             except Exception as e:
                 print(str(e), '\n[ERROR] Failed to insert study-data element fibonacci!\n')
-                self.fib_cnx.close()
                 pass
             try:
                 self.db_con.commit()
@@ -882,9 +899,8 @@ class Studies(Gather):
                 pass
             except Exception as e:
                 print(str(e), '\n[ERROR] Failed to insert fib-data element fibonacci!\n')
-                self.fib_cnx.close()
                 pass
-
+        self.fib_cnx.close()
         '''
         Fibonacci extensions utilized for predicting key breaking points
         val2 ------------------------                 val3
@@ -986,6 +1002,7 @@ val1    val3_________________________          vall2
                 retrieve_data_stmt = ''
                 is_utilizing_yfinance = False
                 # Retrieve the stock-id, and data-point id in a single select statement
+                print('[INFO] Before starting study calculation, get stock id & data point id for each date in range.')
                 if '1d' in interval:
                     retrieve_data_stmt = """SELECT `stocks`.`dailydata`.`data-id`,
                      `stocks`.`dailydata`.`stock-id` FROM `stocks`.`dailydata` USE INDEX (`id-and-date`)
@@ -1046,7 +1063,6 @@ val1    val3_________________________          vall2
                                                                 multi=True)
                     self.stock_ids = []
                     self.data_ids = []
-                    # self.data=self.data.drop(['Date'],axis=1)
                     for retrieve_result in retrieve_data_result:
                         id_res = retrieve_result.fetchall()
                         if len(id_res) == 0:
@@ -1082,6 +1098,7 @@ val1    val3_________________________          vall2
                     self.stock_ids = []
                     self.data_ids = []
                     # self.data=self.data.drop(['Date'],axis=1)
+                    print('[INFO] Executing query to get data ids/stock ids for study')
                     for retrieve_result in retrieve_data_result:
                         id_res = retrieve_result.fetchall()
                         if len(id_res) == 0:
@@ -1603,6 +1620,7 @@ val1    val3_________________________          vall2
                 avg_true_range: pd.DataFrame
                 prev_row = None
                 await ema_task
+                print(len(self.data))
                 for index, row in self.data_cp.iterrows():
                     # CALCULATE TR ---MAX of ( H – L ; H – C.1 ; C.1 – L )
                     if index == 0:  # previous close is not valid, so just do same day

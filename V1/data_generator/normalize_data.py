@@ -90,7 +90,7 @@ class Normalizer():
     '''
 
     async def mysql_read_data(self, ticker, date=None, out=1, force_generate=False, skip_db=False, interval='1d',
-                              opt_fib_vals=[]):
+                              opt_fib_vals=[],n_steps=20):
         try:
             self.cnx = self.db_con.cursor(buffered=True)
             self.cnx.autocommit = True
@@ -98,7 +98,7 @@ class Normalizer():
             valid_datetime = datetime.datetime.now()
             if date is None:
                 # Verify date before proceeding 
-                holidays = USFederalHolidayCalendar().holidays(start=valid_datetime - datetime.timedelta(days=40),
+                holidays = USFederalHolidayCalendar().holidays(start=valid_datetime - datetime.timedelta(days=self.days_map[interval]),
                                                                end=valid_datetime).to_pydatetime()
                 valid_date = valid_datetime.date()
                 if valid_date in holidays and 0 <= valid_date.weekday() <= 4:  # week day holiday
@@ -122,9 +122,10 @@ class Normalizer():
         try:
             print("[INFO] Generating data with dates.")
             vals = await self.gen.generate_data_with_dates(
-                initial_date - datetime.timedelta(days=self.days_map[interval]), initial_date,
+                initial_date - datetime.timedelta(days=self.days_map[interval]),initial_date,
                 force_generate=force_generate, out=out, skip_db=skip_db, interval=interval, ticker=ticker,
-                opt_fib_vals=opt_fib_vals)
+                opt_fib_vals=opt_fib_vals,
+                n_steps=n_steps)
             for val in vals:  # Vals returns list of tuples...
                 studies = val[1]
                 data = val[0]
@@ -177,7 +178,7 @@ class Normalizer():
         utilize mysql to retrieve data and study data for later usage...
     '''
 
-    async def read_data(self, ticker, rand_dates=False, force_generate=False,  out=1, skip_db=False, interval='1d', opt_fib_vals=[]):
+    async def read_data(self, ticker, rand_dates=False, force_generate=False,  out=1, skip_db=False, interval='1d', opt_fib_vals=[],n_steps=20):
         if rand_dates:  # Only used when generating model...
             date = self.generate_dates(interval)
             required_days = self.days_map[interval]
@@ -189,14 +190,14 @@ class Normalizer():
                 if attempts == 0:
                     raise Exception("[ERROR] Failed to get dates for 3 different timeframes.  Either insufficient "
                                     "data and/or delisted.")
-            print(f"[INFO] Gathering data from date {date} to {date + datetime.timedelta(days=required_days)} ")
+            print(f"[INFO] Gathering data from date {date - datetime.timedelta(days=required_days)} to {date} ")
         else:
             date = None
         try:
             print("[INFO] Reading db data.")
             await self.mysql_read_data(ticker, date=date, out=out,
                                                          skip_db=skip_db, force_generate=force_generate,
-                                       interval=interval, opt_fib_vals=opt_fib_vals)
+                                       interval=interval, opt_fib_vals=opt_fib_vals,n_steps=n_steps)
         except Exception as e:
             print(f'\n[ERROR] Failed to read data!\r\nException: {e}')
             raise Exception(e)

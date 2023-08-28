@@ -32,7 +32,7 @@ class Network(Neural_Framework):
 
     # Used for generation of data via the start
     async def generate_sample(self, _has_actuals=False, rand_date=False, interval='1d', out=1, opt_fib_vals=[],
-                        ticker: str = None):
+                        ticker: str = None,n_steps=20):
         path = Path(os.getcwd()).absolute()
         self.sampler.reset_data()
         if ticker is None:
@@ -43,7 +43,7 @@ class Network(Neural_Framework):
         try:
             print(f"[INFO] Generating sample for {self.sampler.ticker}")
             await self.sampler.generate_sample(_has_actuals=_has_actuals, out=out, rand_date=rand_date, skip_db=True,
-                                         interval=interval, opt_fib_vals=opt_fib_vals)
+                                         interval=interval, opt_fib_vals=opt_fib_vals,n_steps=n_steps)
         except Exception as e:
             # print(f'[ERROR] Failed to generate sample!\r\nException: {e}')
             raise Exception(f'[ERROR] Failed to generate sample!\r\nException: {e}')
@@ -142,7 +142,6 @@ class Network(Neural_Framework):
             y = stack(train_targets)
             print("[INFO] Splitting dataset into x/y_train,x/y_val")
             x_train, x_val, y_train, y_val = train_test_split(x, y, test_size=0.20, shuffle=True)
-            print(len(x_train))
             # self.sampler.feature_selection(x_train,y_train)
             print(f"[INFO] Fitting data into model.")
             try:
@@ -496,8 +495,8 @@ async def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = Fals
             print('[INFO] Data has not been passed into neural load function.')
             try:
                 print("[INFO] Generating sample given data.")
-                sampler.generate_sample(_has_actuals=has_actuals, out=out, rand_date=rand_date, interval=interval,
-                                        opt_fib_vals=opt_fib_vals)
+                await sampler.generate_sample(_has_actuals=has_actuals, out=out, rand_date=rand_date, interval=interval,
+                                        opt_fib_vals=opt_fib_vals,n_steps=20)
                 sampler.trim_data(has_actuals)
             except Exception as e:
                 print(f'[ERROR] Failed to generate sample for neural_network!\r\nException: {e}')
@@ -765,18 +764,20 @@ def main():
 
     # # OUT 4
     # # 12
-    thread_manager.start_worker(threading.Thread(target=run, args=(50, 100, "new_scaled_2layer")))
-    thread_manager.join_workers()
+    # thread_manager.start_worker(threading.Thread(target=run, args=(50, 100, "new_scaled_2layer")))
+    # thread_manager.join_workers()
     # # 13
-    thread_manager.start_worker(threading.Thread(target=run, args=(50, 100, "new_scaled_2layer_v2")))
-    thread_manager.join_workers()
+    # thread_manager.start_worker(threading.Thread(target=run, args=(50, 100, "new_scaled_2layer_v2")))
+    # thread_manager.join_workers()
 
     # run(50,75,'relu_2layer_dropout_l1_l2')
     # copy_logs(path,'relu_2layer_dropout_l1_l2')
-    # nn = NN_Model("new_scaled_2layer_v2")
-    # nn.load_model("new_scaled_2layer_v2",is_training=False)
-    # sampler = Sample('TSLA',True)
-    # load(nn,ticker="TSLA", has_actuals=True, name="new_scaled_2layer_v2", force_generation=True,sampler=sampler,rand_date=True)
+    nn = NN_Model("new_scaled_2layer_v2")
+    nn.load_model("new_scaled_2layer_v2",is_training=False)
+    sampler = Sample('SPY',True)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(load(nn,"SPY", True, "new_scaled_2layer_v2", True,'/device:GPU:0',True, [],'1d',sampler,[]))
 
 
 if __name__ == "__main__":

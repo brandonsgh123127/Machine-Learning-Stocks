@@ -47,25 +47,18 @@ class Gather:
                      10: 31,
                      11: 30,
                      12: 31}
+    loaded_from_db = False
+
     # search_url = "https://api.twitter.com/1.1/tweets/search/fullarchive/dev.json"
 
     def __repr__(self):
         return 'stock_data.gather_data object <%s>' % ",".join(self.indicator)
 
     def __init__(self, indicator=None):
-        # Local API Key for twitter account
-        # self.api = twitter.Api(consumer_key="wQ6ZquVju93IHqNNW0I4xn4ii",
-        #                        consumer_secret="PorwKI2n1VpHznwyC38HV8a9xoDMWko4mOIDFfv2q7dQsFn2uY",
-        #                        access_token_key="1104618795115651072-O3LSWBFVEPENGiTnXqf7cTtNgmNqUF",
-        #                        access_token_secret="by7SUTtNPOYgAws0yliwk9YdiWIloSdv8kYX0YKic28UE",
-        #                        sleep_on_rate_limit="true")
         self.indicator = indicator
-        self.data: pd.DataFrame = pd.DataFrame({'Date':[], 'Open':[], 'High':[], 'Low':[], 'Close':[], 'Adj. Close':[]})
+        self.data: pd.DataFrame = pd.DataFrame(
+            {'Date': [], 'Open': [], 'High': [], 'Low': [], 'Close': [], 'Adj. Close': []})
         self.date_set = ()
-        # self.bearer = "AAAAAAAAAAAAAAAAAAAAAJdONwEAAAAAzi2H1WrnhmAddAQKwveAfRN1DAY%3DdSFsj3bTRnDqqMxNmnxEKTG6O6UN3t3VMtnC0Y7xaGxqAF1QVq"
-        # self.headers = {"Authorization": "Bearer {0}".format(self.bearer), "content-type": "application/json",
-        #                 'Accept-encoding': 'gzip',
-        #                 'User-Agent': 'twitterdev-search-tweets-python/'}
         self.new_uuid_gen = None
         self.path = Path(os.getcwd()).absolute()
         tree = ET.parse("{0}/data/mysql/mysql_config.xml".format(self.path))
@@ -118,9 +111,9 @@ class Gather:
             return self.indicator
             # retrieve pandas_datareader object of datetime
 
-    async def push_data_to_db(self, skip_db=False, interval: str = '1d',ticker: Optional[str] = "",
+    async def push_data_to_db(self, skip_db=False, interval: str = '1d', ticker: Optional[str] = "",
                               data: pd.DataFrame = None):
-        if skip_db:
+        if skip_db or self.loaded_from_db:
             return
         else:
             is_utilizing_yfinance: bool = False if '1d' in interval or '1wk' in interval or '1m' in interval or '1y' in interval else True
@@ -188,24 +181,17 @@ class Gather:
             self.cnx.close()
         except:
             pass
-    async def set_data_from_range(self, start_date: datetime.datetime, end_date: datetime.datetime, _force_generate=False,
-                            skip_db=False, interval: str = '1d',ticker: Optional[str] = "", update_self = True, has_actuals=False):
-        # Date range utilized for query...
-        days_map = {'1d': 185,
-                         '1wk': 900,
-                         '1mo': 3600,
-                         '5m': 30,
-                         '15m': 40,
-                         '30m': 50,
-                         '60m': 75}
-        max_data = 20 # TODO: Move this outside to external function call.  Value used to keep certain amount of data split
-        max_days = 5 if not has_actuals else 6 # TODO: Same as above, max days per each sub batch
+
+    async def set_data_from_range(self, start_date: datetime.datetime, end_date: datetime.datetime,
+                                  _force_generate=False,
+                                  skip_db=False, interval: str = '1d', ticker: Optional[str] = "", update_self=True
+                                  ):
         date_range = [d.strftime('%Y-%m-%d') for d in pd.date_range(start_date, end_date)]  # start/end date list
         is_utilizing_yfinance: bool = False if '1d' in interval or '1wk' in interval or '1m' in interval or '1y' in interval else True
 
         if not skip_db:
-            holidays = USFederalHolidayCalendar().holidays(start=f'{start_date.year}-01-01',
-                                                           end=f'{end_date.year}-12-31').to_pydatetime()
+            holidays = USFederalHolidayCalendar().holidays(start=f'{start_date.year}-{start_date.month}-{start_date.day}',
+                                                           end=f'{end_date.year}-{end_date.month}-{end_date.day}').to_pydatetime()
             # For each date, verify data is in the specified range by removing any unnecessary dates first
             for date in date_range:
                 datetime_date = datetime.datetime.strptime(date, '%Y-%m-%d')
@@ -217,10 +203,10 @@ class Gather:
                 if datetime_date.weekday() == 6:
                     date_range.remove(d)
             # iterate through each data row and verify data is in place before continuing...
-            new_data = pd.DataFrame({'Date':[], 'Open':[], 'High':[], 'Low':[], 'Close':[], 'Adj. Close':[]})
+            new_data = pd.DataFrame({'Date': [], 'Open': [], 'High': [], 'Low': [], 'Close': [], 'Adj. Close': []})
             self.cnx = self.db_con.cursor()
             self.cnx.autocommit = True
-            check_cache_studies_db_stmt=''
+            check_cache_studies_db_stmt = ''
             if '1d' in interval:
                 # Before inserting data, check cached data, verify if there is data there...
                 check_cache_studies_db_stmt = """SELECT `stocks`.`dailydata`.`date`,`stocks`.`dailydata`.`open`,
@@ -282,9 +268,10 @@ class Gather:
             try:
                 print("[INFO] Verifying data is in db.")
                 check_cache_studies_db_result = self.cnx.execute(check_cache_studies_db_stmt,
-                                                                 {'stock': self.indicator.upper() if not ticker else ticker.upper(),
-                                                                  'sdate': start_date.strftime('%Y-%m-%d'),
-                                                                  'edate': end_date.strftime('%Y-%m-%d')},
+                                                                 {
+                                                                     'stock': self.indicator.upper() if not ticker else ticker.upper(),
+                                                                     'sdate': start_date.strftime('%Y-%m-%d'),
+                                                                     'edate': end_date.strftime('%Y-%m-%d')},
                                                                  multi=True)
                 # Retrieve date, verify it is in date range, remove from date range
                 for result in check_cache_studies_db_result:
@@ -296,12 +283,14 @@ class Gather:
 
                         if date is None:
                             print(
-                                f'[INFO] No prior data found for {self.indicator.upper()if not ticker else ticker.upper()} from {start_date.strftime("%Y-%m-%d")} to {end_date.strftime("%Y-%m-%d")}... Generating data...!\n',
+                                f'[INFO] No prior data found for {self.indicator.upper() if not ticker else ticker.upper()} from {start_date.strftime("%Y-%m-%d")} to {end_date.strftime("%Y-%m-%d")}... Generating data...!\n',
                                 flush=True)
                         else:
-                            new_data = pd.concat(objs=[new_data, pd.DataFrame({'Date': date, 'Open': float(res[1]), 'High': float(res[2]),
-                                                        'Low': float(res[3]), 'Close': float(res[4]),
-                                                        'Adj. Close': float(res[5]) if not is_utilizing_yfinance else float(res[4])},index=[idx])], ignore_index=True)
+                            new_data = pd.concat(objs=[new_data, pd.DataFrame(
+                                {'Date': date, 'Open': float(res[1]), 'High': float(res[2]),
+                                 'Low': float(res[3]), 'Close': float(res[4]),
+                                 'Adj. Close': float(res[5]) if not is_utilizing_yfinance else float(res[4])},
+                                index=[idx])], ignore_index=True)
                             # check if date is there, if not fail this
                             if date in date_range:
                                 date_range.remove(date)
@@ -312,11 +301,12 @@ class Gather:
                 self.cnx.close()
                 pass
             except Exception as e:
-                print(str(e),'\n[ERROR] Failed to check cached stock data!\n')
+                print(str(e), '\n[ERROR] Failed to check cached stock data!\n')
                 self.cnx.close()
                 raise mysql.connector.errors.DatabaseError()
         if len(date_range) == 0 and not _force_generate and not skip_db:  # If all dates are satisfied, set data
             print("[INFO] All dates have data, thus, setting.")
+            self.loaded_from_db = True
             if update_self:
                 try:
                     self.data = new_data
@@ -353,33 +343,36 @@ class Gather:
                     if update_self:
                         try:
                             self.data = ticker_obj.history(interval=interval,
-                                                       start=start_date.strftime("%Y-%m-%d"),
-                                                       end=end_date.strftime("%Y-%m-%d"))
+                                                           start=start_date.strftime("%Y-%m-%d"),
+                                                           end=end_date.strftime("%Y-%m-%d"))
                         except Exception as e:
-                            print(f"[ERROR] Failed to retrieve Yahoo Finance Stock Data for Self!\r\nException: {str(e)}")
+                            print(
+                                f"[ERROR] Failed to retrieve Yahoo Finance Stock Data for Self!\r\nException: {str(e)}")
                             raise Exception(str(e))
                     else:
                         try:
                             new_data = ticker_obj.history(interval=interval,
-                                                  start=start_date.strftime("%Y-%m-%d"),
-                                                  end=end_date.strftime("%Y-%m-%d"))
+                                                          start=start_date.strftime("%Y-%m-%d"),
+                                                          end=end_date.strftime("%Y-%m-%d"))
                         except Exception as e:
                             # print(f"[ERROR] Failed to retrieve Yahoo Stock Data!\r\nException: {str(e)}")
                             raise Exception(str(e))
                 else:
                     if update_self:
                         try:
-                            self.data = get_data(self.indicator.upper() if not ticker else ticker.upper(), start_date=start_date.strftime("%Y-%m-%d"),
-                                     end_date=(end_date + datetime.timedelta(days=6)).strftime("%Y-%m-%d"),
-                                     interval=interval)
+                            self.data = get_data(self.indicator.upper() if not ticker else ticker.upper(),
+                                                 start_date=start_date.strftime("%Y-%m-%d"),
+                                                 end_date=(end_date).strftime("%Y-%m-%d"),
+                                                 interval=interval)
                         except Exception as e:
                             # print(f"[ERROR] Failed to retrieve Yahoo_Fin Stock Data for Self!\r\nException: {str(e)}")
                             raise Exception(str(e))
                     else:
                         try:
-                            new_data = get_data(self.indicator.upper() if not ticker else ticker.upper(), start_date=start_date.strftime("%Y-%m-%d"),
-                                     end_date=end_date.strftime("%Y-%m-%d"),
-                                     interval=interval)
+                            new_data = get_data(self.indicator.upper() if not ticker else ticker.upper(),
+                                                start_date=start_date.strftime("%Y-%m-%d"),
+                                                end_date=end_date.strftime("%Y-%m-%d"),
+                                                interval=interval)
                         except Exception as e:
                             print(f"[ERROR] Failed to retrieve Yahoo_Fin Stock Data!\r\nException: {str(e)}")
                             raise Exception(str(e))
@@ -393,10 +386,12 @@ class Gather:
                         return 1
 
                 if not skip_db:
-                    print("[INFO] Confirming stock is in database. ")
+                    print("[INFO] Confirming stock is in database before appending data to DB. ")
                     # Retrieve query from database, confirm that stock is in database, else make new query
                     select_stmt = "SELECT `id` FROM stocks.stock WHERE stock like %(stock)s"
-                    resultado = self.cnx.execute(select_stmt, {'stock': self.indicator if not ticker else ticker.upper()}, multi=True)
+                    resultado = self.cnx.execute(select_stmt,
+                                                 {'stock': self.indicator if not ticker else ticker.upper()},
+                                                 multi=True)
                     for result in resultado:
                         # print(len(result.fetchall()))
                         # Query new stock, id
@@ -406,15 +401,17 @@ class Gather:
                             insert_stmt = """INSERT INTO stocks.stock (id, stock) 
                                         VALUES (AES_ENCRYPT(%(stock)s, %(stock)s),%(stock)s)"""
                             try:
-                                insert_resultado = self.cnx.execute(insert_stmt, {'stock': f'{self.indicator.upper() if not ticker else ticker.upper()}'},
+                                insert_resultado = self.cnx.execute(insert_stmt, {
+                                    'stock': f'{self.indicator.upper() if not ticker else ticker.upper()}'},
                                                                     multi=True)
                                 self.db_con.commit()
                             except mysql.connector.errors.IntegrityError as e:
                                 print('[ERROR] Integrity Error.')
                                 pass
                             except Exception as e:
-                                print(f'[ERROR] Failed to insert stock named {self.indicator.upper() if not ticker else ticker.upper()} into database!\n',
-                                      str(e))
+                                print(
+                                    f'[ERROR] Failed to insert stock named {self.indicator.upper() if not ticker else ticker.upper()} into database!\n',
+                                    str(e))
                                 exc_type, exc_obj, exc_tb = sys.exc_info()
                                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                                 print(exc_type, fname, exc_tb.tb_lineno)
@@ -446,12 +443,14 @@ class Gather:
                     pass
                 if update_self:
                     self.data = self.data.transpose().rename(
-                    columns={"open": "Open", "high": "High", "low": "Low", "close": "Close", "adjclose": "Adj Close",
-                             "volume": "Volume"})
+                        columns={"open": "Open", "high": "High", "low": "Low", "close": "Close",
+                                 "adjclose": "Adj Close",
+                                 "volume": "Volume"})
                 else:
                     new_data = new_data.transpose().rename(
-                    columns={"open": "Open", "high": "High", "low": "Low", "close": "Close", "adjclose": "Adj Close",
-                             "volume": "Volume"})
+                        columns={"open": "Open", "high": "High", "low": "Low", "close": "Close",
+                                 "adjclose": "Adj Close",
+                                 "volume": "Volume"})
 
                 try:
                     if not is_utilizing_yfinance:
@@ -461,8 +460,8 @@ class Gather:
                             new_data['Date'] = pd.to_datetime(new_data['Date'])
                     else:
                         if update_self:
-                            self.data = self.data.rename(columns={'Datetime':'Date'})
-                            self.data = self.data.drop(['Datetime'],axis=0).transpose()
+                            self.data = self.data.rename(columns={'Datetime': 'Date'})
+                            self.data = self.data.drop(['Datetime'], axis=0).transpose()
                             self.data['Adj Close'] = self.data.loc[:, 'Close']
                             if self.data.iloc[-1]['Date'] == self.data.iloc[-2]['Date']:
                                 print('[INFO] Duplicate date detected... Removing right after gather.')
@@ -476,8 +475,8 @@ class Gather:
                             except Exception as e:
                                 print(e)
                         else:
-                            new_data = new_data.rename(columns={'Datetime':'Date'})
-                            new_data = new_data.drop(['Datetime'],axis=0).transpose()
+                            new_data = new_data.rename(columns={'Datetime': 'Date'})
+                            new_data = new_data.drop(['Datetime'], axis=0).transpose()
                             new_data['Adj Close'] = new_data.loc[:, 'Close']
                             if new_data.iloc[-1]['Date'] == new_data.iloc[-2]['Date']:
                                 print('[INFO] Duplicate date detected... Removing right after gather.')
@@ -512,39 +511,42 @@ class Gather:
                             print(e)
                 except Exception as e:
                     print(f'[INFO] Could not convert Date col to datetime.\r\nException: {e}')
-                if is_utilizing_yfinance:
-                    if update_self:
-                        try:
-                            self.data = self.data.drop(['Dividends'],axis=1)
-                        except Exception:
-                            pass
-                        try:
-                            self.data = self.data.drop(['index'],axis=1)
-                        except:
-                            pass
-                        try:
-                            self.data = self.data.drop(['Stock Splits'],axis=1)
-                        except:
-                            pass
-                    else:
-                        try:
-                            new_data = new_data.drop(['Dividends'],axis=1)
-                        except Exception:
-                            pass
-                        try:
-                            new_data = new_data.drop(['index'],axis=1)
-                        except:
-                            pass
-                        try:
-                            new_data = new_data.drop(['Stock Splits'],axis=1)
-                        except:
-                            pass
         # Explicitly limit data to 100
         # TODO: 100 days is good for 1d data.  When it comes to other intervals, may not be optimal...
         if update_self:
-            self.data = self.data[-100:]
+            try:
+                self.data = self.data.drop(['Dividends'], axis=1)
+            except Exception:
+                pass
+            try:
+                self.data = self.data.drop(['index'], axis=1)
+            except:
+                pass
+            try:
+                self.data = self.data.drop(['Stock Splits'], axis=1)
+            except:
+                pass
+            # TODO: Make db return adj close
+            if self.loaded_from_db:  # For some reason, adj close is not loading.  Set manually
+                self.data["Adj Close"] = self.data["Close"]
+            # self.data = self.data[-100:]
         else:
-            new_data = new_data[-100:]
+            try:
+                new_data = new_data.drop(['Dividends'], axis=1)
+            except Exception:
+                pass
+            try:
+                new_data = new_data.drop(['index'], axis=1)
+            except:
+                pass
+            try:
+                new_data = new_data.drop(['Stock Splits'], axis=1)
+            except:
+                pass
+            # TODO: Make db return adj close
+            if self.loaded_from_db:  # For some reason, adj close is not loading.  Set manually
+                new_data["Adj Close"] = new_data["Close"]
+            # new_data = new_data[-100:]
         return self.data if update_self else new_data
 
     def get_option_data(self, date: datetime.date = None):
@@ -624,9 +626,14 @@ class Gather:
         if response.status_code != 200:
             raise Exception(response.status_code, response.text)
         return response.json()
+
+
 if __name__ == '__main__':
     loop = asyncio.get_running_loop()
     d = Gather()
-    loop.run_until_complete(d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=3),end_date=datetime.datetime.utcnow().date(),_force_generate=False,interval='15m',ticker='spy'))
+    loop.run_until_complete(
+        d.set_data_from_range(start_date=datetime.datetime.utcnow().date() - datetime.timedelta(days=3),
+                              end_date=datetime.datetime.utcnow().date(), _force_generate=False, interval='15m',
+                              ticker='spy'))
     print(d.data)
 # d.get_option_data(datetime.date(year=2021,month=11,day=12))
