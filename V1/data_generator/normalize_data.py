@@ -42,7 +42,7 @@ class Normalizer():
         self.gen = Generator(ticker=ticker, force_generate=force_generate)
         self.fib: list = []
         self.keltner: list = []
-        self.days_map = {'1d': 180,
+        self.days_map = {'1d': 250, # Need 100 days worth of data for training ( 4 batches, 20 timesteps each, 1 validation)
                          '1wk': 900,
                          '1mo': 3600,
                          '5m': 30,

@@ -121,10 +121,11 @@ class Generator():
             return 'n/a     n/a'
 
     # split a univariate sequence into samples
-    def split_sequence(self, sequence, n_days):
+    def split_sequence(self, sequence,n_days):
         X = list()
         y = list()
-        for i in range(len(sequence)):
+        i = 0
+        while i < len(sequence):
             # find the end of this pattern
             end_ix = i + n_days
             # check if we are beyond the sequence
@@ -132,33 +133,28 @@ class Generator():
                 break
             # gather input and output parts of the pattern
             seq_x = sequence[i:end_ix]
-            seq_y = sequence[end_ix: end_ix + 1]
+            seq_y = sequence[end_ix:end_ix+1]
             X.append(seq_x)
             i = end_ix
             y.append(seq_y)
         return array(X),array(y)
 
     async def generate_data_with_dates(self, date1=None, date2=None, has_actuals=False, force_generate=False,
-                                       out=1, skip_db=False, interval='1d', n_steps=20, ticker: Optional[str] = None,
+                                       out=1, skip_db=False, interval='1d', n_steps=20,n_batches=1, ticker: Optional[str] = None,
                                        opt_fib_vals: list = []):
         X_split_data: list = []
         y_split_data: list = []
         split_studies: list = []
-        try:
-            print("[INFO] Gathering Stock Data.")
-            studies = Studies(self.ticker if not ticker else ticker, force_generate=force_generate)
-            data_task = studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval,
-                                                    ticker=ticker)
-            await data_task
-            # print('[INFO] Only append last 15 data points to DB.')
-            push_data_to_db_task = studies.push_data_to_db(skip_db=skip_db, interval=interval,
-                                                           ticker=ticker, data=studies.data.copy())
-            self.tasks.put(push_data_to_db_task)  # Push to queue so we can await in the background
-            await self.tasks.get()
-            # studies.data = studies.data.reset_index()
-        except Exception as e:
-            print(f'[ERROR] Failed to generate stock data!\r\nException: {e}')
-            raise Exception(e)
+        print("[INFO] Gathering Stock Data.")
+        studies = Studies(self.ticker if not ticker else ticker, force_generate=force_generate)
+        data_task = studies.set_data_from_range(date1, date2, force_generate, skip_db=skip_db, interval=interval,
+                                                ticker=ticker)
+        await data_task
+        # print('[INFO] Only append last 15 data points to DB.')
+        push_data_to_db_task = studies.push_data_to_db(skip_db=skip_db, interval=interval,
+                                                       ticker=ticker, data=studies.data.copy())
+        self.tasks.put(push_data_to_db_task)  # Push to queue so we can await in the background
+        await self.tasks.get()
         # Drop specific data not used for split
         try:
             studies.data = studies.data.drop(['Adj Close'], axis=1)
@@ -169,16 +165,22 @@ class Generator():
         except:
             pass
         # Split data based off of n_steps
-        X_data_timesteps_np,y_data_timesteps_np = self.split_sequence(studies.data.copy().iloc[-100:].to_numpy(), n_days=5)
+        try:
+            print('[INFO] Attempting to split data for use with ML Model')
+            x_data_timesteps_np, y_data_timesteps_np = self.split_sequence(
+                studies.data.to_numpy(), n_days=6)
+        except Exception as e:
+            raise Exception(f"[ERROR] Failed to split data for the following reason:\n{e}")
         # Produced tuple of x,y
+        x_data_timesteps_np = x_data_timesteps_np[-n_steps:]
         for n in range(0, n_steps):
-            X_data_timesteps_df = pd.DataFrame({'Date': X_data_timesteps_np[n][:, -1],
-                                              'Open': X_data_timesteps_np[n][:, 0],
-                                              'High': X_data_timesteps_np[n][:, 1],
-                                              'Low': X_data_timesteps_np[n][:, 2],
-                                              'Close': X_data_timesteps_np[n][:, 3],
+            x_data_timesteps_df = pd.DataFrame({'Date': x_data_timesteps_np[n][:, -1],
+                                              'Open': x_data_timesteps_np[n][:, 0],
+                                              'High': x_data_timesteps_np[n][:, 1],
+                                              'Low': x_data_timesteps_np[n][:, 2],
+                                              'Close': x_data_timesteps_np[n][:, 3],
                                               })
-            X_split_data.append(X_data_timesteps_df)
+            X_split_data.append(x_data_timesteps_df)
             y_data_timesteps_df = pd.DataFrame({'Date': y_data_timesteps_np[n][:, -1],
                                               'Open': y_data_timesteps_np[n][:, 0],
                                               'High': y_data_timesteps_np[n][:, 1],
@@ -186,7 +188,7 @@ class Generator():
                                               'Close': y_data_timesteps_np[n][:, 3],
                                               })
             y_split_data.append(y_data_timesteps_df)
-            split_studies.append(Studies(self.ticker if not ticker else ticker, force_generate=force_generate))
+            split_studies.append(studies)
         # Loop until valid data populates
         try:
             studies.data = studies.data.drop(['Volume'], axis=1)
@@ -218,25 +220,17 @@ class Generator():
             print(
                 f'{str(e)}\n[ERROR] Failed to generate `Keltner Channel` for {self.ticker if not ticker else ticker}!')
             raise Exception(e)
-        try:
-            await studies.apply_fibonacci(skip_db=skip_db, interval=interval, opt_fib_vals=opt_fib_vals)
-        except Exception as e:
-            print(
-                f'{str(e)}\n[ERROR] Failed to generate `Fibonacci Extensions` for {self.ticker if not ticker else ticker}!')
-            raise Exception(e)
         # For each split data, gather data
         tuple_out: list = []
-        print(studies.applied_studies)
         for idx, data in enumerate(X_split_data):
-            if idx == 0:
-                pass
             split_studies[idx].data = data
             # Set data to current split data
-            iloc_idx = idx * n_steps
-            max_days = 5 if not has_actuals else 6  # TODO: Make value as a function variable
-            split_studies[idx].applied_studies = studies.applied_studies.iloc[iloc_idx:iloc_idx + max_days]
-            split_studies[idx].keltner = studies.keltner.iloc[iloc_idx:iloc_idx + max_days]
-            split_studies[idx].fibonacci_extension = studies.fibonacci_extension.iloc[iloc_idx:iloc_idx + max_days]
+            n_days = 5 if not has_actuals else 6  # TODO: Make value as a function variable
+            iloc_idx = idx * n_days
+            print(len(studies.fibonacci_extension))
+            split_studies[idx].applied_studies = studies.applied_studies.iloc[iloc_idx:iloc_idx + n_days]
+            split_studies[idx].keltner = studies.keltner.iloc[iloc_idx:iloc_idx + n_days]
+            split_studies[idx].fibonacci_extension = studies.fibonacci_extension.iloc[iloc_idx:iloc_idx + n_days]
             # try:
             #     await split_studies[idx].apply_fibonacci(skip_db=skip_db, interval=interval, opt_fib_vals=opt_fib_vals)
             # except Exception as e:
