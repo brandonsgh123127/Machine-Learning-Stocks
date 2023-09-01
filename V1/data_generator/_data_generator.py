@@ -188,7 +188,7 @@ class Generator():
                                               'Close': y_data_timesteps_np[n][:, 3],
                                               })
             y_split_data.append(y_data_timesteps_df)
-            split_studies.append(studies)
+            split_studies.append(Studies(self.ticker if not ticker else ticker, force_generate=force_generate))
         # Loop until valid data populates
         try:
             studies.data = studies.data.drop(['Volume'], axis=1)
@@ -227,7 +227,6 @@ class Generator():
             # Set data to current split data
             n_days = 5 if not has_actuals else 6  # TODO: Make value as a function variable
             iloc_idx = idx * n_days
-            print(len(studies.fibonacci_extension))
             split_studies[idx].applied_studies = studies.applied_studies.iloc[iloc_idx:iloc_idx + n_days]
             split_studies[idx].keltner = studies.keltner.iloc[iloc_idx:iloc_idx + n_days]
             split_studies[idx].fibonacci_extension = studies.fibonacci_extension.iloc[iloc_idx:iloc_idx + n_days]
@@ -238,7 +237,7 @@ class Generator():
             #         f'{str(e)}\n[ERROR] Failed to generate `Fibonacci Extensions` for {self.ticker if not ticker else ticker}!')
             #     raise Exception(e)
             tmp_tuple = (split_studies[idx].data, split_studies[idx].applied_studies,
-                         split_studies[idx].fibonacci_extension, split_studies[idx].keltner)
+                         split_studies[idx].fibonacci_extension, split_studies[idx].keltner,y_split_data[idx])
             tuple_out.append(tmp_tuple)  # list of tuplle outputs
         return tuple_out
 

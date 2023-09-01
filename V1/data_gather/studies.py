@@ -1521,78 +1521,42 @@ val1    val3_________________________          vall2
                     #     new_set = new_set.drop(new_set['High'].idxmax())
                     try:
                         val1, val2, val3 = self.downwards_fib(new_set, interval)
-                        if self.fibonacci_extension.empty:  # If upwards fails, initialize here
-                            # calculate values  -- 14 vals
-                            self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
-                                                                     '0.236': [self.fib_help(val1, val2, val3, 0.236)],
-                                                                     '0.241': [self.fib_help(val1, val2, val3, 0.241)],
-                                                                     '0.273': [self.fib_help(val1, val2, val3, 0.273)],
-                                                                     '0.283': [self.fib_help(val1, val2, val3, 0.283)],
-                                                                     '0.316': [self.fib_help(val1, val2, val3, 0.316)],
-                                                                     '0.382': [self.fib_help(val1, val2, val3, 0.382)],
-                                                                     '0.5': [self.fib_help(val1, val2, val3, 0.5)],
-                                                                     '0.523': [self.fib_help(val1, val2, val3, 0.523)],
-                                                                     '0.618': [self.fib_help(val1, val2, val3, 0.618)],
-                                                                     '0.796': [self.fib_help(val1, val2, val3, 0.796)],
-                                                                     '0.923': [self.fib_help(val1, val2, val3, 0.923)],
-                                                                     '1.556': [self.fib_help(val1, val2, val3, 1.556)],
-                                                                     '2.17': [self.fib_help(val1, val2, val3, 2.17)],
-                                                                     '2.493': [self.fib_help(val1, val2, val3, 2.493)],
-                                                                     '2.86': [self.fib_help(val1, val2, val3, 2.86)],
-                                                                     '3.43': [self.fib_help(val1, val2, val3, 3.43)],
-                                                                     '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                                                                     '4.32': [self.fib_help(val1, val2, val3, 4.32)],
-                                                                     '5.01': [self.fib_help(val1, val2, val3, 5.01)],
-                                                                     '5.63': [self.fib_help(val1, val2, val3, 5.63)],
-                                                                     '5.96': [self.fib_help(val1, val2, val3, 5.96)],
-                                                                     '7.17': [self.fib_help(val1, val2, val3, 7.17)],
-                                                                     '8.23': [self.fib_help(val1, val2, val3, 8.23)],
-                                                                     '9.33': [self.fib_help(val1, val2, val3, 9.33)],
-                                                                     '10.13': [self.fib_help(val1, val2, val3, 10.13)],
-                                                                     '11.13': [self.fib_help(val1, val2, val3, 11.13)],
-                                                                     '12.54': [self.fib_help(val1, val2, val3, 12.54)],
-                                                                     '13.17': [self.fib_help(val1, val2, val3, 13.17)],
-                                                                     '14.17': [self.fib_help(val1, val2, val3, 14.17)],
-                                                                     '15.55': [self.fib_help(val1, val2, val3, 15.55)],
-                                                                     '16.32': [self.fib_help(val1, val2, val3, 16.32)]
-                                                                     })
-                            self.insert_fib_vals(skip_db=skip_db, interval=interval, opt_fib_vals=opt_fib_vals,
-                                                 val1=val1, val2=val2, val3=val3)  # insert to db
-                        else:  # else, append
-                            self.fibonacci_extension = pd.concat(objs=[self.fibonacci_extension, pd.DataFrame(
-                                data={'0.202': [self.fib_help(val1, val2, val3, 0.202)],
-                                      '0.236': [self.fib_help(val1, val2, val3, 0.236)],
-                                      '0.241': [self.fib_help(val1, val2, val3, 0.241)],
-                                      '0.273': [self.fib_help(val1, val2, val3, 0.273)],
-                                      '0.283': [self.fib_help(val1, val2, val3, 0.283)],
-                                      '0.316': [self.fib_help(val1, val2, val3, 0.316)],
-                                      '0.382': [self.fib_help(val1, val2, val3, 0.382)],
-                                      '0.5': [self.fib_help(val1, val2, val3, 0.5)],
-                                      '0.523': [self.fib_help(val1, val2, val3, 0.523)],
-                                      '0.618': [self.fib_help(val1, val2, val3, 0.618)],
-                                      '0.796': [self.fib_help(val1, val2, val3, 0.796)],
-                                      '0.923': [self.fib_help(val1, val2, val3, 0.923)],
-                                      '1.556': [self.fib_help(val1, val2, val3, 1.556)],
-                                      '2.17': [self.fib_help(val1, val2, val3, 2.17)],
-                                      '2.493': [self.fib_help(val1, val2, val3, 2.493)],
-                                      '2.86': [self.fib_help(val1, val2, val3, 2.86)],
-                                      '3.43': [self.fib_help(val1, val2, val3, 3.43)],
-                                      '3.83': [self.fib_help(val1, val2, val3, 3.83)],
-                                      '4.32': [self.fib_help(val1, val2, val3, 4.32)],
-                                      '5.01': [self.fib_help(val1, val2, val3, 5.01)],
-                                      '5.63': [self.fib_help(val1, val2, val3, 5.63)],
-                                      '5.96': [self.fib_help(val1, val2, val3, 5.96)],
-                                      '7.17': [self.fib_help(val1, val2, val3, 7.17)],
-                                      '8.23': [self.fib_help(val1, val2, val3, 8.23)],
-                                      '9.33': [self.fib_help(val1, val2, val3, 9.33)],
-                                      '10.13': [self.fib_help(val1, val2, val3, 10.13)],
-                                      '11.13': [self.fib_help(val1, val2, val3, 11.13)],
-                                      '12.54': [self.fib_help(val1, val2, val3, 12.54)],
-                                      '13.17': [self.fib_help(val1, val2, val3, 13.17)],
-                                      '14.17': [self.fib_help(val1, val2, val3, 14.17)],
-                                      '15.55': [self.fib_help(val1, val2, val3, 15.55)],
-                                      '16.32': [self.fib_help(val1, val2, val3, 16.32)]
-                                      })])
+                        # calculate values  -- 14 vals
+                        self.fibonacci_extension = pd.DataFrame({'0.202': [self.fib_help(val1, val2, val3, 0.202)],
+                                                                 '0.236': [self.fib_help(val1, val2, val3, 0.236)],
+                                                                 '0.241': [self.fib_help(val1, val2, val3, 0.241)],
+                                                                 '0.273': [self.fib_help(val1, val2, val3, 0.273)],
+                                                                 '0.283': [self.fib_help(val1, val2, val3, 0.283)],
+                                                                 '0.316': [self.fib_help(val1, val2, val3, 0.316)],
+                                                                 '0.382': [self.fib_help(val1, val2, val3, 0.382)],
+                                                                 '0.5': [self.fib_help(val1, val2, val3, 0.5)],
+                                                                 '0.523': [self.fib_help(val1, val2, val3, 0.523)],
+                                                                 '0.618': [self.fib_help(val1, val2, val3, 0.618)],
+                                                                 '0.796': [self.fib_help(val1, val2, val3, 0.796)],
+                                                                 '0.923': [self.fib_help(val1, val2, val3, 0.923)],
+                                                                 '1.556': [self.fib_help(val1, val2, val3, 1.556)],
+                                                                 '2.17': [self.fib_help(val1, val2, val3, 2.17)],
+                                                                 '2.493': [self.fib_help(val1, val2, val3, 2.493)],
+                                                                 '2.86': [self.fib_help(val1, val2, val3, 2.86)],
+                                                                 '3.43': [self.fib_help(val1, val2, val3, 3.43)],
+                                                                 '3.83': [self.fib_help(val1, val2, val3, 3.83)],
+                                                                 '4.32': [self.fib_help(val1, val2, val3, 4.32)],
+                                                                 '5.01': [self.fib_help(val1, val2, val3, 5.01)],
+                                                                 '5.63': [self.fib_help(val1, val2, val3, 5.63)],
+                                                                 '5.96': [self.fib_help(val1, val2, val3, 5.96)],
+                                                                 '7.17': [self.fib_help(val1, val2, val3, 7.17)],
+                                                                 '8.23': [self.fib_help(val1, val2, val3, 8.23)],
+                                                                 '9.33': [self.fib_help(val1, val2, val3, 9.33)],
+                                                                 '10.13': [self.fib_help(val1, val2, val3, 10.13)],
+                                                                 '11.13': [self.fib_help(val1, val2, val3, 11.13)],
+                                                                 '12.54': [self.fib_help(val1, val2, val3, 12.54)],
+                                                                 '13.17': [self.fib_help(val1, val2, val3, 13.17)],
+                                                                 '14.17': [self.fib_help(val1, val2, val3, 14.17)],
+                                                                 '15.55': [self.fib_help(val1, val2, val3, 15.55)],
+                                                                 '16.32': [self.fib_help(val1, val2, val3, 16.32)]
+                                                                 })
+                        self.insert_fib_vals(skip_db=skip_db, interval=interval, opt_fib_vals=opt_fib_vals,
+                                             val1=val1, val2=val2, val3=val3)  # insert to db
                     except Exception as e:
                         raise Exception(f'[ERROR] Failed to generate downwards fib!\r\nException: {e}')
             len_df = len(self.data.index + 2)
@@ -1628,7 +1592,7 @@ val1    val3_________________________          vall2
                 avg_true_range: pd.DataFrame
                 prev_row = None
                 await ema_task
-                print(len(self.data))
+                # print(len(self.data))
                 for index, row in self.data_cp.iterrows():
                     # CALCULATE TR ---MAX of ( H – L ; H – C.1 ; C.1 – L )
                     if index == 0:  # previous close is not valid, so just do same day

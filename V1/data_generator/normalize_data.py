@@ -29,6 +29,7 @@ This frame then gets normalized and outputted.
 class Normalizer():
     def __init__(self, ticker=None, force_generate=False):
         self.data: list = []
+        self.y_data: list = []
         self.studies: list = []
         self.normalized_data = []
         self.unnormalized_data = []
@@ -131,8 +132,10 @@ class Normalizer():
                 data = val[0]
                 fib = val[2]
                 keltner = val[3]
+                y_data = val[4]
                 self.studies.append(studies)
                 self.data.append(data)
+                self.y_data.append(y_data)
                 self.fib.append(fib)
                 self.keltner.append(keltner)
             del vals
@@ -152,6 +155,7 @@ class Normalizer():
         del self.studies, self.data, self.fib, self.keltner
         self.studies = []
         self.data = []
+        self.y_data = []
         self.fib = []
         self.keltner = []
         self.scaler_list = []
