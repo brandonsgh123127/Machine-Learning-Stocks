@@ -29,7 +29,6 @@ This frame then gets normalized and outputted.
 class Normalizer():
     def __init__(self, ticker=None, force_generate=False):
         self.data: list = []
-        self.y_data: list = []
         self.studies: list = []
         self.normalized_data = []
         self.unnormalized_data = []
@@ -43,12 +42,12 @@ class Normalizer():
         self.gen = Generator(ticker=ticker, force_generate=force_generate)
         self.fib: list = []
         self.keltner: list = []
-        self.days_map = {'1d': 250, # Need 100 days worth of data for training ( 4 batches, 20 timesteps each, 1 validation)
-                         '1wk': 900,
-                         '1mo': 3600,
-                         '5m': 30,
-                         '15m': 40,
-                         '30m': 50,
+        self.days_map = {'1d': 500, # Need 100 days worth of data for training ( 4 batches, 20 timesteps each, 1 validation)
+                         '1wk': 1800,
+                         '1mo': 7200,
+                         '5m': 60,
+                         '15m': 80,
+                         '30m': 100,
                          '60m': 75}
         '''
         Utilize a config file to establish a mysql connection to the database
@@ -91,7 +90,7 @@ class Normalizer():
     '''
 
     async def mysql_read_data(self, ticker, date=None, out=1, force_generate=False, skip_db=False, interval='1d',
-                              opt_fib_vals=[],n_steps=20):
+                              opt_fib_vals=[],n_steps=3):
         try:
             self.cnx = self.db_con.cursor(buffered=True)
             self.cnx.autocommit = True
@@ -132,10 +131,8 @@ class Normalizer():
                 data = val[0]
                 fib = val[2]
                 keltner = val[3]
-                y_data = val[4]
                 self.studies.append(studies)
                 self.data.append(data)
-                self.y_data.append(y_data)
                 self.fib.append(fib)
                 self.keltner.append(keltner)
             del vals
@@ -155,7 +152,6 @@ class Normalizer():
         del self.studies, self.data, self.fib, self.keltner
         self.studies = []
         self.data = []
-        self.y_data = []
         self.fib = []
         self.keltner = []
         self.scaler_list = []
@@ -182,7 +178,7 @@ class Normalizer():
         utilize mysql to retrieve data and study data for later usage...
     '''
 
-    async def read_data(self, ticker, rand_dates=False, force_generate=False,  out=1, skip_db=False, interval='1d', opt_fib_vals=[],n_steps=20):
+    async def read_data(self, ticker, rand_dates=False, force_generate=False,  out=1, skip_db=False, interval='1d', opt_fib_vals=[],n_steps=3):
         if rand_dates:  # Only used when generating model...
             date = self.generate_dates(interval)
             required_days = self.days_map[interval]
@@ -220,10 +216,10 @@ class Normalizer():
             except:
                 pass
 
-    def convert_derivatives(self, out: int = 1):
+    def generate_data_to_features(self, out: int = 1):
         data_list = self.data.copy()
         for idx, data in enumerate(data_list):
-            data = data.iloc[:5]
+            # data = data.iloc[:5]
             try:
                 data = data.drop(columns={'Date'},axis=1)
             except:
@@ -250,13 +246,7 @@ class Normalizer():
             except:
                 pass
             try:
-                self.unnormalized_data.append(pd.DataFrame((), columns=['Close EMA14 Distance', 'Close EMA30 Distance',
-                                                                      'Close Fib1 Distance', 'Close Fib2 Distance',
-                                                                      'Num Consec Candle Dir',
-                                                                      'Upper Keltner Close Diff',
-                                                                      'Lower Keltner Close Diff',
-                                                                      'Open',
-                                                                      'Close'] if out == 1 else []))
+                self.unnormalized_data.append(pd.DataFrame((), columns=[] if out == 1 else []))
             except Exception as e:
                 raise Exception(f"[ERROR] Failed to set set columns for calculating data.\r\nException:{e}")
             if out == 1:  # Do legacy model data generation for 14 days worth of stuff
@@ -276,22 +266,22 @@ class Normalizer():
                         direction = "+"
                     else:
                         direction = "-"
-                try:
-                    save_point = 0
-                    sole_fib_col = self.fib[idx].transpose().iloc[:,-1]
-                    i = self.fib[idx].transpose().iloc[(sole_fib_col - last_close).abs().argsort()[1],-1]
-                    j = self.fib[idx].transpose().iloc[(sole_fib_col - last_close).abs().argsort()[2],-1]
-                    k = self.fib[idx].transpose().iloc[(sole_fib_col - last_close).abs().argsort()[3],-1]
-
-                except Exception as e:
-                    print(f'[ERROR] Failed to iterate through fibonacci to find key fib points.\r\nException: {e}')
-                    raise Exception(e)
-                next1_fib = j
-                next2_fib = k
-                base_fib1 = i
-                if next2_fib == 0:
-                    next2_fib = next1_fib
-                    next1_fib = save_point
+                # try:
+                #     save_point = 0
+                #     sole_fib_col = self.fib[idx].transpose().iloc[:,-1]
+                #     i = self.fib[idx].transpose().iloc[(sole_fib_col - last_close).abs().argsort()[1],-1]
+                #     j = self.fib[idx].transpose().iloc[(sole_fib_col - last_close).abs().argsort()[2],-1]
+                #     k = self.fib[idx].transpose().iloc[(sole_fib_col - last_close).abs().argsort()[3],-1]
+                #
+                # except Exception as e:
+                #     print(f'[ERROR] Failed to iterate through fibonacci to find key fib points.\r\nException: {e}')
+                #     raise Exception(e)
+                # next1_fib = j
+                # next2_fib = k
+                # base_fib1 = i
+                # if next2_fib == 0:
+                #     next2_fib = next1_fib
+                #     next1_fib = save_point
                 for index, row in data.iterrows():
                     try:
                         if index <= 1:
@@ -308,21 +298,22 @@ class Normalizer():
                         self.unnormalized_data[idx].loc[index, "Middle Kelt"] = round(self.keltner[idx].at[index, "middle"], 2)
                         self.unnormalized_data[idx].loc[index, "EMA 14"] = round(self.studies[idx].at[index, 'ema14'], 2)
                         self.unnormalized_data[idx].loc[index, "EMA 30"] = round(self.studies[idx].at[index, 'ema30'], 2)
-                        self.unnormalized_data[idx].loc[index, "Base Fib"] = round(base_fib1, 2)
-                        self.unnormalized_data[idx].loc[index, "Next1 Fib"] = round(next1_fib, 2)
-                        self.unnormalized_data[idx].loc[index, "Next2 Fib"] = round(next2_fib, 2)
+                        self.unnormalized_data[idx].loc[index, "Close EMA14 Distance"] = round(data.at[index, "Close"] - self.studies[idx].at[index, 'ema14'], 2)
+                        self.unnormalized_data[idx].loc[index, "Close EMA30 Distance"] = round(data.at[index, "Close"] - self.studies[idx].at[index, 'ema30'], 2)
                         self.unnormalized_data[idx].loc[index, "Open"] = round(data.at[index, "Open"], 2)
                         self.unnormalized_data[idx].loc[index, "High"] = round(data.at[index, "High"], 2)
                         self.unnormalized_data[idx].loc[index, "Low"] = round(data.at[index, "Low"], 2)
                         self.unnormalized_data[idx].loc[index, "Close"] = round(data.at[index, "Close"], 2)
-                        self.unnormalized_data[idx].loc[index, "Last3High"] = round(last_3_high, 2)
-                        self.unnormalized_data[idx].loc[index, "Last3Low"] = round(last_3_low, 2)
                         # print(self.unnormalized_data)
                     except Exception as e:
-                        print(
-                            f'[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.unnormalized_data}\r\nException: {e}')
+                        exc_type, exc_obj, exc_tb = sys.exc_info()
+                        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                        print(exc_type, fname, exc_tb.tb_lineno)
                         raise AssertionError(
                             f'{str(e)}\n[ERROR] Failed normalization!\nDirection: "{direction}"\nCurrent normalized data:\n\t{self.unnormalized_data}\n')
+            pd.set_option('display.max_rows', 1000)
+            pd.set_option('display.max_columns', 1000)
+            # print(self.unnormalized_data[idx].describe(include='all'))
             self.unnormalized_data[idx] = self.unnormalized_data[idx].transpose()
         return 0
 
@@ -335,21 +326,20 @@ class Normalizer():
         for idx, data in enumerate(unnorm_data_list):
             data = data.iloc[:5]
             try:
-                if 3 <= out <= 4:
+                if out == 1:
                     # print(f"[INFO] Out is set to {out}.  Standard scaler fit_transform in progress.")
                     self.scaler_list.append(self.standard_scaler.fit_transform(self.unnormalized_data[idx]))
-                else:
-                    # print(f"[INFO] Out is {out}.  MinMax scaler fit_transform in progress.")
-                    self.scaler_list.append(self.min_max.fit_transform(self.unnormalized_data[idx]))
                 self.normalized_data.append(pd.DataFrame(self.scaler_list[idx],
-                                                    index=['Close EMA14 Distance',
+                                                    index=['Upper Kelt',
+                                                           'Lower Kelt',
+                                                           'Middle Kelt',
+                                                           'EMA 14',
+                                                           'EMA 30',
+                                                           'Close EMA14 Distance',
                                                            'Close EMA30 Distance',
-                                                           'Close Fib1 Distance',
-                                                           'Close Fib2 Distance',
-                                                           'Num Consec Candle Dir',
-                                                           'Upper Keltner Close Diff',
-                                                           'Lower Keltner Close Diff',
                                                            'Open',
+                                                           'High',
+                                                           'Low',
                                                            'Close'] if out == 1 else []
                                                                                                             ))
                 # print(self.normalized_data,self.unnormalized_data)
@@ -460,6 +450,6 @@ class Normalizer():
     #     return tmp_data.transpose()
 # norm = Normalizer()
 # norm.read_data("2016-03-18","CCL")
-# norm.convert_derivatives()
+# norm.generate_data_to_features()
 # print(norm.normalized_data)
 # norm.display_line()

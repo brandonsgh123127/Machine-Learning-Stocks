@@ -135,7 +135,7 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY",
     n_interval = '1d' if interval == 'Daily' else '1wk' if interval == 'Weekly' else '1mo' if interval == 'Monthly' else '1y' if interval == 'Yearly' else interval
 
     if '1d' in n_interval:
-        dates = (e_date - timedelta(days=75), e_date)  # 2 months worth of data
+        dates = (e_date - timedelta(days=360), e_date)  # 2 months worth of data
     elif '1wk' in n_interval:
         # change end date to a monday before
         cur_day = abs(e_date.weekday())
@@ -246,7 +246,7 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
             '1y' if interval == 'Yearly' else interval
 
     if '1d' in n_interval:
-        dates = (e_date - timedelta(days=75), e_date)  # month worth of data
+        dates = (e_date - timedelta(days=360), e_date)  # month worth of data
     elif '1wk' in n_interval:
         cur_day = abs(e_date.weekday())
         if cur_day != 0:

@@ -129,7 +129,7 @@ class Generator():
             # find the end of this pattern
             end_ix = i + n_days
             # check if we are beyond the sequence
-            if end_ix > len(sequence) - 1:
+            if end_ix + 1 > len(sequence) - 1:
                 break
             # gather input and output parts of the pattern
             seq_x = sequence[i:end_ix]
@@ -140,7 +140,7 @@ class Generator():
         return array(X),array(y)
 
     async def generate_data_with_dates(self, date1=None, date2=None, has_actuals=False, force_generate=False,
-                                       out=1, skip_db=False, interval='1d', n_steps=20,n_batches=1, ticker: Optional[str] = None,
+                                       out=1, skip_db=False, interval='1d', n_steps=3,n_batches=1, ticker: Optional[str] = None,
                                        opt_fib_vals: list = []):
         X_split_data: list = []
         y_split_data: list = []
@@ -168,7 +168,7 @@ class Generator():
         try:
             print('[INFO] Attempting to split data for use with ML Model')
             x_data_timesteps_np, y_data_timesteps_np = self.split_sequence(
-                studies.data.to_numpy(), n_days=6)
+                studies.data.to_numpy(), n_days=81)
         except Exception as e:
             raise Exception(f"[ERROR] Failed to split data for the following reason:\n{e}")
         # Produced tuple of x,y
@@ -223,13 +223,13 @@ class Generator():
         # For each split data, gather data
         tuple_out: list = []
         for idx, data in enumerate(X_split_data):
-            split_studies[idx].data = data
+            split_studies[idx].data = data if not has_actuals else pd.concat([data,y_split_data[idx]]).reset_index(drop=True)
             # Set data to current split data
-            n_days = 5 if not has_actuals else 6  # TODO: Make value as a function variable
+            n_days = 80 if not has_actuals else 81  # TODO: Make value as a function variable
             iloc_idx = idx * n_days
-            split_studies[idx].applied_studies = studies.applied_studies.iloc[iloc_idx:iloc_idx + n_days]
-            split_studies[idx].keltner = studies.keltner.iloc[iloc_idx:iloc_idx + n_days]
-            split_studies[idx].fibonacci_extension = studies.fibonacci_extension.iloc[iloc_idx:iloc_idx + n_days]
+            split_studies[idx].applied_studies = studies.applied_studies.iloc[iloc_idx:iloc_idx + n_days +1]
+            split_studies[idx].keltner = studies.keltner.iloc[iloc_idx:iloc_idx + n_days+1]
+            split_studies[idx].fibonacci_extension = studies.fibonacci_extension.iloc[iloc_idx:iloc_idx + n_days+1]
             # try:
             #     await split_studies[idx].apply_fibonacci(skip_db=skip_db, interval=interval, opt_fib_vals=opt_fib_vals)
             # except Exception as e:
@@ -237,7 +237,7 @@ class Generator():
             #         f'{str(e)}\n[ERROR] Failed to generate `Fibonacci Extensions` for {self.ticker if not ticker else ticker}!')
             #     raise Exception(e)
             tmp_tuple = (split_studies[idx].data, split_studies[idx].applied_studies,
-                         split_studies[idx].fibonacci_extension, split_studies[idx].keltner,y_split_data[idx])
+                         split_studies[idx].fibonacci_extension, split_studies[idx].keltner)
             tuple_out.append(tmp_tuple)  # list of tuplle outputs
         return tuple_out
 

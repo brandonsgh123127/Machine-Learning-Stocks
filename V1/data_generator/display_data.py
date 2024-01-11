@@ -241,10 +241,11 @@ class Display:
 
         if out == 1:
             indices_dict = {0: 'Upper Kelt',
-                            1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
-                            5: 'Open', 6: 'High', 7: 'Low', 8: 'Close', 9: 'Base Fib',
-                            10: 'Next1 Fib', 11: 'Next2 Fib',
-                            12: 'Last3High', 13: 'Last3Low'}
+                            1: 'Lower Kelt', 2: 'Middle Kelt',
+                            3: 'EMA 14', 4: 'EMA 30',
+                            5: 'Close EMA14 Distance', 6: 'Close EMA30 Distance',
+                            7: 'Open', 8: 'High',
+                            9: 'Low', 10: 'Close'}
 
         self.data_display2 = pd.concat([self.data_display.reset_index(), self.data_predict_display.reset_index()],
                                        ignore_index=False).set_flags(allows_duplicate_labels=True)
@@ -283,10 +284,11 @@ class Display:
                                self.pixel_height / float(self.req_dpi))
         if out == 1:
             indices_dict = {0: 'Upper Kelt',
-                            1: 'Lower Kelt', 2: 'Middle Kelt', 3: 'EMA 14', 4: 'EMA 30',
-                            5: 'Open', 6: 'High', 7: 'Low', 8: 'Close', 9: 'Base Fib',
-                            10: 'Next1 Fib', 11: 'Next2 Fib',
-                            12: 'Last3High', 13: 'Last3Low'}
+                            1: 'Lower Kelt', 2: 'Middle Kelt',
+                            3: 'EMA 14', 4: 'EMA 30',
+                            5: 'Close EMA14 Distance', 6: 'Close EMA30 Distance',
+                            7: 'Open', 8: 'High',
+                            9: 'Low', 10: 'Close'}
         self.data_predict_display2 = self.data_predict_display
         if out == 1:
             self.data_predict_display2['index'] = [1]

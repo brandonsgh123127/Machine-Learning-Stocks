@@ -31,8 +31,7 @@ class NN_Model(ABC):
 
     def create_model(self, is_training=True):
         print(f"[INFO] Model choice is set to {self.model_choice}")
-        if 0 < self.model_choice <= 4:
-            nn_input = Input(shape=(5, 14))  # 5 * 14 cols
+        nn_input = Input(shape=(3,11),batch_size=1)  # 80 *11
         if 1 <= self.model_choice <= 4:
             """
             OUT 1
@@ -56,8 +55,10 @@ class NN_Model(ABC):
             """
             if self.model_choice == 1:
                 # nn = custom_layers.TrainableDropout(0.2).call(nn_input, is_training)
-                nn = layers.LSTM(256, input_shape=(20, 5, 14), activation="relu")(
+                nn = layers.LSTM(24, input_shape=(3, 11), activation="relu",return_sequences=True)(
                     nn_input)
+                nn = layers.LSTM(6, activation="linear")(
+                    nn)
                 # nn = custom_layers.TrainableDropout(0.25).call(nn, is_training)
             # if self.model_choice == 2:
             #     # ORIGINAL 67 percent accuracy model
@@ -71,15 +72,15 @@ class NN_Model(ABC):
                     nn_input)
                 nn = layers.LSTM(96, input_shape=(128, 1, 1))(
                     nn)
-            nn2 = layers.Dense(4, activation='linear')(nn)
+            nn2 = layers.Dense(4, activation='relu')(nn)
             nn = Model(inputs=nn_input, outputs=[nn2])
             # loss_weights = [3.0,
             #                 1.0,
             #                 1.0,
             #                 5.0]
-            nn.compile(optimizer=optimizers.Adam(learning_rate=0.003, beta_1=0.9, beta_2=0.998),
-                       loss="mse",
-                       metrics=['MeanSquaredError'],
+            nn.compile(optimizer=optimizers.Adam(learning_rate=0.002, beta_1=0.9, beta_2=0.998),
+                       loss="logcosh",
+                       metrics=['accuracy'],
                        # loss_weights=loss_weights
                        )
 

@@ -20,7 +20,7 @@ class Sample(Normalizer):
         self.path = Path(os.getcwd()).absolute()
 
     async def generate_sample(self, out=1, _has_actuals=False, force_generate=False, rand_date=False, skip_db=False,
-                        interval='1d', opt_fib_vals=[],n_steps=20):
+                        interval='1d', opt_fib_vals=[],n_steps=3):
         self.cnx = self.db_con.cursor(buffered=True)
         # 160 days used for multivariate
         self.DAYS_SAMPLED = self.days_map[interval]
@@ -39,14 +39,14 @@ class Sample(Normalizer):
         # Create dataframes for storing per model-basis
         try:
             print("[INFO] Calculating data that is important for model...")
-            self.convert_derivatives(out=out)
+            self.generate_data_to_features(out=out)
         except Exception as e:
             print(f"[ERROR] Failed to calculate new row values for data!\r\nException: {e}")
             self.cnx.close()
             raise Exception(e)
         # Minimum amount of days sampled in df
         norm_data_list = self.unnormalized_data
-        max_days = 5 if not _has_actuals else 6 # TODO: Same as above, max days per each sub batch
+        max_days = 80 if not _has_actuals else 81 # TODO: Same as above, max days per each sub batch
         for idx,data in enumerate(norm_data_list):
             self.unnormalized_data[idx] = self.unnormalized_data[idx].iloc[:, -max_days:]
         # Attempt normalization of data

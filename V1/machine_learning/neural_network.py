@@ -33,7 +33,7 @@ class Network(Neural_Framework):
 
     # Used for generation of data via the start
     async def generate_sample(self, _has_actuals=False, rand_date=False, interval='1d', out=1, opt_fib_vals=[],
-                        ticker: str = None,n_steps=20):
+                        ticker: str = None,n_steps=3):
         path = Path(os.getcwd()).absolute()
         self.sampler.reset_data()
         if ticker is None:
@@ -48,13 +48,13 @@ class Network(Neural_Framework):
         except Exception as e:
             # print(f'[ERROR] Failed to generate sample!\r\nException: {e}')
             raise Exception(f'[ERROR] Failed to generate sample!\r\nException: {e}')
-        if out == 1:
-            try:
-                data_list = self.data
-                for idx, data in enumerate(data_list):
-                    self.sampler.data[idx] = self.sampler.data[idx].drop(['High', 'Low'], axis=1)
-            except:
-                pass
+        # if out == 1:
+        #     try:
+        #         data_list = self.data
+        #         for idx, data in enumerate(data_list):
+        #             self.sampler.data[idx] = self.sampler.data[idx].drop(['High', 'Low'], axis=1)
+        #     except:
+        #         pass
         # self.sampler.data = self.sampler # not needed?
 
     async def run_model(self, nn: NN_Model = None, rand_date=False, interval='1d', ticker: str = None):
@@ -81,9 +81,9 @@ class Network(Neural_Framework):
             print(f'\nEPOCH {epoch}/{self.EPOCHS} -- {nn.model_choice}')
             train = []
             train_targets = []
-            out = 1 if nn.model_choice <= 4 else 0
+            out = 1 if nn.model_choice <= 4 else -1
             ticker = self.choose_random_ticker(Neural_Framework, csv_file=f'{self.path}/data/watchlist/default.csv')
-            n_steps = 20 # 20 minibatches
+            n_steps = 3 # 3 minibatches
             i = 1
             while i <= int(self.BATCHES):
                 if i % 5 == 0:
@@ -101,9 +101,9 @@ class Network(Neural_Framework):
                 for idx, data in enumerate(norm_data_list):
                     try:
                         if 1 <= nn.model_choice <= 4:  # 5 days * 14
-                            tmp_train.append(reshape(self.sampler.normalized_data[idx].transpose().to_numpy(), (5, 14)))
+                            tmp_train.append(reshape(self.sampler.normalized_data[idx].iloc[:,:-1].to_numpy(), (11, 80))) # Grab all but last element, as that is y value
                         # Get percentage for last column instead of direct value :)
-                        tmp = ((self.sampler.y_data[idx].iloc[-1] - self.sampler.unnormalized_data[idx].iloc[-1]) / self.sampler.unnormalized_data[idx].iloc[-1]) * 100
+                        tmp = ((self.sampler.unnormalized_data[idx].iloc[:,-1] - self.sampler.unnormalized_data[idx].iloc[:,-2]) / self.sampler.unnormalized_data[idx].iloc[:,-2]) * 100
                         if out == 1:
                             tmp = pd.concat(
                                 [pd.DataFrame([tmp[tmp.index.isin(['Open'])].iloc[-1], tmp[tmp.index.isin(['High'])].iloc[-1],
@@ -113,9 +113,9 @@ class Network(Neural_Framework):
                     except Exception as e:
                         raise Exception(f'[ERROR] Failed to set training data for {self.sampler.ticker}!\r\nException: {e}\r\n\
                               Debug Info:\r\nnormalized data size: {self.sampler.normalized_data[idx].to_numpy().size}\r\n\
-                              Normalized data: {self.sampler.normalized_data[idx].iloc[:-1].to_numpy()}')
+                              Normalized data: {self.sampler.normalized_data[idx].iloc[:,:-1].to_numpy()}')
                         continue
-                train.append(stack(tmp_train))
+                train.append(np.einsum('ijk->kij', stack(tmp_train)))
                 train_targets.append(stack(tmp_train_targets))
                 i = i+1
                 # Ensure train/train_targets are equivelent in size
@@ -126,6 +126,7 @@ class Network(Neural_Framework):
                     # Reduce size by 1
                     if len(train) > len(train_targets):
                         train.pop()
+                # Model fit here, as microbatch completed.
 
             print("[INFO] Ready to train with batches.")
             # train = asarray(train).astype(float_)
@@ -144,7 +145,6 @@ class Network(Neural_Framework):
                 history = nn.model.fit(x=x_train,
                                        y=y_train,
                                        batch_size=int(self.BATCHES* 0.8),
-                                       num_steps=1, # needed for stateful predictions...
                                        validation_data=(x_val, y_val),
                                        callbacks=[tensorboard_callback, nn.cp_callback])
             except Exception as e:
@@ -493,8 +493,8 @@ async def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = Fals
             try:
                 print("[INFO] Generating sample given data.")
                 await sampler.generate_sample(_has_actuals=has_actuals, out=out, rand_date=rand_date, interval=interval,
-                                        opt_fib_vals=opt_fib_vals,n_steps=20)
-                sampler.trim_data(has_actuals)
+                                        opt_fib_vals=opt_fib_vals,n_steps=3)
+                # sampler.trim_data(has_actuals)
             except Exception as e:
                 print(f'[ERROR] Failed to generate sample for neural_network!\r\nException: {e}')
                 raise Exception(e)
@@ -517,21 +517,21 @@ async def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = Fals
                 # Verify that the data has at least the correct shape needed...
                 if out == 1:
                     try:
-                        sampler.normalized_data[idx].iloc[:, -5 if not has_actuals else -6:].transpose().to_numpy()
+                        sampler.normalized_data[idx].iloc[:, -80 if not has_actuals else -81:].transpose().to_numpy()
                     except Exception as e:
                         raise Exception(f'[ERROR] Couldn\'t generate ML output for ticker {ticker}.\n\tException: {e}')
                 if has_actuals:
                     if out == 1:
                       train.append(reshape(sampler.normalized_data[idx].transpose().to_numpy(),
-                                         (5, 14)))
+                                         (80, 11)))
                 else:
                     if out == 1:
-                        train.append(reshape(sampler.normalized_data[idx].iloc[:, -5:].transpose().to_numpy(),
-                                             (5, 14)))
-                train[idx] = reshape(asarray(train[idx]).astype(float_), (1, 5, 14))
+                        train.append(reshape(sampler.normalized_data[idx].iloc[:, -80:].transpose().to_numpy(),
+                                             (80, 11)))
+                train[idx] = reshape(asarray(train[idx]).astype(float_), (1, 80, 11))
             prediction = nn.model.predict(train,
                                           batch_size=1,
-                                          num_steps=1,
+                                          steps=1,
                                           )  # swapped to train due to time series (out 4)
             del train
         if out == 1:
@@ -710,7 +710,7 @@ def main():
 
     # # OUT 4
     # # 12
-    thread_manager.start_worker(threading.Thread(target=run, args=(50, 20, "new_scaled_2layer")))
+    thread_manager.start_worker(threading.Thread(target=run, args=(50, 24, "new_scaled_2layer")))
     thread_manager.join_workers()
     # # 13
     thread_manager.start_worker(threading.Thread(target=run, args=(50, 100, "new_scaled_2layer_v2")))
