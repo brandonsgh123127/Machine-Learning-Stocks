@@ -188,7 +188,7 @@ async def main(nn_dict: dict = {}, ticker: str = "SPY",
     #
     # Model_Out_2 LABEL
     task1 = launch.display_model(
-                nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else nn_dict["scaled_2layer"] if out == 3 else nn_dict["new_scaled_2layer_v2"] if out == 4 else "","relu_multilayer_l2" if out==1 else "new_multi_analysis_l2" if out == 2 else "scaled_2layer" if out == 3 else "new_scaled_2layer_v2" if out == 4 else "",
+                nn_dict["new_scaled_2layer_v2"] if out == 1 else "","new_scaled_2layer_v2" if out == 1 else "",
         _has_actuals, ticker, 'green', force_generate, False, 0, 1, data,
                 0.05, n_interval,[],dis,skip_display,out)
     gc.collect()
@@ -281,7 +281,7 @@ async def find_all_big_moves(nn_dict: dict, tickers: list, force_generation=Fals
             # print(data,flush=True)
             print("[INFO] Preparing to generate & display model.")
             task_list.append(launch.display_model(
-                    nn_dict["relu_multilayer_l2"] if out==1 else nn_dict["new_multi_analysis_l2"] if out == 2 else nn_dict["new_scaled_2layer"] if out ==4 else "","relu_2layer_l1l2" if out ==1 else "new_multi_analysis_l2" if out == 2 else "new_scaled_2layer" if out == 4 else "", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
+                    nn_dict["new_scaled_2layer"] if out == 1 else "","new_scaled_2layer" if out == 1 else "", _has_actuals, ticker, 'green', force_generation, False, 0, 1, data, False,
                     percent, n_interval,[],None,True,out))
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
