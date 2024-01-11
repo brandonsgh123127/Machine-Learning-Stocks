@@ -3,6 +3,7 @@ import shutil
 import random
 from datetime import datetime, timedelta
 
+import numpy as np
 import pandas as pd
 from keras import callbacks
 from numpy import reshape, asarray, float_, stack
@@ -84,7 +85,9 @@ class Network(Neural_Framework):
             ticker = self.choose_random_ticker(Neural_Framework, csv_file=f'{self.path}/data/watchlist/default.csv')
             n_steps = 20 # 20 minibatches
             i = 1
-            while i <= int(self.BATCHES/ n_steps):
+            while i <= int(self.BATCHES):
+                if i % 5 == 0:
+                    print(f"Batch {i} of {self.BATCHES}")
                 try:
                     print(f"[INFO] Generating data sample")
                     await self.generate_sample(True, rand_date, interval, out, ticker=ticker)
@@ -93,38 +96,40 @@ class Network(Neural_Framework):
                     continue
                 norm_data_list = self.sampler.normalized_data
                 print("[INFO] Appending normalized data to training/target data.")
+                tmp_train = []
+                tmp_train_targets = []
                 for idx, data in enumerate(norm_data_list):
                     try:
                         if 1 <= nn.model_choice <= 4:  # 5 days * 14
-                            train.append(reshape(self.sampler.normalized_data[idx].iloc[:, :-1].transpose().to_numpy(), (5, 14)))
+                            tmp_train.append(reshape(self.sampler.normalized_data[idx].transpose().to_numpy(), (5, 14)))
                         # Get percentage for last column instead of direct value :)
-                        tmp = ((self.sampler.unnormalized_data[idx].iloc[:, -1] - self.sampler.unnormalized_data[idx].iloc[:,
-                                                                             -2]) / self.sampler.unnormalized_data[idx].iloc[:,
-                                                                                    -2]) * 100
+                        tmp = ((self.sampler.y_data[idx].iloc[-1] - self.sampler.unnormalized_data[idx].iloc[-1]) / self.sampler.unnormalized_data[idx].iloc[-1]) * 100
                         if out == 1:
                             tmp = pd.concat(
                                 [pd.DataFrame([tmp[tmp.index.isin(['Open'])].iloc[-1], tmp[tmp.index.isin(['High'])].iloc[-1],
                                                tmp[tmp.index.isin(['Low'])].iloc[-1],
                                                tmp[tmp.index.isin(['Close'])].iloc[-1]])])
-                            train_targets.append(reshape(tmp.to_numpy(), (4, 1)))
+                            tmp_train_targets.append(reshape(tmp.to_numpy(), (4, 1)))
                     except Exception as e:
-                        print(f'[ERROR] Failed to set training data for {self.sampler.ticker}!\r\nException: {e}\r\n',
-                              f"Debug Info:\r\nnormalized data size: {self.sampler.normalized_data[idx].to_numpy().size}\r\n",
-                              f"normalized data: {self.sampler.normalized_data[idx].iloc[:-1].to_numpy()}")
+                        raise Exception(f'[ERROR] Failed to set training data for {self.sampler.ticker}!\r\nException: {e}\r\n\
+                              Debug Info:\r\nnormalized data size: {self.sampler.normalized_data[idx].to_numpy().size}\r\n\
+                              Normalized data: {self.sampler.normalized_data[idx].iloc[:-1].to_numpy()}')
                         continue
-                    # Ensure train/train_targets are equivelent in size
-                    if len(train) == len(train_targets):
-                        continue
-                    else:
-                        # Train data is longer than train_targets,
-                        # Reduce size by 1
-                        if len(train) > len(train_targets):
-                            train.pop()
-                    continue
+                train.append(stack(tmp_train))
+                train_targets.append(stack(tmp_train_targets))
                 i = i+1
+                # Ensure train/train_targets are equivelent in size
+                if len(train) == len(train_targets):
+                    continue
+                else:
+                    # Train data is longer than train_targets,
+                    # Reduce size by 1
+                    if len(train) > len(train_targets):
+                        train.pop()
+
             print("[INFO] Ready to train with batches.")
-            train = asarray(train).astype(float_)
-            train_targets = asarray(train_targets).astype(float_)
+            # train = asarray(train).astype(float_)
+            # train_targets = asarray(train_targets).astype(float_)
             # Profile a range of batches, e.g. from 2 to 5.
             tensorboard_callback = callbacks.TensorBoard(
                 log_dir=f'./logs/{nn.model_name}', profile_batch=(10, 20))
@@ -138,7 +143,8 @@ class Network(Neural_Framework):
             try:
                 history = nn.model.fit(x=x_train,
                                        y=y_train,
-                                       batch_size=int((self.BATCHES*.8)/20),
+                                       batch_size=int(self.BATCHES* 0.8),
+                                       num_steps=1, # needed for stateful predictions...
                                        validation_data=(x_val, y_val),
                                        callbacks=[tensorboard_callback, nn.cp_callback])
             except Exception as e:
@@ -516,15 +522,16 @@ async def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = Fals
                         raise Exception(f'[ERROR] Couldn\'t generate ML output for ticker {ticker}.\n\tException: {e}')
                 if has_actuals:
                     if out == 1:
-                        train.append(reshape(sampler.normalized_data[idx].iloc[:, -6:-1].transpose().to_numpy(),
-                                             (5, 14)))
+                      train.append(reshape(sampler.normalized_data[idx].transpose().to_numpy(),
+                                         (5, 14)))
                 else:
                     if out == 1:
                         train.append(reshape(sampler.normalized_data[idx].iloc[:, -5:].transpose().to_numpy(),
                                              (5, 14)))
                 train[idx] = reshape(asarray(train[idx]).astype(float_), (1, 5, 14))
-            prediction = nn.model.predict(train[-1],
+            prediction = nn.model.predict(train,
                                           batch_size=1,
+                                          num_steps=1,
                                           )  # swapped to train due to time series (out 4)
             del train
         if out == 1:
@@ -598,7 +605,7 @@ async def load(nn: NN_Model = None, ticker: str = None, has_actuals: bool = Fals
     except Exception as e:
         print(f"[ERROR] Failed to unnormalize data!\r\nException: {e}")
         raise Exception(e)
-    if out == 4:
+    if out == 1:
         print(f"[INFO] out is {out}, getting last unnormalized value.")
         open = unnormalized_prediction_df['Open'].iloc[-1]
         high = unnormalized_prediction_df['High'].iloc[-1]
@@ -703,20 +710,22 @@ def main():
 
     # # OUT 4
     # # 12
-    # thread_manager.start_worker(threading.Thread(target=run, args=(50, 100, "new_scaled_2layer")))
-    # thread_manager.join_workers()
+    thread_manager.start_worker(threading.Thread(target=run, args=(50, 20, "new_scaled_2layer")))
+    thread_manager.join_workers()
     # # 13
     thread_manager.start_worker(threading.Thread(target=run, args=(50, 100, "new_scaled_2layer_v2")))
     thread_manager.join_workers()
 
     # run(50,75,'relu_2layer_dropout_l1_l2')
     # copy_logs(path,'relu_2layer_dropout_l1_l2')
-    nn = NN_Model("new_scaled_2layer_v2")
-    nn.load_model("new_scaled_2layer_v2",is_training=False)
-    sampler = Sample('SPY',True)
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(load(nn,"SPY", True, "new_scaled_2layer_v2", True,'/device:GPU:0',True, [],'1d',sampler,[]))
+
+
+    # nn = NN_Model("new_scaled_2layer_v2")
+    # nn.load_model("new_scaled_2layer_v2",is_training=False)
+    # sampler = Sample('SPY',True)
+    # loop = asyncio.new_event_loop()
+    # asyncio.set_event_loop(loop)
+    # loop.run_until_complete(load(nn,"SPY", True, "new_scaled_2layer_v2", True,'/device:GPU:0',True, [],'1d',sampler,[]))
 
 
 if __name__ == "__main__":
