@@ -1589,7 +1589,7 @@ val1    val3_________________________          vall2
                                           simple=True)  # apply length ema for middle band
                 self.keltner = pd.DataFrame({'middle': [], 'upper': [], 'lower': []}, dtype=float)
                 true_range: pd.DataFrame
-                avg_true_range: pd.DataFrame
+                avg_true_range: pd.DataFrame = None
                 prev_row = None
                 await ema_task
                 # print(len(self.data))

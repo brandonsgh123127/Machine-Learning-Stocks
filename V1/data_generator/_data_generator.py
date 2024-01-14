@@ -121,7 +121,7 @@ class Generator():
             return 'n/a     n/a'
 
     # split a univariate sequence into samples
-    def split_sequence(self, sequence,n_days):
+    def split_sequence(self, sequence, n_days):
         X = list()
         y = list()
         i = 0
@@ -129,18 +129,53 @@ class Generator():
             # find the end of this pattern
             end_ix = i + n_days
             # check if we are beyond the sequence
-            if end_ix + 1 > len(sequence) - 1:
+            if end_ix > len(sequence) - 1:
                 break
             # gather input and output parts of the pattern
             seq_x = sequence[i:end_ix]
-            seq_y = sequence[end_ix:end_ix+1]
+            seq_y = sequence[end_ix:end_ix + 1]
             X.append(seq_x)
-            i = end_ix
+            i = end_ix - 1
             y.append(seq_y)
-        return array(X),array(y)
+        return array(X), array(y)
+
+    # find the end of this pattern
+
+    # convert series to supervised learning
+    def series_to_supervised(self, data, n_in=1, n_out=1, batch_size: int = 200, dropnan=True):
+        """
+        Converts series to supervised model
+        Parameters:
+            data: Sequence of observations as a list or 2D NumPy array. Required.
+            n_in: Number of lag observations as input (X). Values may be between [1..len(data)] Optional. Defaults to 1.
+            n_out: Number of observations as output (y). Values may be between [0..len(data)-1]. Optional. Defaults to 1.
+            dropnan: Boolean whether to drop rows with NaN values. Optional. Defaults to True.
+        """
+        x_agg_df_list: list = []
+        y_agg_df_list: list = []
+        if type(data) is list:
+            n_vars = 1
+        else:
+            n_vars_tuple = data.shape
+            n_vars = n_vars_tuple[1]
+        cols, names = list(), list()
+        # input sequence (t-n, ... t-1)
+        for i in range(n_in, 0, -1):
+            x_agg_df = data.shift(i).reset_index(drop=True).iloc[-batch_size:-1]
+            y_agg_df = data.shift(i).reset_index(drop=True).iloc[-1]
+            # drop rows with NaN values
+            if dropnan:
+                x_agg_df.dropna(inplace=True)
+            # cols.append(agg_df)
+            # names += [f'{data.columns[j]}' for j in range(n_vars)]
+            # forecast sequence (t, t+1, ... t+n)
+            x_agg_df_list.append(x_agg_df)
+            y_agg_df_list.append(y_agg_df)
+        return x_agg_df_list, y_agg_df_list
 
     async def generate_data_with_dates(self, date1=None, date2=None, has_actuals=False, force_generate=False,
-                                       out=1, skip_db=False, interval='1d', n_steps=3,n_batches=1, ticker: Optional[str] = None,
+                                       out=1, skip_db=False, interval='1d', n_steps=3, n_batches=1,
+                                       ticker: Optional[str] = None,
                                        opt_fib_vals: list = []):
         X_split_data: list = []
         y_split_data: list = []
@@ -166,27 +201,31 @@ class Generator():
             pass
         # Split data based off of n_steps
         try:
+            batch_size = 81
             print('[INFO] Attempting to split data for use with ML Model')
-            x_data_timesteps_np, y_data_timesteps_np = self.split_sequence(
-                studies.data.to_numpy(), n_days=81)
+            x_timestep_dfs, y_timestep_dfs = self.series_to_supervised(
+                studies.data, n_steps, 1, batch_size)
+            # studies.data = studies.data.iloc[-batch_size:]
         except Exception as e:
             raise Exception(f"[ERROR] Failed to split data for the following reason:\n{e}")
-        # Produced tuple of x,y
-        x_data_timesteps_np = x_data_timesteps_np[-n_steps:]
-        for n in range(0, n_steps):
-            x_data_timesteps_df = pd.DataFrame({'Date': x_data_timesteps_np[n][:, -1],
-                                              'Open': x_data_timesteps_np[n][:, 0],
-                                              'High': x_data_timesteps_np[n][:, 1],
-                                              'Low': x_data_timesteps_np[n][:, 2],
-                                              'Close': x_data_timesteps_np[n][:, 3],
-                                              })
+        print("Now, converting split data to 'x'/'y' components")
+        # Produce tuple of x,y
+        for n, df in enumerate(x_timestep_dfs, start=0):
+            x_data_timesteps_np = df.to_numpy()
+            y_data_timesteps_np = y_timestep_dfs[n].to_numpy()
+            x_data_timesteps_df = pd.DataFrame({'Date': x_data_timesteps_np[:, -1],
+                                                'Open': x_data_timesteps_np[:, 0],
+                                                'High': x_data_timesteps_np[:, 1],
+                                                'Low': x_data_timesteps_np[:, 2],
+                                                'Close': x_data_timesteps_np[:, 3],
+                                                })
             X_split_data.append(x_data_timesteps_df)
-            y_data_timesteps_df = pd.DataFrame({'Date': y_data_timesteps_np[n][:, -1],
-                                              'Open': y_data_timesteps_np[n][:, 0],
-                                              'High': y_data_timesteps_np[n][:, 1],
-                                              'Low': y_data_timesteps_np[n][:, 2],
-                                              'Close': y_data_timesteps_np[n][:, 3],
-                                              })
+            y_data_timesteps_df = pd.DataFrame({'Date': y_data_timesteps_np[-1],
+                                                'Open': y_data_timesteps_np[0],
+                                                'High': y_data_timesteps_np[1],
+                                                'Low': y_data_timesteps_np[2],
+                                                'Close': y_data_timesteps_np[3],
+                                                }, index=[0])
             y_split_data.append(y_data_timesteps_df)
             split_studies.append(Studies(self.ticker if not ticker else ticker, force_generate=force_generate))
         # Loop until valid data populates
@@ -223,19 +262,14 @@ class Generator():
         # For each split data, gather data
         tuple_out: list = []
         for idx, data in enumerate(X_split_data):
-            split_studies[idx].data = data if not has_actuals else pd.concat([data,y_split_data[idx]]).reset_index(drop=True)
+            split_studies[idx].data = data if not has_actuals else pd.concat([data, y_split_data[idx]]).reset_index(
+                drop=True)
             # Set data to current split data
             n_days = 80 if not has_actuals else 81  # TODO: Make value as a function variable
             iloc_idx = idx * n_days
-            split_studies[idx].applied_studies = studies.applied_studies.iloc[iloc_idx:iloc_idx + n_days +1]
-            split_studies[idx].keltner = studies.keltner.iloc[iloc_idx:iloc_idx + n_days+1]
-            split_studies[idx].fibonacci_extension = studies.fibonacci_extension.iloc[iloc_idx:iloc_idx + n_days+1]
-            # try:
-            #     await split_studies[idx].apply_fibonacci(skip_db=skip_db, interval=interval, opt_fib_vals=opt_fib_vals)
-            # except Exception as e:
-            #     print(
-            #         f'{str(e)}\n[ERROR] Failed to generate `Fibonacci Extensions` for {self.ticker if not ticker else ticker}!')
-            #     raise Exception(e)
+            split_studies[idx].applied_studies = studies.applied_studies.iloc[iloc_idx:iloc_idx + n_days + 1]
+            split_studies[idx].keltner = studies.keltner.iloc[iloc_idx:iloc_idx + n_days + 1]
+            split_studies[idx].fibonacci_extension = studies.fibonacci_extension.iloc[iloc_idx:iloc_idx + n_days + 1]
             tmp_tuple = (split_studies[idx].data, split_studies[idx].applied_studies,
                          split_studies[idx].fibonacci_extension, split_studies[idx].keltner)
             tuple_out.append(tmp_tuple)  # list of tuplle outputs

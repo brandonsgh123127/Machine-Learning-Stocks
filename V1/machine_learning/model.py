@@ -31,7 +31,7 @@ class NN_Model(ABC):
 
     def create_model(self, is_training=True):
         print(f"[INFO] Model choice is set to {self.model_choice}")
-        nn_input = Input(shape=(3,11),batch_size=1)  # 80 *11
+        nn_input = Input(shape=(3,11))  # 80 *11
         if 1 <= self.model_choice <= 4:
             """
             OUT 1

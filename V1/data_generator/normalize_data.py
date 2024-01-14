@@ -42,13 +42,13 @@ class Normalizer():
         self.gen = Generator(ticker=ticker, force_generate=force_generate)
         self.fib: list = []
         self.keltner: list = []
-        self.days_map = {'1d': 500, # Need 100 days worth of data for training ( 4 batches, 20 timesteps each, 1 validation)
-                         '1wk': 1800,
-                         '1mo': 7200,
-                         '5m': 60,
-                         '15m': 80,
-                         '30m': 100,
-                         '60m': 75}
+        self.days_map = {'1d': 720, # Need 100 days worth of data for training ( 4 batches, 20 timesteps each, 1 validation)
+                         '1wk': 2400,
+                         '1mo': 10400,
+                         '5m': 80,
+                         '15m': 100,
+                         '30m': 125,
+                         '60m': 140}
         '''
         Utilize a config file to establish a mysql connection to the database
         '''
