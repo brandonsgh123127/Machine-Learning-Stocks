@@ -54,15 +54,15 @@ class Gather:
 
     def __init__(self, indicator=None):
         # Local API Key for twitter account
-        # self.api = twitter.Api(consumer_key="wQ6ZquVju93IHqNNW0I4xn4ii",
-        #                        consumer_secret="PorwKI2n1VpHznwyC38HV8a9xoDMWko4mOIDFfv2q7dQsFn2uY",
-        #                        access_token_key="1104618795115651072-O3LSWBFVEPENGiTnXqf7cTtNgmNqUF",
-        #                        access_token_secret="by7SUTtNPOYgAws0yliwk9YdiWIloSdv8kYX0YKic28UE",
+        # self.api = twitter.Api(consumer_key="",
+        #                        consumer_secret="",
+        #                        access_token_key="",
+        #                        access_token_secret="",
         #                        sleep_on_rate_limit="true")
         self.indicator = indicator
         self.data: pd.DataFrame = pd.DataFrame({'Date':[], 'Open':[], 'High':[], 'Low':[], 'Close':[], 'Adj. Close':[]})
         self.date_set = ()
-        # self.bearer = "AAAAAAAAAAAAAAAAAAAAAJdONwEAAAAAzi2H1WrnhmAddAQKwveAfRN1DAY%3DdSFsj3bTRnDqqMxNmnxEKTG6O6UN3t3VMtnC0Y7xaGxqAF1QVq"
+        # self.bearer = ""
         # self.headers = {"Authorization": "Bearer {0}".format(self.bearer), "content-type": "application/json",
         #                 'Accept-encoding': 'gzip',
         #                 'User-Agent': 'twitterdev-search-tweets-python/'}
