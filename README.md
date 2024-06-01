@@ -9,7 +9,7 @@
 3. Multithreaded support
 4. Real-time predictions
 5. Easy to view analysis
-6. *FAST*- total 8 predictions in sub 20 seconds!
+6. *FAST*- total 8 predictions in sub 6 seconds!
 ## What model does this run?
 Initially, this model was based on a basic linear regression with Leaky ReLU activation, with Adam Optimizer, but over time, attempts were made to improve the model.  There were multiple different variations recorded for testing in the commit history, but at this point, there is current work to implement a newer type of model, which is Long-Short Term Memory (LSTM).  If in broken state, the latest commit will reflect this.
 ## Required modules
