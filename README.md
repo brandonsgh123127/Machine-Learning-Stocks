@@ -1,14 +1,17 @@
 # **Stock Quick Predict**
 > Easy UI and fast results for on-the-go prediction
+> **NOTE: Work in progress!  This was once working, now broken due to a change in model structure.**
 
 ## What is included?
-1. 4 different types of ML models for predicting the next day(or current)
+1. Multiple ML models for predicting the next timeframe (or current)
+   a. Can be next 5 min, 15 min, 30 min, 1 hour, 4 hour, day, week, month 
 2. Robust UI, Easy to click and select models
 3. Multithreaded support
 4. Real-time predictions
 5. Easy to view analysis
 6. *FAST*- total 8 predictions in sub 20 seconds!
-
+## What model does this run?
+Initially, this model was based on a basic linear regression with Leaky ReLU activation, with Adam Optimizer, but over time, attempts were made to improve the model.  There were multiple different variations recorded for testing in the commit history, but at this point, there is current work to implement a newer type of model, which is Long-Short Term Memory (LSTM).  If in broken state, the latest commit will reflect this.
 ## Required modules
 - Tensorflow
 - Keras
